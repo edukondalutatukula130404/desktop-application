@@ -1,0 +1,44 @@
+[
+  {
+    "id": "usr_17863554747540a0t",
+    "name": "Sarah Connor",
+    "email": "sarah_1786355474497@sky.net",
+    "passwordHash": "$2a$10$o.8nARphZ33LE36MJtZ9WerFyUmhx17BXekh9CK/HyeQ2GKlQemLy",
+    "createdAt": "2026-08-10T09:51:14.754Z"
+  },
+  {
+    "id": "usr_1786355580781qsy0",
+    "name": "ammu",
+    "email": "ammu@gmail.com",
+    "passwordHash": "$2a$10$tzHNHEgzEFT6pEyegGHbzeI/qstHGN6XBlyb24A8qM3B/lUVNvxDC",
+    "createdAt": "2026-08-10T09:53:00.781Z"
+  },
+  {
+    "id": "usr_1786355843547id7q",
+    "name": "SaaS Admin",
+    "email": "admin_1786355843253@nexus.io",
+    "passwordHash": "$2a$10$bF5Yvwmji0FCdYH4CsxgQuTEqkoiXv46y5I4.qzavjsXb8d/ATpoS",
+    "createdAt": "2026-08-10T09:57:23.547Z"
+  },
+  {
+    "id": "usr_1786356649268ck5a",
+    "name": "user",
+    "email": "user@gmail.com",
+    "passwordHash": "$2a$10$gxXr7ETuwgQN3xlW2sHUre1dUgM5WTkZH3uJG4e0QvyMkePUGMZlC",
+    "createdAt": "2026-08-10T10:10:49.268Z"
+  },
+  {
+    "id": "usr_1786357100943dfsd",
+    "name": "Catalog Manager",
+    "email": "catalog_1786357100669@nexus.io",
+    "passwordHash": "$2a$10$h.zuY40XE4lDVD.znF8Jc.qatEEC3CtwD5gQDaB1oFAGm55Vu7GWq",
+    "createdAt": "2026-08-10T10:18:20.943Z"
+  },
+  {
+    "id": "usr_1786357150759kary",
+    "name": "Catalog Manager",
+    "email": "catalog_1786357150474@nexus.io",
+    "passwordHash": "$2a$10$ZFTaVmLs3Rme9khFoCIW0OnrkPR53t3zoVP.5P99nVXCR0bsuJROK",
+    "createdAt": "2026-08-10T10:19:10.759Z"
+  }
+]

@@ -1,0 +1,182 @@
+{
+  "invoices": [
+    {
+      "id": "INV-2026-005",
+      "clientName": "Cyberdyne Systems",
+      "clientEmail": "billing@cyberdyne.net",
+      "issueDate": "2026-08-10",
+      "dueDate": "2026-09-01",
+      "amount": 5400,
+      "status": "Pending",
+      "category": "AI Security Integration"
+    },
+    {
+      "id": "INV-2026-001",
+      "clientName": "Acme Corporation",
+      "clientEmail": "billing@acme.corp",
+      "issueDate": "2026-08-01",
+      "dueDate": "2026-08-15",
+      "amount": 1450,
+      "status": "Paid",
+      "category": "Software Consulting"
+    },
+    {
+      "id": "INV-2026-002",
+      "clientName": "Starlight Media",
+      "clientEmail": "accounts@starlight.io",
+      "issueDate": "2026-08-05",
+      "dueDate": "2026-08-20",
+      "amount": 3200,
+      "status": "Pending",
+      "category": "UI/UX Redesign"
+    },
+    {
+      "id": "INV-2026-003",
+      "clientName": "Apex Logistics",
+      "clientEmail": "finance@apexlogistics.com",
+      "issueDate": "2026-07-15",
+      "dueDate": "2026-07-30",
+      "amount": 890,
+      "status": "Overdue",
+      "category": "Cloud Infrastructure"
+    },
+    {
+      "id": "INV-2026-004",
+      "clientName": "Nexus Global",
+      "clientEmail": "contact@nexusglobal.com",
+      "issueDate": "2026-08-08",
+      "dueDate": "2026-08-22",
+      "amount": 4750,
+      "status": "Pending",
+      "category": "Enterprise API Development"
+    }
+  ],
+  "bills": [
+    {
+      "id": "BILL-101",
+      "vendor": "AWS Cloud Services",
+      "category": "Hosting & Server Infrastructure",
+      "dueDate": "2026-08-18",
+      "amount": 420.5,
+      "status": "Paid",
+      "autoPay": true
+    },
+    {
+      "id": "BILL-102",
+      "vendor": "Figma Enterprise",
+      "category": "Design Tools Subscription",
+      "dueDate": "2026-08-25",
+      "amount": 180,
+      "status": "Paid",
+      "autoPay": false
+    },
+    {
+      "id": "BILL-103",
+      "vendor": "GitHub Business",
+      "category": "Version Control & Actions",
+      "dueDate": "2026-08-02",
+      "amount": 95,
+      "status": "Paid",
+      "autoPay": true
+    },
+    {
+      "id": "BILL-104",
+      "vendor": "Twilio API Services",
+      "category": "SMS & Telecom Gateway",
+      "dueDate": "2026-08-28",
+      "amount": 215.75,
+      "status": "Unpaid",
+      "autoPay": false
+    }
+  ],
+  "clients": [
+    {
+      "id": "CLT-01",
+      "name": "Acme Corporation",
+      "contact": "billing@acme.corp",
+      "status": "Active",
+      "totalBilled": 1450
+    },
+    {
+      "id": "CLT-02",
+      "name": "Starlight Media",
+      "contact": "accounts@starlight.io",
+      "status": "Active",
+      "totalBilled": 3200
+    },
+    {
+      "id": "CLT-03",
+      "name": "Apex Logistics",
+      "contact": "finance@apexlogistics.com",
+      "status": "Notice",
+      "totalBilled": 890
+    },
+    {
+      "id": "CLT-04",
+      "name": "Nexus Global",
+      "contact": "contact@nexusglobal.com",
+      "status": "Active",
+      "totalBilled": 4750
+    }
+  ],
+  "products": [
+    {
+      "id": "SKU-PRD-02",
+      "name": "SaaS Mobile App License",
+      "category": "Software & Licensing",
+      "price": 199,
+      "stock": "In Stock",
+      "count": 100
+    },
+    {
+      "id": "SKU-PRD-01",
+      "name": "SaaS Mobile App License",
+      "category": "Software & Licensing",
+      "price": 199,
+      "stock": "In Stock",
+      "count": 100
+    }
+  ],
+  "categories": [
+    {
+      "id": "CAT-01",
+      "name": "Software & Licensing",
+      "description": "",
+      "itemCounts": 14,
+      "totalRevenue": 28400,
+      "status": "Active"
+    },
+    {
+      "id": "CAT-02",
+      "name": "Professional Services",
+      "description": "",
+      "itemCounts": 8,
+      "totalRevenue": 42100,
+      "status": "Active"
+    },
+    {
+      "id": "CAT-03",
+      "name": "Cloud & Hosting",
+      "description": "",
+      "itemCounts": 12,
+      "totalRevenue": 18900,
+      "status": "Active"
+    },
+    {
+      "id": "CAT-04",
+      "name": "Hardware",
+      "description": "",
+      "itemCounts": 6,
+      "totalRevenue": 8500,
+      "status": "Active"
+    },
+    {
+      "id": "CAT-05",
+      "name": "Subscriptions",
+      "description": "",
+      "itemCounts": 19,
+      "totalRevenue": 31200,
+      "status": "Active"
+    }
+  ]
+}
