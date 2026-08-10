@@ -95,6 +95,19 @@ const businessController = {
     }
   },
 
+  toggleClientStatus: (req, res) => {
+    try {
+      const { id } = req.params;
+      const updated = dataStore.toggleClientStatus(id);
+      if (!updated) {
+        return res.status(404).json({ success: false, message: 'Customer not found' });
+      }
+      res.json({ success: true, client: updated, message: `Customer ${id} status updated to ${updated.status}` });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to update client status' });
+    }
+  },
+
   getProducts: (req, res) => {
     try {
       const products = dataStore.getProducts();

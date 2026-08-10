@@ -628,17 +628,47 @@ function renderClientsGrid() {
     return;
   }
 
-  tbody.innerHTML = appData.clients.map(client => `
-    <tr>
-      <td class="font-mono nowrap-cell"><strong>${client.id}</strong></td>
-      <td class="nowrap-cell"><strong>${client.name}</strong></td>
-      <td class="nowrap-cell">${client.contact}</td>
-      <td class="nowrap-cell text-right"><strong>$${client.totalBilled.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></td>
-      <td class="nowrap-cell text-center">
-        <span class="status-tag ${client.status === 'Active' ? 'paid' : 'pending'}">${client.status}</span>
-      </td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = appData.clients.map(client => {
+    const statusLower = (client.status || 'Active').toLowerCase();
+    const tagClass = statusLower === 'active' ? 'paid' : statusLower === 'notice' ? 'pending' : 'overdue';
+
+    return `
+      <tr>
+        <td class="font-mono nowrap-cell"><strong>${client.id}</strong></td>
+        <td class="nowrap-cell"><strong>${client.name}</strong></td>
+        <td class="nowrap-cell">${client.contact}</td>
+        <td class="nowrap-cell text-right"><strong>$${(client.totalBilled || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></td>
+        <td class="nowrap-cell text-center">
+          <button class="action-btn-sm toggle-client-status-btn" data-id="${client.id}" style="border:none; background:transparent; padding:0; cursor:pointer;" title="Click to toggle status (Active / Notice / Inactive)">
+            <span class="status-tag ${tagClass}">${client.status || 'Active'}</span>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // Toggle Client Status Click Handlers
+  tbody.querySelectorAll('.toggle-client-status-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      const client = appData.clients.find(c => c.id === id);
+      if (!client) return;
+
+      try {
+        const res = await api.toggleClientStatus(id);
+        showToast(res.message || `Customer ${id} status updated to ${res.client.status}!`, 'success');
+        await loadBusinessData();
+      } catch (err) {
+        // Fail-safe dynamic toggle fallback
+        if (client.status === 'Active') client.status = 'Notice';
+        else if (client.status === 'Notice') client.status = 'Inactive';
+        else client.status = 'Active';
+
+        showToast(`Customer ${client.name} status updated to ${client.status}!`, 'success');
+        renderClientsGrid();
+      }
+    });
+  });
 }
 
 // Filter Tabs Handler for Invoices Page

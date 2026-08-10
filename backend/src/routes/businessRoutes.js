@@ -19,6 +19,7 @@ router.patch('/bills/:id/autopay', businessController.toggleBillAutoPay);
 
 // Client Routes
 router.get('/clients', businessController.getClients);
+router.patch('/clients/:id/status', businessController.toggleClientStatus);
 
 // Product Routes
 router.get('/products', businessController.getProducts);

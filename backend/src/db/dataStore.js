@@ -209,6 +209,20 @@ const dataStore = {
 
   getClients: () => readData().clients,
 
+  toggleClientStatus: (id) => {
+    const data = readData();
+    if (!data.clients) return null;
+    const client = data.clients.find(c => c.id === id);
+    if (client) {
+      if (client.status === 'Active') client.status = 'Notice';
+      else if (client.status === 'Notice') client.status = 'Inactive';
+      else client.status = 'Active';
+      writeData(data);
+      return client;
+    }
+    return null;
+  },
+
   getProducts: () => readData().products || [],
 
   createProduct: (productData) => {

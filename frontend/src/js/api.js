@@ -95,6 +95,8 @@ export const api = {
 
   getClients: () => request('/business/clients', { method: 'GET' }),
 
+  toggleClientStatus: (id) => request(`/business/clients/${id}/status`, { method: 'PATCH' }),
+
   getProducts: () => request('/business/products', { method: 'GET' }),
 
   createProduct: (payload) => request('/business/products', {
