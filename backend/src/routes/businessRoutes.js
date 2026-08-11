@@ -13,12 +13,15 @@ router.patch('/invoices/:id/status', businessController.updateInvoiceStatus);
 
 // Bill Routes
 router.get('/bills', businessController.getBills);
+router.post('/bills', businessController.createBill);
 router.post('/bills/:id/pay', businessController.payBill);
 router.patch('/bills/:id/status', businessController.toggleBillStatus);
 router.patch('/bills/:id/autopay', businessController.toggleBillAutoPay);
 
+
 // Client Routes
 router.get('/clients', businessController.getClients);
+router.get('/clients/:id/related', businessController.getClientRelated);
 router.patch('/clients/:id/status', businessController.toggleClientStatus);
 
 // Product Routes
@@ -27,7 +30,11 @@ router.post('/products', businessController.createProduct);
 
 // Category Routes
 router.get('/categories', businessController.getCategories);
+router.get('/categories/:id/related', businessController.getCategoryRelated);
 router.post('/categories', businessController.createCategory);
 router.patch('/categories/:id/status', businessController.toggleCategoryStatus);
+
+// Relational Summary Route
+router.get('/summary/relational', businessController.getRelationalSummary);
 
 module.exports = router;

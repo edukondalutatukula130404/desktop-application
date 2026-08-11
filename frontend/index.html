@@ -137,79 +137,15 @@
       <div class="sidebar-brand">
         <img src="/logo.png" alt="Nexus Suite Logo" class="sidebar-logo-img" />
         <div class="brand-name">Nexus<span class="gradient-text">Suite</span></div>
-        <button id="sidebar-toggle-btn" class="sidebar-hamburger-btn" title="Quick Options Menu">
+        <button id="sidebar-toggle-btn" class="sidebar-hamburger-btn" title="Toggle Sidebar">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>
           </svg>
         </button>
-
-        <!-- HAMBURGER QUICK DROPDOWN MENU -->
-        <div id="sidebar-dropdown-menu" class="hamburger-dropdown hidden">
-          <div class="dropdown-header-title">QUICK NAVIGATION</div>
-          
-          <button class="dropdown-item" data-dropdown-view="overview">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-            <span>Dashboard Overview</span>
-          </button>
-          
-          <button class="dropdown-item" data-dropdown-view="invoices">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-            <span>Invoices</span>
-          </button>
-          
-          <button class="dropdown-item" data-dropdown-view="bills">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-            <span>Bills & Payments</span>
-          </button>
-
-          <button class="dropdown-item" data-dropdown-view="products">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line></svg>
-            <span>Products Catalog</span>
-          </button>
-
-          <button class="dropdown-item" data-dropdown-view="categories">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-            <span>Categories Directory</span>
-          </button>
-
-          <button class="dropdown-item" data-dropdown-view="clients">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
-            <span>Customers & Clients</span>
-          </button>
-
-          <div class="dropdown-divider"></div>
-
-          <div class="dropdown-header-title">QUICK ACTIONS</div>
-
-          <button class="dropdown-item action-item" id="dropdown-add-invoice-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            <span>Create New Invoice</span>
-          </button>
-
-          <button class="dropdown-item action-item" id="dropdown-add-product-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            <span>Add New Product</span>
-          </button>
-
-          <button class="dropdown-item action-item" id="dropdown-add-category-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            <span>Add New Category</span>
-          </button>
-
-          <div class="dropdown-divider"></div>
-
-          <button class="dropdown-item logout-item" id="dropdown-logout-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
-            <span>Log Out</span>
-          </button>
-        </div>
       </div>
+
 
       <!-- Nav Links -->
       <nav class="sidebar-nav">
@@ -310,16 +246,6 @@
           <h2 id="header-page-title">Dashboard Overview</h2>
           <p id="header-page-subtitle" class="text-muted">Financial summary & real-time analytics</p>
         </div>
-
-        <div class="header-actions">
-          <div class="search-box">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input type="text" id="global-search-input" placeholder="Search invoices, bills, clients..." />
-          </div>
-        </div>
       </header>
 
       <!-- DYNAMIC CONTENT VIEWS CONTAINER -->
@@ -334,8 +260,22 @@
                 <span class="metric-title">Total Revenue</span>
                 <span class="metric-badge positive">+14.2%</span>
               </div>
-              <div class="metric-value">$10,290.00</div>
-              <div class="metric-footer">Billed across 4 active clients</div>
+              <div class="metric-value">₹10,290.00</div>
+              <div class="metric-footer-wrapper">
+                <div class="metric-footer">Billed across 4 active clients</div>
+                <div class="sparkline-container">
+                  <svg class="metric-sparkline" viewBox="0 0 90 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <linearGradient id="sparkline-purple" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#a855f7" stop-opacity="0.3" />
+                        <stop offset="100%" stop-color="#a855f7" stop-opacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M0 26 Q 15 28, 30 18 T 60 14 T 90 4 L 90 35 L 0 35 Z" fill="url(#sparkline-purple)" />
+                    <path d="M0 26 Q 15 28, 30 18 T 60 14 T 90 4" fill="none" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
             <div class="metric-card">
@@ -343,8 +283,22 @@
                 <span class="metric-title">Pending Invoices</span>
                 <span class="metric-badge info">2 Unpaid</span>
               </div>
-              <div id="stat-pending-invoices" class="metric-value">$7,950.00</div>
-              <div class="metric-footer">Expected within 14 days</div>
+              <div id="stat-pending-invoices" class="metric-value">₹8,840.00</div>
+              <div class="metric-footer-wrapper">
+                <div class="metric-footer">Expected within 14 days</div>
+                <div class="sparkline-container">
+                  <svg class="metric-sparkline" viewBox="0 0 90 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <linearGradient id="sparkline-blue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3" />
+                        <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M0 28 Q 20 12, 40 22 T 70 8 T 90 14 L 90 35 L 0 35 Z" fill="url(#sparkline-blue)" />
+                    <path d="M0 28 Q 20 12, 40 22 T 70 8 T 90 14" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
             <div class="metric-card">
@@ -352,8 +306,22 @@
                 <span class="metric-title">Upcoming Bills</span>
                 <span class="metric-badge warning">3 Due Soon</span>
               </div>
-              <div id="stat-unpaid-bills" class="metric-value">$816.25</div>
-              <div class="metric-footer">Scheduled vendor payouts</div>
+              <div id="stat-unpaid-bills" class="metric-value">₹1,686.25</div>
+              <div class="metric-footer-wrapper">
+                <div class="metric-footer">Scheduled vendor payouts</div>
+                <div class="sparkline-container">
+                  <svg class="metric-sparkline" viewBox="0 0 90 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <linearGradient id="sparkline-orange" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#f97316" stop-opacity="0.3" />
+                        <stop offset="100%" stop-color="#f97316" stop-opacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M0 30 Q 25 32, 45 18 T 70 24 T 90 8 L 90 35 L 0 35 Z" fill="url(#sparkline-orange)" />
+                    <path d="M0 30 Q 25 32, 45 18 T 70 24 T 90 8" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
             <div class="metric-card">
@@ -362,7 +330,21 @@
                 <span class="metric-badge active">Verified</span>
               </div>
               <div class="metric-value text-emerald">24h Active</div>
-              <div id="stat-session-user" class="metric-footer">Authenticated as User</div>
+              <div class="metric-footer-wrapper">
+                <div id="stat-session-user" class="metric-footer">Logged in as User</div>
+                <div class="sparkline-container">
+                  <svg class="metric-sparkline" viewBox="0 0 90 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <linearGradient id="sparkline-green" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#10b981" stop-opacity="0.3" />
+                        <stop offset="100%" stop-color="#10b981" stop-opacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M0 24 Q 20 28, 40 14 T 70 20 T 90 6 L 90 35 L 0 35 Z" fill="url(#sparkline-green)" />
+                    <path d="M0 24 Q 20 28, 40 14 T 70 20 T 90 6" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" />
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -415,7 +397,7 @@
                 <button class="filter-btn" data-filter="Pending">Pending</button>
                 <button class="filter-btn" data-filter="Overdue">Overdue</button>
               </div>
-              <button id="quick-create-invoice-btn" class="primary-action-btn sm">
+              <button id="quick-create-invoice-btn" onclick="openInvoiceModal()" class="primary-action-btn sm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -449,9 +431,17 @@
         <!-- VIEW 3: BILLS & PAYMENTS -->
         <div id="view-bills" class="view-panel">
           <div class="panel-card">
-            <div class="panel-header">
+            <div class="table-toolbar">
               <h3>Vendor Bills & Subscriptions</h3>
+              <button id="quick-add-bill-btn" onclick="openBillModal()" class="primary-action-btn sm">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Add Vendor Bill</span>
+              </button>
             </div>
+
             <div class="table-responsive">
               <table class="data-table">
                 <thead>
@@ -479,12 +469,12 @@
           <div class="panel-card">
             <div class="table-toolbar">
               <div class="filter-tabs">
-                <button class="filter-btn active" data-prd-filter="all">All Products</button>
-                <button class="filter-btn" data-prd-filter="Software & Licensing">Software</button>
-                <button class="filter-btn" data-prd-filter="Professional Services">Services</button>
-                <button class="filter-btn" data-prd-filter="Hardware">Hardware</button>
+                <button class="filter-btn active" data-prd-filter="all">All Apparel</button>
+                <button class="filter-btn" data-prd-filter="Men's Apparel">Men's Apparel</button>
+                <button class="filter-btn" data-prd-filter="Women's Fashion">Women's Fashion</button>
+                <button class="filter-btn" data-prd-filter="Footwear & Shoes">Footwear</button>
               </div>
-              <button id="quick-add-product-btn" class="primary-action-btn sm">
+              <button id="quick-add-product-btn" onclick="openProductModal()" class="primary-action-btn sm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -518,7 +508,7 @@
           <div class="panel-card">
             <div class="table-toolbar">
               <h3>Product & Billing Classification Groups</h3>
-              <button id="quick-add-category-btn" class="primary-action-btn sm">
+              <button id="quick-add-category-btn" onclick="openCategoryModal()" class="primary-action-btn sm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -532,9 +522,11 @@
                 <thead>
                   <tr>
                     <th class="nowrap-cell">Category ID</th>
-                    <th class="nowrap-cell">Category Name</th>
+                    <th>Category & Sub-Categories</th>
+                    <th class="nowrap-cell text-center">Department & Season</th>
                     <th class="nowrap-cell text-center">Associated Items</th>
                     <th class="nowrap-cell text-center">Status</th>
+                    <th class="nowrap-cell text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="categories-table-tbody">
@@ -612,49 +604,429 @@
           </div>
         </div>
 
+        <!-- VIEW 8: CREATE NEW INVOICE DEDICATED PAGE -->
+        <div id="view-create_invoice" class="view-panel">
+          <div class="panel-card" style="padding: 28px; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light);">
+              <div>
+                <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Create New Invoice</h2>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Enter shop name, line items, categories & generate PDF statement</p>
+              </div>
+              <button type="button" class="secondary-btn back-to-invoices-btn" onclick="switchView('invoices')" style="padding: 9px 18px; font-weight: 600; cursor: pointer; border-radius: 12px;">
+                &larr; Back to Invoices List
+              </button>
+            </div>
+
+            <form id="create-invoice-page-form">
+              <!-- 1. Products List (Dynamic Line Items with Categories & Sub-Categories) -->
+              <div style="background: #ffffff; border: 1px solid var(--border-light); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                  <div>
+                    <h4 style="font-size: 0.92rem; font-weight: 700; color: var(--primary-accent); margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px;">Products, Categories & Pricing Items *</h4>
+                    <span style="font-size: 0.82rem; color: var(--text-muted);">Add clothing items, choose categories and sub-categories.</span>
+                  </div>
+                  <button type="button" id="page-add-invoice-item-btn" class="secondary-btn" style="padding: 9px 18px; font-size: 0.85rem; background: var(--cyan-bg); color: var(--primary-accent); border: none; font-weight: 600; border-radius: 10px; cursor: pointer;">
+                    + Add Product Item
+                  </button>
+                </div>
+
+                <!-- Scrollable Table Outer Wrapper -->
+                <div style="overflow-x: auto; margin-bottom: 6px; width: 100%;">
+                  <div style="min-width: 820px;">
+                    <!-- Products Table Header -->
+                    <div style="display: grid; grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.3fr) minmax(140px, 1.2fr) 65px 110px 110px 36px; gap: 10px; align-items: center; margin-bottom: 10px; padding: 10px 12px; background: #f1f5f9; border-radius: 10px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+                      <div>Product Name</div>
+                      <div>Category</div>
+                      <div>Sub-Category</div>
+                      <div style="text-align: center;">Qty</div>
+                      <div style="text-align: right;">Unit Price (₹)</div>
+                      <div style="text-align: right;">Subtotal (₹)</div>
+                      <div></div>
+                    </div>
+
+                    <div id="page-invoice-items-list" style="display: flex; flex-direction: column; gap: 8px;">
+                      <!-- Initial Product Item Row -->
+                      <div class="invoice-item-row page-invoice-item-row" style="display: grid; grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.3fr) minmax(140px, 1.2fr) 65px 110px 110px 36px; gap: 10px; align-items: center; background: #ffffff; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border-light);">
+                        <div>
+                          <select class="item-name-select" style="padding: 9px 8px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main); width: 100%;">
+                            <option value="" disabled selected>-- Select Product --</option>
+                            <option value="Classic Cotton Slim-Fit Shirt" data-price="1299.00" data-category="Men's Apparel">Classic Cotton Slim-Fit Shirt (₹1,299)</option>
+                            <option value="Floral Print Summer Chiffon Dress" data-price="2499.00" data-category="Women's Fashion">Floral Print Summer Chiffon Dress (₹2,499)</option>
+                            <option value="Denim Jacket with Fleece Lining" data-price="2799.00" data-category="Winterwear & Outerwear">Denim Jacket with Fleece Lining (₹2,799)</option>
+                            <option value="Leather Formal Oxford Shoes" data-price="4250.00" data-category="Footwear & Shoes">Leather Formal Oxford Shoes (₹4,250)</option>
+                            <option value="Kids Organic Cotton T-Shirt Set" data-price="999.00" data-category="Kidswear & Toddlers">Kids Organic Cotton T-Shirt Set (₹999)</option>
+                            <option value="Handwoven Banarasi Silk Saree" data-price="6800.00" data-category="Women's Fashion">Handwoven Banarasi Silk Saree (₹6,800)</option>
+                            <option value="Designer Leather Belt & Wallet Set" data-price="1299.00" data-category="Fashion Accessories">Designer Leather Belt & Wallet Set (₹1,299)</option>
+                            <option value="custom">+ Custom Product...</option>
+                          </select>
+                          <input type="text" class="item-name-input" placeholder="Type item name" style="display: none; padding: 8px 10px; margin-top: 4px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main); width: 100%;" />
+                        </div>
+                        
+                        <select class="item-category-select" style="padding: 9px 8px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main); width: 100%;">
+                          <option value="Men's Apparel">Men's Apparel</option>
+                          <option value="Women's Fashion">Women's Fashion</option>
+                          <option value="Kidswear & Toddlers">Kidswear & Toddlers</option>
+                          <option value="Footwear & Shoes">Footwear & Shoes</option>
+                          <option value="Fashion Accessories">Fashion Accessories</option>
+                          <option value="Winterwear & Outerwear">Winterwear & Outerwear</option>
+                        </select>
+
+                        <select class="item-subcategory-select" style="padding: 9px 8px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main); width: 100%;">
+                          <option value="Shirts">Shirts</option>
+                          <option value="T-Shirts">T-Shirts</option>
+                          <option value="Jeans & Trousers">Jeans & Trousers</option>
+                          <option value="Suits & Blazers">Suits & Blazers</option>
+                          <option value="Ethnic Wear">Ethnic Wear</option>
+                        </select>
+
+                        <input type="number" class="item-qty-input" placeholder="1" min="1" value="1" style="padding: 9px 4px; text-align: center; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.84rem; outline: none; color: var(--text-main); width: 100%;" required />
+                        
+                        <input type="number" step="0.01" class="item-price-input" placeholder="0.00" style="padding: 9px 8px; text-align: right; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.84rem; outline: none; color: var(--text-main); width: 100%;" required />
+
+                        <div class="item-subtotal-display" style="text-align: right; font-weight: 700; font-size: 0.88rem; color: var(--text-main); font-family: monospace;">₹0.00</div>
+                        
+                        <button type="button" class="remove-item-btn" style="background: var(--rose-bg); color: var(--rose); border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-weight: bold; flex-shrink: 0; display: flex; align-items: center; justify-content: center;" title="Remove Item">&times;</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. Grand Total & Action Footer Bar -->
+              <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid var(--border-light); border-radius: 16px; padding: 20px 24px;">
+                <div>
+                  <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">TOTAL AMOUNT (₹)</span>
+                  <div id="page-inv-total-display" style="font-size: 1.8rem; font-weight: 800; color: var(--primary-accent); font-family: monospace;">₹0.00</div>
+                </div>
+
+                <div style="display: flex; gap: 12px; align-items: center;">
+                  <button type="button" class="secondary-btn back-to-invoices-btn" onclick="switchView('invoices')" style="padding: 12px 20px; font-weight: 600; border-radius: 12px; cursor: pointer;">
+                    Cancel
+                  </button>
+                  <button type="submit" id="page-submit-create-invoice-btn" class="primary-action-btn" style="padding: 12px 26px; font-size: 0.95rem; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="7 10 12 15 17 10"></polyline>
+                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>Save & Download PDF</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- VIEW 9: ADD VENDOR BILL DEDICATED PAGE -->
+        <div id="view-add_bill" class="view-panel">
+          <div class="panel-card" style="padding: 28px; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light);">
+              <div>
+                <h2 style="font-size: 1.45rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Add Vendor Bill / Subscription</h2>
+                <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0;">Record a new recurring subscription or vendor payable invoice</p>
+              </div>
+              <button type="button" class="secondary-btn back-to-bills-btn" onclick="switchView('bills')" style="padding: 8px 18px; font-weight: 600; cursor: pointer; border-radius: 12px;">
+                &larr; Back to Bills List
+              </button>
+            </div>
+
+            <form id="create-bill-page-form" class="modal-form">
+              <!-- 1. Vendor Information -->
+              <div class="input-group">
+                <label for="page-bill-vendor" style="font-weight: 700;">Vendor Name / Supplier *</label>
+                <input type="text" id="page-bill-vendor" placeholder="e.g. Surat Silk Fabrics Co. or Raymond Woolen Mills" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 0.92rem; outline: none; color: var(--text-main);" required />
+              </div>
+
+              <!-- 2. Category & Sub-Category Grid -->
+              <div class="form-grid-2">
+                <div class="input-group">
+                  <label for="page-bill-category" style="font-weight: 700;">Expense Category *</label>
+                  <select id="page-bill-category" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
+                    <option value="Raw Materials & Fabrics">Raw Materials & Fabrics</option>
+                    <option value="Cotton & Silk Textile Yarns">Cotton & Silk Textile Yarns</option>
+                    <option value="Dyeing, Printing & Processing">Dyeing, Printing & Processing</option>
+                    <option value="Trims, Zippers & Apparel Buttons">Trims, Zippers & Apparel Buttons</option>
+                    <option value="Packaging, Tags & Garment Boxes">Packaging, Tags & Garment Boxes</option>
+                    <option value="Logistics, Freight & Shipping">Logistics, Freight & Shipping</option>
+                    <option value="Boutique Store Rent & Utilities">Boutique Store Rent & Utilities</option>
+                    <option value="Garment Stitching & Tailoring">Garment Stitching & Tailoring</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label for="page-bill-subcategory" style="font-weight: 700;">Sub-Category / Item Tag</label>
+                  <select id="page-bill-subcategory" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
+                    <option value="Cotton Weaving Fabrics">Cotton Weaving Fabrics</option>
+                    <option value="Silk & Satin Roll Stock">Silk & Satin Roll Stock</option>
+                    <option value="Chiffon & Georgette">Chiffon & Georgette</option>
+                    <option value="Linen & Denim Weaves">Linen & Denim Weaves</option>
+                    <option value="Velvet & Brocade">Velvet & Brocade</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 3. Amount & Due Date Grid -->
+              <div class="form-grid-2">
+                <div class="input-group">
+                  <label for="page-bill-amount" style="font-weight: 700;">Bill Amount (₹) *</label>
+                  <input type="number" step="0.01" id="page-bill-amount" placeholder="0.00" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 1rem; font-weight: 700; color: var(--primary-accent); outline: none;" required />
+                </div>
+                <div class="input-group">
+                  <label for="page-bill-due-date" style="font-weight: 700;">Due Date *</label>
+                  <input type="date" id="page-bill-due-date" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; outline: none; color: var(--text-main);" required />
+                </div>
+              </div>
+
+              <!-- 4. Auto-Pay Checkbox Option -->
+              <div class="input-group" style="background: #f8fafc; padding: 14px 18px; border-radius: 12px; border: 1px solid var(--border-light); margin-top: 6px;">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 0; font-weight: 600;">
+                  <input type="checkbox" id="page-bill-autopay" style="width: 18px; height: 18px; accent-color: var(--primary-accent); cursor: pointer;" />
+                  <span>Enable Auto-Pay (Auto-settle vendor payouts on due date)</span>
+                </label>
+              </div>
+
+              <!-- 5. Action Footer -->
+              <div style="display: flex; justify-content: flex-end; gap: 12px; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-light);">
+                <button type="button" class="secondary-btn back-to-bills-btn" onclick="switchView('bills')" style="padding: 12px 20px; font-weight: 600; border-radius: 12px; cursor: pointer;">
+                  Cancel
+                </button>
+                <button type="submit" id="page-submit-create-bill-btn" class="primary-action-btn" style="padding: 12px 28px; font-size: 0.95rem; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center;">
+                  <span>Save Vendor Bill</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- VIEW 10: ADD NEW PRODUCT DEDICATED PAGE -->
+        <div id="view-add_product" class="view-panel">
+          <div class="panel-card" style="padding: 28px; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light);">
+              <div>
+                <h2 style="font-size: 1.45rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Add New Product</h2>
+                <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0;">Add a new SKU item to your billing product catalog</p>
+              </div>
+              <button type="button" class="secondary-btn back-to-products-btn" onclick="switchView('products')" style="padding: 8px 18px; font-weight: 600; cursor: pointer; border-radius: 12px;">
+                &larr; Back to Products Catalog
+              </button>
+            </div>
+
+            <form id="create-product-page-form" class="modal-form">
+              <!-- 1. Product Name -->
+              <div class="input-group">
+                <label for="page-prd-name" style="font-weight: 700;">Product Name *</label>
+                <input type="text" id="page-prd-name" placeholder="e.g. Premium Cotton Slim-Fit Shirt" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 0.92rem; outline: none; color: var(--text-main);" required />
+              </div>
+
+              <!-- 2. Category & Sub-Category Grid -->
+              <div class="form-grid-2">
+                <div class="input-group">
+                  <label for="page-prd-category" style="font-weight: 700;">Apparel Category *</label>
+                  <select id="page-prd-category" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
+                    <option value="Men's Apparel">Men's Apparel</option>
+                    <option value="Women's Fashion">Women's Fashion</option>
+                    <option value="Kidswear & Toddlers">Kidswear & Toddlers</option>
+                    <option value="Footwear & Shoes">Footwear & Shoes</option>
+                    <option value="Fashion Accessories">Fashion Accessories</option>
+                    <option value="Winterwear & Outerwear">Winterwear & Outerwear</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label for="page-prd-subcategory" style="font-weight: 700;">Sub-Category</label>
+                  <select id="page-prd-subcategory" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
+                    <option value="Shirts">Shirts</option>
+                    <option value="T-Shirts">T-Shirts</option>
+                    <option value="Jeans & Trousers">Jeans & Trousers</option>
+                    <option value="Suits & Blazers">Suits & Blazers</option>
+                    <option value="Ethnic Wear">Ethnic Wear</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 3. Price & Stock Quantity Grid -->
+              <div class="form-grid-2">
+                <div class="input-group">
+                  <label for="page-prd-price" style="font-weight: 700;">Price (₹) *</label>
+                  <input type="number" step="0.01" id="page-prd-price" placeholder="0.00" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 1rem; font-weight: 700; color: var(--primary-accent); outline: none;" required />
+                </div>
+                <div class="input-group">
+                  <label for="page-prd-stock" style="font-weight: 700;">Initial Inventory Stock Quantity</label>
+                  <input type="number" id="page-prd-stock" placeholder="e.g. 50" value="50" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; outline: none; color: var(--text-main);" />
+                </div>
+              </div>
+
+              <!-- 4. Action Footer -->
+              <div style="display: flex; justify-content: flex-end; gap: 12px; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-light);">
+                <button type="button" class="secondary-btn back-to-products-btn" onclick="switchView('products')" style="padding: 12px 20px; font-weight: 600; border-radius: 12px; cursor: pointer;">
+                  Cancel
+                </button>
+                <button type="submit" id="page-submit-create-product-btn" class="primary-action-btn" style="padding: 12px 28px; font-size: 0.95rem; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center;">
+                  <span>Save Product</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- VIEW 11: ADD APPAREL CATEGORY DEDICATED PAGE -->
+        <div id="view-add_category" class="view-panel">
+          <div class="panel-card" style="padding: 28px; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light);">
+              <div>
+                <h2 style="font-size: 1.45rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Add Apparel Category</h2>
+                <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0;">Create a new clothing classification group, sub-categories, and seasonal options</p>
+              </div>
+              <button type="button" class="secondary-btn back-to-categories-btn" onclick="switchView('categories')" style="padding: 8px 18px; font-weight: 600; cursor: pointer; border-radius: 12px;">
+                &larr; Back to Categories Directory
+              </button>
+            </div>
+
+            <form id="create-category-page-form" class="modal-form">
+              <!-- 1. Category Name -->
+              <div class="input-group">
+                <label for="page-cat-name" style="font-weight: 700;">Category Name *</label>
+                <input type="text" id="page-cat-name" placeholder="e.g. Ethnic & Festive Wear" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 0.92rem; outline: none; color: var(--text-main);" required />
+              </div>
+
+              <!-- 2. Sub-Categories -->
+              <div class="input-group">
+                <label for="page-cat-subcategories" style="font-weight: 700;">Sub-Categories (Comma-separated) *</label>
+                <input type="text" id="page-cat-subcategories" placeholder="e.g. Kurta Sets, Sarees, Lehengas, Sherwanis, Anarkalis" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; outline: none; color: var(--text-main);" required />
+              </div>
+
+              <!-- 3. Target Department & Season Grid -->
+              <div class="form-grid-2">
+                <div class="input-group">
+                  <label for="page-cat-department" style="font-weight: 700;">Target Department / Gender</label>
+                  <select id="page-cat-department" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
+                    <option value="Unisex / All">Unisex / All</option>
+                    <option value="Men's">Men's</option>
+                    <option value="Women's">Women's</option>
+                    <option value="Kids / Boys & Girls">Kids / Boys & Girls</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label for="page-cat-season" style="font-weight: 700;">Season / Collection Tag</label>
+                  <select id="page-cat-season" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
+                    <option value="All Season / Everyday">All Season / Everyday</option>
+                    <option value="Festive / Wedding">Festive / Wedding</option>
+                    <option value="Summer Collection">Summer Collection</option>
+                    <option value="Winter / Autumn">Winter / Autumn</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 4. Products Count & Status Grid -->
+              <div class="form-grid-2">
+                <div class="input-group">
+                  <label for="page-cat-count" style="font-weight: 700;">Associated Products Count *</label>
+                  <input type="number" id="page-cat-count" placeholder="10" value="10" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; outline: none; color: var(--text-main);" required />
+                </div>
+                <div class="input-group">
+                  <label for="page-cat-status" style="font-weight: 700;">Status</label>
+                  <select id="page-cat-status" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 5. Action Footer -->
+              <div style="display: flex; justify-content: flex-end; gap: 12px; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-light);">
+                <button type="button" class="secondary-btn back-to-categories-btn" onclick="switchView('categories')" style="padding: 12px 20px; font-weight: 600; border-radius: 12px; cursor: pointer;">
+                  Cancel
+                </button>
+                <button type="submit" id="page-submit-create-category-btn" class="primary-action-btn" style="padding: 12px 28px; font-size: 0.95rem; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center;">
+                  <span>Create Category</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
       </section>
     </div>
   </div>
 
   <!-- CREATE NEW INVOICE MODAL -->
   <div id="create-invoice-modal" class="modal-overlay hidden">
-    <div class="modal-card lg">
+    <div class="modal-card lg" style="max-width: 860px; width: 94%;">
       <button id="close-invoice-modal-btn" class="modal-close-btn">&times;</button>
       <h2 class="modal-title">Create New Invoice</h2>
-      <p class="modal-subtitle">Generate a formal client invoice and issue via email.</p>
+      <p class="modal-subtitle">Add shop name, select products with categories & sub-categories, auto-calculate total, and download invoice PDF.</p>
 
       <form id="create-invoice-form" class="modal-form">
-        <div class="form-grid-2">
-          <div class="input-group">
-            <label for="inv-client-name">Client Name *</label>
-            <input type="text" id="inv-client-name" placeholder="e.g. Acme Corporation" required />
-          </div>
-          <div class="input-group">
-            <label for="inv-client-email">Client Email</label>
-            <input type="email" id="inv-client-email" placeholder="billing@client.com" />
-          </div>
-        </div>
-
-        <div class="form-grid-2">
-          <div class="input-group">
-            <label for="inv-amount">Invoice Amount ($) *</label>
-            <input type="number" step="0.01" id="inv-amount" placeholder="0.00" required />
-          </div>
-          <div class="input-group">
-            <label for="inv-due-date">Due Date</label>
-            <input type="date" id="inv-due-date" />
-          </div>
-        </div>
-
+        <!-- 1. Shop Name -->
         <div class="input-group">
-          <label for="inv-category">Category / Description</label>
-          <input type="text" id="inv-category" placeholder="e.g. Web Development & UI Design" />
+          <label for="inv-client-name">Shop Name / Business Name *</label>
+          <input type="text" id="inv-client-name" placeholder="e.g. Starlight Apparel Shop" required />
         </div>
 
-        <div class="modal-footer-actions">
+        <!-- 2. Products List (Dynamic Line Items with Categories & Sub-Categories) -->
+        <div class="input-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label style="margin-bottom: 0;">Products, Categories & Pricing Items *</label>
+            <button type="button" id="add-invoice-item-btn" class="secondary-btn" style="padding: 6px 14px; font-size: 0.82rem; background: var(--cyan-bg); color: var(--primary-accent); border: none; font-weight: 600;">
+              + Add Product Item
+            </button>
+          </div>
+
+          <!-- Item Table Header Labels -->
+          <div style="display: grid; grid-template-columns: 1.8fr 1.3fr 1.3fr 0.7fr 1fr 34px; gap: 8px; margin-bottom: 6px; padding: 0 4px; font-size: 0.76rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+            <div>Product Name</div>
+            <div>Category</div>
+            <div>Sub-Category</div>
+            <div style="text-align: center;">Qty</div>
+            <div>Price (₹)</div>
+            <div></div>
+          </div>
+
+          <div id="invoice-items-list" style="display: flex; flex-direction: column; gap: 10px;">
+            <!-- Initial Product Item Row -->
+            <div class="invoice-item-row" style="display: grid; grid-template-columns: 1.8fr 1.3fr 1.3fr 0.7fr 1fr 34px; gap: 8px; align-items: center;">
+              <input type="text" class="item-name-input" placeholder="e.g. Cotton Shirt" style="padding: 9px 10px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.85rem; outline: none; color: var(--text-main);" required />
+              
+              <select class="item-category-select" style="padding: 9px 8px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main);">
+                <option value="Men's Apparel">Men's Apparel</option>
+                <option value="Women's Fashion">Women's Fashion</option>
+                <option value="Kidswear & Toddlers">Kidswear & Toddlers</option>
+                <option value="Footwear & Shoes">Footwear & Shoes</option>
+                <option value="Fashion Accessories">Fashion Accessories</option>
+                <option value="Winterwear & Outerwear">Winterwear & Outerwear</option>
+              </select>
+
+              <select class="item-subcategory-select" style="padding: 9px 8px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main);">
+                <option value="Shirts">Shirts</option>
+                <option value="T-Shirts">T-Shirts</option>
+                <option value="Jeans & Trousers">Jeans & Trousers</option>
+                <option value="Suits & Blazers">Suits & Blazers</option>
+                <option value="Ethnic Wear">Ethnic Wear</option>
+              </select>
+
+              <input type="number" class="item-qty-input" placeholder="1" min="1" value="1" style="padding: 9px 6px; text-align: center; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.85rem; outline: none; color: var(--text-main);" required />
+              
+              <input type="number" step="0.01" class="item-price-input" placeholder="0.00" style="padding: 9px 10px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.85rem; outline: none; color: var(--text-main);" required />
+              
+              <button type="button" class="remove-item-btn" style="background: var(--rose-bg); color: var(--rose); border: none; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-weight: bold; flex-shrink: 0;" title="Remove Item">&times;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Total Amount -->
+        <div class="input-group" style="margin-top: 6px;">
+          <label for="inv-amount">Total Amount (₹) *</label>
+          <input type="number" step="0.01" id="inv-amount" placeholder="0.00" style="font-weight: 700; font-size: 1.1rem; color: var(--primary-accent); background: #f8fafc;" required />
+        </div>
+
+        <!-- 4. Footer Actions & Download PDF Option -->
+        <div class="modal-footer-actions" style="margin-top: 20px;">
           <button type="button" id="cancel-invoice-modal-btn" class="secondary-btn">Cancel</button>
           <button type="submit" id="submit-create-invoice-btn" class="primary-action-btn">
-            <span>Generate & Send Invoice</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Save & Download PDF</span>
           </button>
         </div>
       </form>
@@ -678,14 +1050,16 @@
           <div class="input-group">
             <label for="prd-category">Category</label>
             <select id="prd-category" style="width:100%; padding:12px; background:var(--input-bg); border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main);">
-              <option value="Software & Licensing">Software & Licensing</option>
-              <option value="Professional Services">Professional Services</option>
-              <option value="Cloud & Hosting">Cloud & Hosting</option>
-              <option value="Hardware">Hardware</option>
+              <option value="Men's Apparel">Men's Apparel</option>
+              <option value="Women's Fashion">Women's Fashion</option>
+              <option value="Kidswear & Toddlers">Kidswear & Toddlers</option>
+              <option value="Footwear & Shoes">Footwear & Shoes</option>
+              <option value="Fashion Accessories">Fashion Accessories</option>
+              <option value="Winterwear & Outerwear">Winterwear & Outerwear</option>
             </select>
           </div>
           <div class="input-group">
-            <label for="prd-price">Price ($) *</label>
+            <label for="prd-price">Price (₹) *</label>
             <input type="number" step="0.01" id="prd-price" placeholder="0.00" required />
           </div>
         </div>
@@ -707,21 +1081,51 @@
 
   <!-- CREATE CATEGORY MODAL -->
   <div id="create-category-modal" class="modal-overlay hidden">
-    <div class="modal-card">
+    <div class="modal-card lg">
       <button id="close-category-modal-btn" class="modal-close-btn">&times;</button>
-      <h2 class="modal-title">Add Category</h2>
-      <p class="modal-subtitle">Create a new product & billing classification group.</p>
+      <h2 class="modal-title">Add Apparel Category</h2>
+      <p class="modal-subtitle">Create a new clothing classification group, sub-categories, and seasonal options.</p>
 
       <form id="create-category-form" class="modal-form">
+        <!-- Main Category Name -->
         <div class="input-group">
           <label for="cat-name">Category Name *</label>
-          <input type="text" id="cat-name" placeholder="e.g. Maintenance & Support" required />
+          <input type="text" id="cat-name" placeholder="e.g. Ethnic & Festive Wear" required />
         </div>
 
+        <!-- Sub-Categories (Comma separated) -->
+        <div class="input-group">
+          <label for="cat-subcategories">Sub-Categories (Comma-separated) *</label>
+          <input type="text" id="cat-subcategories" placeholder="e.g. Kurta Sets, Sarees, Lehengas, Sherwanis, Anarkalis" required />
+        </div>
+
+        <!-- Target Gender & Season Options Grid -->
         <div class="form-grid-2">
           <div class="input-group">
-            <label for="cat-item-counts">Associated Items *</label>
-            <input type="number" id="cat-item-counts" placeholder="e.g. 10" min="0" value="0" required />
+            <label for="cat-gender">Target Department / Gender</label>
+            <select id="cat-gender" style="width:100%; padding:12px; background:var(--input-bg); border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main);">
+              <option value="Men">Men</option>
+              <option value="Women">Women</option>
+              <option value="Kids / Toddlers">Kids / Toddlers</option>
+              <option value="Unisex" selected>Unisex / All</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label for="cat-season">Season / Collection Tag</label>
+            <select id="cat-season" style="width:100%; padding:12px; background:var(--input-bg); border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main);">
+              <option value="All Season" selected>All Season / Everyday</option>
+              <option value="Summer Collection">Summer Collection</option>
+              <option value="Winter Special">Winter Special</option>
+              <option value="Festive & Wedding">Festive & Wedding</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Associated Items & Status -->
+        <div class="form-grid-2">
+          <div class="input-group">
+            <label for="cat-item-counts">Associated Products Count *</label>
+            <input type="number" id="cat-item-counts" placeholder="e.g. 10" min="0" value="10" required />
           </div>
           <div class="input-group">
             <label for="cat-status">Status</label>
@@ -732,13 +1136,129 @@
           </div>
         </div>
 
-        <div class="modal-footer-actions">
+        <div class="modal-footer-actions" style="margin-top: 10px;">
           <button type="button" id="cancel-category-modal-btn" class="secondary-btn">Cancel</button>
           <button type="submit" class="primary-action-btn">
             <span>Create Category</span>
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ADD VENDOR BILL MODAL -->
+  <div id="create-bill-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <button id="close-bill-modal-btn" class="modal-close-btn">&times;</button>
+      <h2 class="modal-title">Add Vendor Bill / Subscription</h2>
+      <p class="modal-subtitle">Record a new recurring subscription or vendor payable invoice.</p>
+
+      <form id="create-bill-form" class="modal-form">
+        <div class="input-group">
+          <label for="bill-vendor">Vendor Name *</label>
+          <input type="text" id="bill-vendor" placeholder="e.g. Surat Silk Fabrics Co." required />
+        </div>
+
+        <div class="input-group">
+          <label for="bill-category">Category *</label>
+          <input type="text" id="bill-category" placeholder="e.g. Raw Materials & Fabrics" required />
+        </div>
+
+        <div class="form-grid-2">
+          <div class="input-group">
+            <label for="bill-amount">Amount (₹) *</label>
+            <input type="number" id="bill-amount" step="0.01" placeholder="e.g. 299.00" required />
+          </div>
+          <div class="input-group">
+            <label for="bill-due-date">Due Date *</label>
+            <input type="date" id="bill-due-date" required />
+          </div>
+        </div>
+
+        <div class="form-options" style="margin-top: 10px;">
+          <label class="checkbox-container">
+            <input type="checkbox" id="bill-autopay" checked />
+            <span class="custom-checkmark"></span>
+            <span class="checkbox-label">Enable Auto-Pay</span>
+          </label>
+        </div>
+
+        <div class="modal-footer-actions">
+          <button type="button" id="cancel-bill-modal-btn" class="secondary-btn">Cancel</button>
+          <button type="submit" class="primary-action-btn">
+            <span>Save Vendor Bill</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- RELATED DATA MODAL -->
+  <div id="related-data-modal" class="modal-overlay hidden">
+
+    <div class="modal-card wide-modal">
+      <button id="close-related-modal-btn" class="modal-close-btn">&times;</button>
+      <div class="related-header">
+        <div class="related-type-chip" id="related-entity-type-chip">Client Data</div>
+        <h2 class="modal-title" id="related-entity-title">Client Details & Related Data</h2>
+        <p class="modal-subtitle" id="related-entity-subtitle">Financial breakdown, linked invoices, and products.</p>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div id="related-metrics-grid" class="related-metrics-grid">
+        <!-- Dynamically injected stats -->
+      </div>
+
+      <!-- Tab Buttons -->
+      <div class="related-tabs" id="related-tabs-container">
+        <button type="button" class="related-tab-btn active" data-tab="related-invoices">Related Invoices (<span id="related-inv-count">0</span>)</button>
+        <button type="button" class="related-tab-btn" id="related-products-tab-btn" data-tab="related-products">Related Products (<span id="related-prd-count">0</span>)</button>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div class="related-tab-content active" id="tab-related-invoices">
+        <div class="table-responsive" style="max-height: 260px; overflow-y: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Invoice ID</th>
+                <th>Category</th>
+                <th>Amount</th>
+                <th>Due Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="related-invoices-tbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="related-tab-content hidden" id="tab-related-products">
+        <div class="table-responsive" style="max-height: 260px; overflow-y: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>SKU ID</th>
+                <th>Product Name</th>
+                <th>Price</th>
+                <th>Stock State</th>
+              </tr>
+            </thead>
+            <tbody id="related-products-tbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer-actions" style="margin-top: 20px;">
+        <button type="button" id="related-primary-action-btn" class="primary-action-btn">
+          <span>Create Invoice for Client</span>
+        </button>
+        <button type="button" id="close-related-footer-btn" class="secondary-btn">Close</button>
+      </div>
     </div>
   </div>
 

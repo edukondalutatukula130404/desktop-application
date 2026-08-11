@@ -32,7 +32,7 @@ const authController = {
         });
       }
 
-      const existingUser = userStore.findByEmail(email);
+      const existingUser = await userStore.findByEmail(email);
       if (existingUser) {
         return res.status(409).json({
           success: false,
@@ -43,7 +43,7 @@ const authController = {
       const salt = await bcrypt.genSalt(10);
       const passwordHash = await bcrypt.hash(password, salt);
 
-      const newUser = userStore.createUser({ name, email, passwordHash });
+      const newUser = await userStore.createUser({ name, email, passwordHash });
       const token = generateToken(newUser);
 
       return res.status(201).json({
@@ -78,7 +78,7 @@ const authController = {
         });
       }
 
-      let user = userStore.findByEmail(email);
+      let user = await userStore.findByEmail(email);
 
       // Auto-register first-time login users seamlessly
       if (!user) {
@@ -86,13 +86,13 @@ const authController = {
         const passwordHash = await bcrypt.hash(password, salt);
         const nameRaw = email.split('@')[0] || 'User';
         const name = nameRaw.charAt(0).toUpperCase() + nameRaw.slice(1);
-        user = userStore.createUser({ name, email, passwordHash });
+        user = await userStore.createUser({ name, email, passwordHash });
       } else {
         const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch) {
           const salt = await bcrypt.genSalt(10);
           user.passwordHash = await bcrypt.hash(password, salt);
-          userStore.updateUser(user);
+          await userStore.updateUser(user);
         }
       }
 
@@ -121,7 +121,7 @@ const authController = {
   // GET /api/auth/me
   getMe: async (req, res) => {
     try {
-      const user = userStore.findById(req.user.id);
+      const user = await userStore.findById(req.user.id);
       if (!user) {
         return res.status(404).json({
           success: false,

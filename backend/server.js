@@ -1,11 +1,15 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const { connectDB, getDBStatus } = require('./src/db/connect');
 const authRoutes = require('./src/routes/authRoutes');
 const businessRoutes = require('./src/routes/businessRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5050;
+
+// Connect to MongoDB Atlas
+connectDB();
 
 // Enable CORS for frontend requests
 app.use(cors({
@@ -22,8 +26,9 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
+    database: getDBStatus(),
     timestamp: new Date().toISOString(),
-    service: 'Authentication & Business Management API'
+    service: 'Authentication & Business Management API (MongoDB Atlas)'
   });
 });
 
@@ -41,9 +46,10 @@ app.use((err, req, res, next) => {
 });
 
 // Start Server
-const server = app.listen(PORT, () => {
+const HOST = '0.0.0.0';
+const server = app.listen(PORT, HOST, () => {
   console.log(`=================================`);
-  console.log(`🚀 Backend Auth Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Backend Auth Server running on http://127.0.0.1:${PORT}`);
   console.log(`=================================`);
 });
 

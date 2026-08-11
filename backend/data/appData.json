@@ -1,92 +1,126 @@
 {
   "invoices": [
     {
-      "id": "INV-2026-005",
-      "clientName": "Cyberdyne Systems",
-      "clientEmail": "billing@cyberdyne.net",
-      "issueDate": "2026-08-10",
-      "dueDate": "2026-09-01",
-      "amount": 5400,
-      "status": "Pending",
-      "category": "AI Security Integration"
-    },
-    {
       "id": "INV-2026-001",
-      "clientName": "Acme Corporation",
-      "clientEmail": "billing@acme.corp",
+      "clientId": "CLT-01",
+      "clientName": "Royal Heritage Boutique",
+      "clientEmail": "orders@royalheritage.com",
       "issueDate": "2026-08-01",
       "dueDate": "2026-08-15",
-      "amount": 1450,
+      "amount": 12490,
       "status": "Paid",
-      "category": "Software Consulting"
+      "category": "Ethnic & Festive Wear"
     },
     {
       "id": "INV-2026-002",
-      "clientName": "Starlight Media",
-      "clientEmail": "accounts@starlight.io",
+      "clientId": "CLT-02",
+      "clientName": "Starlight Apparel Store",
+      "clientEmail": "accounts@starlightapparel.in",
       "issueDate": "2026-08-05",
       "dueDate": "2026-08-20",
-      "amount": 3200,
-      "status": "Pending",
-      "category": "UI/UX Redesign"
+      "amount": 8950,
+      "status": "Paid",
+      "category": "Men's Apparel"
     },
     {
       "id": "INV-2026-003",
-      "clientName": "Apex Logistics",
-      "clientEmail": "finance@apexlogistics.com",
-      "issueDate": "2026-07-15",
-      "dueDate": "2026-07-30",
-      "amount": 890,
-      "status": "Overdue",
-      "category": "Cloud Infrastructure"
+      "clientId": "CLT-03",
+      "clientName": "Velvet Trendz Fashion",
+      "clientEmail": "finance@velvettrendz.com",
+      "issueDate": "2026-08-08",
+      "dueDate": "2026-08-22",
+      "amount": 15800,
+      "status": "Pending",
+      "category": "Women's Fashion"
     },
     {
       "id": "INV-2026-004",
-      "clientName": "Nexus Global",
-      "clientEmail": "contact@nexusglobal.com",
-      "issueDate": "2026-08-08",
-      "dueDate": "2026-08-22",
-      "amount": 4750,
+      "clientId": "CLT-04",
+      "clientName": "Urban Fit Clothing Hub",
+      "clientEmail": "billing@urbanfit.co",
+      "issueDate": "2026-08-10",
+      "dueDate": "2026-08-24",
+      "amount": 6750,
       "status": "Pending",
-      "category": "Enterprise API Development"
+      "category": "Casuals & Denim"
+    },
+    {
+      "id": "INV-2026-005",
+      "clientId": "CLT-05",
+      "clientName": "Little Wonders Kidswear",
+      "clientEmail": "contact@littlewonders.in",
+      "issueDate": "2026-07-25",
+      "dueDate": "2026-08-08",
+      "amount": 4200,
+      "status": "Overdue",
+      "category": "Kidswear & Toddlers"
+    },
+    {
+      "id": "INV-2026-006",
+      "clientId": "CLT-06",
+      "clientName": "Metro Shoes & Accessories",
+      "clientEmail": "accounts@metrofashion.in",
+      "issueDate": "2026-08-11",
+      "dueDate": "2026-08-25",
+      "amount": 11250,
+      "status": "Pending",
+      "category": "Footwear & Accessories"
     }
   ],
   "bills": [
     {
       "id": "BILL-101",
-      "vendor": "AWS Cloud Services",
-      "category": "Hosting & Server Infrastructure",
+      "vendor": "Surat Silk & Cotton Mills",
+      "category": "Raw Fabrics & Textiles",
       "dueDate": "2026-08-18",
-      "amount": 420.5,
-      "status": "Paid",
+      "amount": 18500,
+      "status": "Unpaid",
       "autoPay": true
     },
     {
       "id": "BILL-102",
-      "vendor": "Figma Enterprise",
-      "category": "Design Tools Subscription",
-      "dueDate": "2026-08-25",
-      "amount": 180,
-      "status": "Paid",
+      "vendor": "Ludhiana Woolens & Knitwear Supplier",
+      "category": "Winterwear & Outerwear Stock",
+      "dueDate": "2026-08-22",
+      "amount": 14200,
+      "status": "Unpaid",
       "autoPay": false
     },
     {
       "id": "BILL-103",
-      "vendor": "GitHub Business",
-      "category": "Version Control & Actions",
-      "dueDate": "2026-08-02",
-      "amount": 95,
+      "vendor": "Vardhman Textiles Ltd.",
+      "category": "Denim & Casual Apparel",
+      "dueDate": "2026-08-15",
+      "amount": 22800,
       "status": "Paid",
       "autoPay": true
     },
     {
       "id": "BILL-104",
-      "vendor": "Twilio API Services",
-      "category": "SMS & Telecom Gateway",
-      "dueDate": "2026-08-28",
-      "amount": 215.75,
+      "vendor": "Blue Dart Retail Logistics",
+      "category": "Freight & Shipping Delivery",
+      "dueDate": "2026-08-25",
+      "amount": 4350,
+      "status": "Paid",
+      "autoPay": true
+    },
+    {
+      "id": "BILL-105",
+      "vendor": "Jaipur Print & Embroidery Crafts",
+      "category": "Ethnic & Festive Wear Stock",
+      "dueDate": "2026-08-30",
+      "amount": 12600,
       "status": "Unpaid",
       "autoPay": false
+    },
+    {
+      "id": "BILL-106",
+      "vendor": "Prime Retail Mall Lease & Energy",
+      "category": "Store Rent & Utilities",
+      "dueDate": "2026-09-01",
+      "amount": 35000,
+      "status": "Unpaid",
+      "autoPay": true
     }
   ],
   "clients": [
@@ -95,7 +129,7 @@
       "name": "Acme Corporation",
       "contact": "billing@acme.corp",
       "status": "Active",
-      "totalBilled": 1450
+      "totalBilled": 4400
     },
     {
       "id": "CLT-02",
@@ -117,65 +151,120 @@
       "contact": "contact@nexusglobal.com",
       "status": "Active",
       "totalBilled": 4750
+    },
+    {
+      "id": "CLT-05",
+      "name": "Cyberdyne Systems",
+      "contact": "billing@cyberdyne.net",
+      "status": "Active",
+      "totalBilled": 5400
     }
   ],
   "products": [
     {
-      "id": "SKU-PRD-02",
-      "name": "SaaS Mobile App License",
-      "category": "Software & Licensing",
-      "price": 199,
+      "id": "SKU-PRD-01",
+      "name": "Classic Cotton Slim-Fit Shirt",
+      "category": "Men's Apparel",
+      "price": 1299,
       "stock": "In Stock",
-      "count": 100
+      "count": 85
     },
     {
-      "id": "SKU-PRD-01",
-      "name": "SaaS Mobile App License",
-      "category": "Software & Licensing",
-      "price": 199,
+      "id": "SKU-PRD-02",
+      "name": "Floral Print Summer Chiffon Dress",
+      "category": "Women's Fashion",
+      "price": 2499,
       "stock": "In Stock",
-      "count": 100
+      "count": 42
+    },
+    {
+      "id": "SKU-PRD-03",
+      "name": "Denim Jacket with Fleece Lining",
+      "category": "Winterwear & Outerwear",
+      "price": 2799,
+      "stock": "Low Stock",
+      "count": 6
+    },
+    {
+      "id": "SKU-PRD-04",
+      "name": "Leather Formal Oxford Shoes",
+      "category": "Footwear & Shoes",
+      "price": 4250,
+      "stock": "In Stock",
+      "count": 30
+    },
+    {
+      "id": "SKU-PRD-05",
+      "name": "Kids Organic Cotton T-Shirt Set",
+      "category": "Kidswear & Toddlers",
+      "price": 999,
+      "stock": "In Stock",
+      "count": 65
+    },
+    {
+      "id": "SKU-PRD-06",
+      "name": "Handwoven Banarasi Silk Saree",
+      "category": "Women's Fashion",
+      "price": 6800,
+      "stock": "In Stock",
+      "count": 12
+    },
+    {
+      "id": "SKU-PRD-07",
+      "name": "Designer Leather Belt & Wallet Set",
+      "category": "Fashion Accessories",
+      "price": 1299,
+      "stock": "Low Stock",
+      "count": 4
     }
   ],
   "categories": [
     {
       "id": "CAT-01",
-      "name": "Software & Licensing",
-      "description": "",
+      "name": "Men's Apparel",
+      "description": "Shirts, T-shirts, Trousers, Suits, and Ethnic Wear.",
       "itemCounts": 14,
       "totalRevenue": 28400,
       "status": "Active"
     },
     {
       "id": "CAT-02",
-      "name": "Professional Services",
-      "description": "",
-      "itemCounts": 8,
+      "name": "Women's Fashion",
+      "description": "Dresses, Tops, Sarees, Kurtis, and Activewear.",
+      "itemCounts": 18,
       "totalRevenue": 42100,
       "status": "Active"
     },
     {
       "id": "CAT-03",
-      "name": "Cloud & Hosting",
-      "description": "",
+      "name": "Kidswear & Toddlers",
+      "description": "Infant Wear, Boys & Girls Outfits, and Playwear.",
       "itemCounts": 12,
       "totalRevenue": 18900,
       "status": "Active"
     },
     {
       "id": "CAT-04",
-      "name": "Hardware",
-      "description": "",
-      "itemCounts": 6,
-      "totalRevenue": 8500,
+      "name": "Footwear & Shoes",
+      "description": "Casual Sneakers, Formal Shoes, Sandals, and Boots.",
+      "itemCounts": 10,
+      "totalRevenue": 15500,
       "status": "Active"
     },
     {
       "id": "CAT-05",
-      "name": "Subscriptions",
-      "description": "",
-      "itemCounts": 19,
+      "name": "Fashion Accessories",
+      "description": "Belts, Caps, Scarves, Watches, and Handbags.",
+      "itemCounts": 15,
       "totalRevenue": 31200,
+      "status": "Active"
+    },
+    {
+      "id": "CAT-06",
+      "name": "Winterwear & Outerwear",
+      "description": "Jackets, Sweaters, Hoodies, and Overcoats.",
+      "itemCounts": 8,
+      "totalRevenue": 22400,
       "status": "Active"
     }
   ]

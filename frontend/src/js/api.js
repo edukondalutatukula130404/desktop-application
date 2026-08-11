@@ -87,7 +87,13 @@ export const api = {
 
   getBills: () => request('/business/bills', { method: 'GET' }),
 
+  createBill: (payload) => request('/business/bills', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+
   payBill: (id) => request(`/business/bills/${id}/pay`, { method: 'POST' }),
+
 
   toggleBillStatus: (id) => request(`/business/bills/${id}/status`, { method: 'PATCH' }),
 
@@ -112,6 +118,12 @@ export const api = {
   }),
 
   toggleCategoryStatus: (id) => request(`/business/categories/${id}/status`, { method: 'PATCH' }),
+
+  getClientRelatedData: (id) => request(`/business/clients/${encodeURIComponent(id)}/related`, { method: 'GET' }),
+
+  getCategoryRelatedData: (id) => request(`/business/categories/${encodeURIComponent(id)}/related`, { method: 'GET' }),
+
+  getRelationalSummary: () => request('/business/summary/relational', { method: 'GET' }),
 
   checkHealth: async () => {
     try {
