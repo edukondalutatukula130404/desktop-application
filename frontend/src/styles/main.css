@@ -904,19 +904,33 @@ h1, h2, h3, h4, h5, h6,
   flex-shrink: 0;
 }
 
-/* DATA TABLES */
+/* DATA TABLES & HIDDEN HORIZONTAL SIDE SCROLLING */
 .table-responsive {
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border-radius: 14px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+
+/* Hide scrollbars completely across WebKit browsers */
+.table-responsive::-webkit-scrollbar,
+.filter-tabs::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 .data-table {
   width: 100%;
+  min-width: 820px;
   border-collapse: collapse;
   text-align: left;
 }
 .data-table th {
-  padding: 12px 14px;
+  padding: 10px 10px;
   font-size: 0.74rem;
   font-weight: 700;
   color: var(--text-subtle);
@@ -927,8 +941,8 @@ h1, h2, h3, h4, h5, h6,
   vertical-align: middle;
 }
 .data-table td {
-  padding: 14px 14px;
-  font-size: 0.86rem;
+  padding: 11px 10px;
+  font-size: 0.84rem;
   color: var(--text-main);
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
@@ -938,7 +952,7 @@ h1, h2, h3, h4, h5, h6,
   transition: var(--transition-fast);
 }
 .data-table tbody tr:hover {
-  background: #f8fafc;
+  background: rgba(124, 58, 237, 0.02);
 }
 
 .nowrap-cell {
@@ -957,11 +971,9 @@ h1, h2, h3, h4, h5, h6,
 .status-tag {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 5px 12px;
+  padding: 4px 12px;
   border-radius: 20px;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -972,8 +984,8 @@ h1, h2, h3, h4, h5, h6,
 .status-tag.unpaid { background: var(--rose-bg); color: var(--rose); border: 1px solid rgba(225, 29, 72, 0.25); }
 
 /* TOOLBAR & FILTERS */
-.table-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-.filter-tabs { display: flex; gap: 10px; }
+.table-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 12px; flex-wrap: wrap; }
+.filter-tabs { display: flex; gap: 10px; flex-wrap: wrap; }
 .filter-btn { background: #f1f5f9; border: 1px solid var(--glass-border); color: var(--text-muted); padding: 8px 16px; border-radius: 12px; font-size: 0.85rem; cursor: pointer; font-family: inherit; transition: var(--transition-fast); }
 .filter-btn:hover { background: #e2e8f0; color: var(--text-main); }
 .filter-btn.active { background: var(--gradient-primary); color: #ffffff; border-color: transparent; font-weight: 600; box-shadow: 0 4px 12px rgba(109, 40, 217, 0.25); }

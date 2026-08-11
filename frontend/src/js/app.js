@@ -274,8 +274,10 @@ async function enterWorkspace() {
 }
 
 async function loadBusinessData() {
+  let invRes = {}, billRes = {}, clientRes = {}, prdRes = {}, catRes = {};
+
   try {
-    const [invRes, billRes, clientRes, prdRes, catRes] = await Promise.all([
+    const results = await Promise.allSettled([
       api.getInvoices(),
       api.getBills(),
       api.getClients(),
@@ -283,90 +285,141 @@ async function loadBusinessData() {
       api.getCategories()
     ]);
 
-    const fetchedInvoices = invRes.invoices || [];
-    const cleanInvoices = fetchedInvoices.filter(i => 
-      i && i.clientName && 
-      !i.clientName.toLowerCase().includes('husle') && 
-      !i.clientName.toLowerCase().includes('nexus shop') && 
-      !i.clientName.toLowerCase().includes('apex') && 
-      !i.clientName.toLowerCase().includes('acme') &&
-      !i.clientName.toLowerCase().includes('starlight media') &&
-      !i.clientName.toLowerCase().includes('nexus global') &&
-      !(i.clientEmail && i.clientEmail.toLowerCase().includes('client.com')) &&
-      !(i.category && i.category.toLowerCase().includes('mobiles')) &&
-      !(i.category && i.category.toLowerCase().includes('software')) &&
-      !(i.category && i.category.toLowerCase().includes('api')) &&
-      !(i.category && i.category.toLowerCase().includes('redesign')) &&
-      !(i.category && i.category.toLowerCase() === 'clothing') &&
-      !(i.amount && i.amount >= 100000)
-    );
-    if (cleanInvoices.length > 0) {
-      appData.invoices = cleanInvoices;
-    } else {
-      appData.invoices = [
-        { id: 'INV-2026-001', clientName: 'Royal Heritage Boutique', clientEmail: 'orders@royalheritage.com', issueDate: '2026-08-01', dueDate: '2026-08-15', amount: 12490.00, status: 'Paid', category: 'Ethnic & Festive Wear' },
-        { id: 'INV-2026-002', clientName: 'Starlight Apparel Store', clientEmail: 'accounts@starlightapparel.in', issueDate: '2026-08-05', dueDate: '2026-08-20', amount: 8950.00, status: 'Paid', category: "Men's Apparel" },
-        { id: 'INV-2026-003', clientName: 'Velvet Trendz Fashion', clientEmail: 'finance@velvettrendz.com', issueDate: '2026-08-08', dueDate: '2026-08-22', amount: 15800.00, status: 'Pending', category: "Women's Fashion" },
-        { id: 'INV-2026-004', clientName: 'Urban Fit Clothing Hub', clientEmail: 'billing@urbanfit.co', issueDate: '2026-08-10', dueDate: '2026-08-24', amount: 6750.00, status: 'Pending', category: 'Casuals & Denim' },
-        { id: 'INV-2026-005', clientName: 'Little Wonders Kidswear', clientEmail: 'contact@littlewonders.in', issueDate: '2026-07-25', dueDate: '2026-08-08', amount: 4200.00, status: 'Overdue', category: 'Kidswear & Toddlers' },
-        { id: 'INV-2026-006', clientName: 'Metro Shoes & Accessories', clientEmail: 'accounts@metrofashion.in', issueDate: '2026-08-11', dueDate: '2026-08-25', amount: 11250.00, status: 'Pending', category: 'Footwear & Accessories' }
-      ];
-    }
-    const fetchedBills = billRes.bills || [];
-    const cleanBills = fetchedBills.filter(b => b && b.vendor && !b.vendor.toLowerCase().includes('openai') && !b.vendor.toLowerCase().includes('mongodb') && !b.vendor.toLowerCase().includes('datadog') && !b.vendor.toLowerCase().includes('google') && !b.vendor.toLowerCase().includes('slack') && !b.vendor.toLowerCase().includes('vercel') && !b.vendor.toLowerCase().includes('figma') && !b.vendor.toLowerCase().includes('github') && !b.vendor.toLowerCase().includes('aws') && !b.vendor.toLowerCase().includes('twilio'));
-    if (cleanBills.length > 0) {
-      appData.bills = cleanBills;
-    } else {
-      appData.bills = [
-        { id: 'BILL-101', vendor: 'Surat Silk & Cotton Mills', category: 'Raw Materials & Fabrics', dueDate: '2026-08-25', amount: 18500.00, status: 'Unpaid', autoPay: true },
-        { id: 'BILL-102', vendor: 'Ludhiana Woolens & Knitwear Supplier', category: 'Winterwear & Outerwear', dueDate: '2026-08-28', amount: 14200.00, status: 'Unpaid', autoPay: false },
-        { id: 'BILL-103', vendor: 'Vardhman Textiles Ltd.', category: 'Denim & Fabrics', dueDate: '2026-08-30', amount: 22800.00, status: 'Paid', autoPay: true },
-        { id: 'BILL-104', vendor: 'Blue Dart Apparel Logistics', category: 'Logistics & Shipping', dueDate: '2026-09-02', amount: 4350.00, status: 'Paid', autoPay: true },
-        { id: 'BILL-105', vendor: 'Jaipur Print & Embroidery Crafts', category: 'Ethnic & Festive Wear Stock', dueDate: '2026-09-05', amount: 12600.00, status: 'Unpaid', autoPay: false },
-        { id: 'BILL-106', vendor: 'Prime Retail Mall Lease & Energy', category: 'Store Rent & Operations', dueDate: '2026-09-10', amount: 35000.00, status: 'Unpaid', autoPay: true }
-      ];
-    }
-    const fetchedPrds = prdRes.products || [];
-    const cleanPrds = fetchedPrds.filter(p => p && p.name && !p.name.toLowerCase().includes('enterprise') && !p.name.toLowerCase().includes('ui/ux') && !p.name.toLowerCase().includes('cloud node') && !p.name.toLowerCase().includes('fido2') && !p.name.toLowerCase().includes('audit service'));
-    if (cleanPrds.length > 0) {
-      appData.products = cleanPrds;
-    } else {
-      appData.products = [
-        { id: 'SKU-PRD-01', name: 'Classic Cotton Slim-Fit Shirt', category: "Men's Apparel", price: 1299.00, stock: 'In Stock', count: 85 },
-        { id: 'SKU-PRD-02', name: 'Floral Print Summer Chiffon Dress', category: "Women's Fashion", price: 2499.00, stock: 'In Stock', count: 42 },
-        { id: 'SKU-PRD-03', name: 'Denim Jacket with Fleece Lining', category: 'Winterwear & Outerwear', price: 2799.00, stock: 'Low Stock', count: 6 },
-        { id: 'SKU-PRD-04', name: 'Leather Formal Oxford Shoes', category: 'Footwear & Shoes', price: 4250.00, stock: 'In Stock', count: 30 },
-        { id: 'SKU-PRD-05', name: 'Kids Organic Cotton T-Shirt Set', category: 'Kidswear & Toddlers', price: 999.00, stock: 'In Stock', count: 65 },
-        { id: 'SKU-PRD-06', name: 'Handwoven Banarasi Silk Saree', category: "Women's Fashion", price: 6800.00, stock: 'In Stock', count: 12 },
-        { id: 'SKU-PRD-07', name: 'Designer Leather Belt & Wallet Set', category: 'Fashion Accessories', price: 1299.00, stock: 'Low Stock', count: 4 }
-      ];
-    }
-    
-    // Ensure categories display clothing categories
-    const fetchedCats = catRes.categories || [];
-    if (fetchedCats.length > 0 && !fetchedCats.some(c => c.name.includes('Software') || c.name.includes('Hardware') || c.name.includes('Cloud'))) {
-      appData.categories = fetchedCats;
-    } else {
-      appData.categories = [
-        { id: 'CAT-01', name: "Men's Apparel", description: 'Shirts, T-shirts, Trousers, Suits, and Ethnic Wear.', itemCounts: 14, status: 'Active' },
-        { id: 'CAT-02', name: "Women's Fashion", description: 'Dresses, Tops, Sarees, Kurtis, and Activewear.', itemCounts: 18, status: 'Active' },
-        { id: 'CAT-03', name: 'Kidswear & Toddlers', description: 'Infant Wear, Boys & Girls Outfits, and Playwear.', itemCounts: 12, status: 'Active' },
-        { id: 'CAT-04', name: 'Footwear & Shoes', description: 'Casual Sneakers, Formal Shoes, Sandals, and Boots.', itemCounts: 10, status: 'Active' },
-        { id: 'CAT-05', name: 'Fashion Accessories', description: 'Belts, Caps, Scarves, Watches, and Handbags.', itemCounts: 15, status: 'Active' },
-        { id: 'CAT-06', name: 'Winterwear & Outerwear', description: 'Jackets, Sweaters, Hoodies, and Overcoats.', itemCounts: 8, status: 'Active' }
-      ];
-    }
-
-    renderOverview();
-    renderInvoicesTable();
-    renderBillsTable();
-    renderProductsTable();
-    renderCategoriesGrid();
-    renderClientsGrid();
-    updateBadges();
+    if (results[0].status === 'fulfilled') invRes = results[0].value || {};
+    if (results[1].status === 'fulfilled') billRes = results[1].value || {};
+    if (results[2].status === 'fulfilled') clientRes = results[2].value || {};
+    if (results[3].status === 'fulfilled') prdRes = results[3].value || {};
+    if (results[4].status === 'fulfilled') catRes = results[4].value || {};
   } catch (error) {
-    showToast('Error loading financial workspace data.', 'error');
+    console.warn('Error loading business data:', error);
   }
+
+  const fetchedInvoices = invRes.invoices || [];
+  const cleanInvoices = fetchedInvoices.filter(i => 
+    i && i.clientName && 
+    !i.clientName.toLowerCase().includes('husle') && 
+    !i.clientName.toLowerCase().includes('nexus shop') && 
+    !i.clientName.toLowerCase().includes('apex') && 
+    !i.clientName.toLowerCase().includes('acme') &&
+    !i.clientName.toLowerCase().includes('starlight media') &&
+    !i.clientName.toLowerCase().includes('nexus global') &&
+    !(i.clientEmail && i.clientEmail.toLowerCase().includes('client.com')) &&
+    !(i.category && i.category.toLowerCase().includes('mobiles')) &&
+    !(i.category && i.category.toLowerCase().includes('software')) &&
+    !(i.category && i.category.toLowerCase().includes('api')) &&
+    !(i.category && i.category.toLowerCase().includes('redesign')) &&
+    !(i.category && i.category.toLowerCase() === 'clothing') &&
+    !(i.amount && i.amount >= 100000)
+  );
+  if (cleanInvoices.length > 0) {
+    appData.invoices = cleanInvoices;
+  } else if (!appData.invoices || appData.invoices.length === 0) {
+    appData.invoices = [
+      { id: 'INV-2026-001', clientName: 'Royal Heritage Boutique', clientEmail: 'orders@royalheritage.com', issueDate: '2026-08-01', dueDate: '2026-08-15', amount: 12490.00, status: 'Paid', category: 'Ethnic & Festive Wear' },
+      { id: 'INV-2026-002', clientName: 'Starlight Apparel Store', clientEmail: 'accounts@starlightapparel.in', issueDate: '2026-08-05', dueDate: '2026-08-20', amount: 8950.00, status: 'Paid', category: "Men's Apparel" },
+      { id: 'INV-2026-003', clientName: 'Velvet Trendz Fashion', clientEmail: 'finance@velvettrendz.com', issueDate: '2026-08-08', dueDate: '2026-08-22', amount: 15800.00, status: 'Pending', category: "Women's Fashion" },
+      { id: 'INV-2026-004', clientName: 'Urban Fit Clothing Hub', clientEmail: 'billing@urbanfit.co', issueDate: '2026-08-10', dueDate: '2026-08-24', amount: 6750.00, status: 'Pending', category: 'Casuals & Denim' },
+      { id: 'INV-2026-005', clientName: 'Little Wonders Kidswear', clientEmail: 'contact@littlewonders.in', issueDate: '2026-07-25', dueDate: '2026-08-08', amount: 4200.00, status: 'Overdue', category: 'Kidswear & Toddlers' },
+      { id: 'INV-2026-006', clientName: 'Metro Shoes & Accessories', clientEmail: 'accounts@metrofashion.in', issueDate: '2026-08-11', dueDate: '2026-08-25', amount: 11250.00, status: 'Pending', category: 'Footwear & Accessories' }
+    ];
+  }
+
+  const fetchedBills = billRes.bills || [];
+  const cleanBills = fetchedBills.filter(b => b && b.vendor && !b.vendor.toLowerCase().includes('openai') && !b.vendor.toLowerCase().includes('mongodb') && !b.vendor.toLowerCase().includes('datadog') && !b.vendor.toLowerCase().includes('google') && !b.vendor.toLowerCase().includes('slack') && !b.vendor.toLowerCase().includes('vercel') && !b.vendor.toLowerCase().includes('figma') && !b.vendor.toLowerCase().includes('github') && !b.vendor.toLowerCase().includes('aws') && !b.vendor.toLowerCase().includes('twilio'));
+  if (cleanBills.length > 0) {
+    appData.bills = cleanBills;
+  } else if (!appData.bills || appData.bills.length === 0) {
+    appData.bills = [
+      { id: 'BILL-101', vendor: 'Surat Silk & Cotton Mills', category: 'Raw Materials & Fabrics', dueDate: '2026-08-25', amount: 18500.00, status: 'Unpaid', autoPay: true },
+      { id: 'BILL-102', vendor: 'Ludhiana Woolens & Knitwear Supplier', category: 'Winterwear & Outerwear', dueDate: '2026-08-28', amount: 14200.00, status: 'Unpaid', autoPay: false },
+      { id: 'BILL-103', vendor: 'Vardhman Textiles Ltd.', category: 'Denim & Fabrics', dueDate: '2026-08-30', amount: 22800.00, status: 'Paid', autoPay: true },
+      { id: 'BILL-104', vendor: 'Blue Dart Apparel Logistics', category: 'Logistics & Shipping', dueDate: '2026-09-02', amount: 4350.00, status: 'Paid', autoPay: true },
+      { id: 'BILL-105', vendor: 'Jaipur Print & Embroidery Crafts', category: 'Ethnic & Festive Wear Stock', dueDate: '2026-09-05', amount: 12600.00, status: 'Unpaid', autoPay: false },
+      { id: 'BILL-106', vendor: 'Prime Retail Mall Lease & Energy', category: 'Store Rent & Operations', dueDate: '2026-09-10', amount: 35000.00, status: 'Unpaid', autoPay: true }
+    ];
+  }
+
+  const fetchedPrds = prdRes.products || [];
+  const cleanPrds = fetchedPrds.filter(p => p && p.name && !p.name.toLowerCase().includes('enterprise') && !p.name.toLowerCase().includes('ui/ux') && !p.name.toLowerCase().includes('cloud node') && !p.name.toLowerCase().includes('fido2') && !p.name.toLowerCase().includes('audit service'));
+  if (cleanPrds.length > 0) {
+    appData.products = cleanPrds;
+  } else if (!appData.products || appData.products.length === 0) {
+    appData.products = [
+      { id: 'SKU-PRD-01', name: 'Classic Cotton Slim-Fit Shirt', category: "Men's Apparel", price: 1299.00, stock: 'In Stock', count: 85 },
+      { id: 'SKU-PRD-02', name: 'Floral Print Summer Chiffon Dress', category: "Women's Fashion", price: 2499.00, stock: 'In Stock', count: 42 },
+      { id: 'SKU-PRD-03', name: 'Denim Jacket with Fleece Lining', category: 'Winterwear & Outerwear', price: 2799.00, stock: 'Low Stock', count: 6 },
+      { id: 'SKU-PRD-04', name: 'Leather Formal Oxford Shoes', category: 'Footwear & Shoes', price: 4250.00, stock: 'In Stock', count: 30 },
+      { id: 'SKU-PRD-05', name: 'Kids Organic Cotton T-Shirt Set', category: 'Kidswear & Toddlers', price: 999.00, stock: 'In Stock', count: 65 },
+      { id: 'SKU-PRD-06', name: 'Handwoven Banarasi Silk Saree', category: "Women's Fashion", price: 6800.00, stock: 'In Stock', count: 12 },
+      { id: 'SKU-PRD-07', name: 'Designer Leather Belt & Wallet Set', category: 'Fashion Accessories', price: 1299.00, stock: 'Low Stock', count: 4 }
+    ];
+  }
+  
+  // Ensure categories display clothing categories
+  const fetchedCats = catRes.categories || [];
+  if (fetchedCats.length > 0 && !fetchedCats.some(c => c.name.includes('Software') || c.name.includes('Hardware') || c.name.includes('Cloud'))) {
+    appData.categories = fetchedCats;
+  } else if (!appData.categories || appData.categories.length === 0) {
+    appData.categories = [
+      { id: 'CAT-01', name: "Men's Apparel", description: 'Shirts, T-shirts, Trousers, Suits, and Ethnic Wear.', itemCounts: 14, status: 'Active' },
+      { id: 'CAT-02', name: "Women's Fashion", description: 'Dresses, Tops, Sarees, Kurtis, and Activewear.', itemCounts: 18, status: 'Active' },
+      { id: 'CAT-03', name: 'Kidswear & Toddlers', description: 'Infant Wear, Boys & Girls Outfits, and Playwear.', itemCounts: 12, status: 'Active' },
+      { id: 'CAT-04', name: 'Footwear & Shoes', description: 'Casual Sneakers, Formal Shoes, Sandals, and Boots.', itemCounts: 10, status: 'Active' },
+      { id: 'CAT-05', name: 'Fashion Accessories', description: 'Belts, Caps, Scarves, Watches, and Handbags.', itemCounts: 15, status: 'Active' },
+      { id: 'CAT-06', name: 'Winterwear & Outerwear', description: 'Jackets, Sweaters, Hoodies, and Overcoats.', itemCounts: 8, status: 'Active' }
+    ];
+  }
+
+  const fetchedClients = clientRes.clients || [];
+  if (fetchedClients.length > 0) {
+    appData.clients = fetchedClients;
+  } else if (!appData.clients || appData.clients.length === 0) {
+    appData.clients = [
+      { id: 'CLI-01', name: 'Royal Heritage Boutique', email: 'orders@royalheritage.com', phone: '+91 98765 43210', totalBilled: 12490.00, status: 'Active' },
+      { id: 'CLI-02', name: 'Starlight Apparel Store', email: 'accounts@starlightapparel.in', phone: '+91 98123 45678', totalBilled: 8950.00, status: 'Active' },
+      { id: 'CLI-03', name: 'Velvet Trendz Fashion', email: 'finance@velvettrendz.com', phone: '+91 97654 32109', totalBilled: 15800.00, status: 'Active' },
+      { id: 'CLI-04', name: 'Urban Fit Clothing Hub', email: 'billing@urbanfit.co', phone: '+91 96543 21098', totalBilled: 6750.00, status: 'Active' }
+    ];
+  }
+
+  renderOverview();
+  renderInvoicesTable();
+  renderBillsTable();
+  renderProductsTable();
+  renderCategoriesGrid();
+  renderClientsGrid();
+  updateBadges();
+  updateInvoiceProductSelectOptions();
+}
+
+function updateInvoiceProductSelectOptions() {
+  const activeProducts = (appData.products && appData.products.length > 0)
+    ? appData.products
+    : [
+        { name: 'Classic Cotton Slim-Fit Shirt', category: "Men's Apparel", price: 1299.00 },
+        { name: 'Floral Print Summer Chiffon Dress', category: "Women's Fashion", price: 2499.00 },
+        { name: 'Denim Jacket with Fleece Lining', category: 'Winterwear & Outerwear', price: 2799.00 },
+        { name: 'Leather Formal Oxford Shoes', category: 'Footwear & Shoes', price: 4250.00 },
+        { name: 'Kids Organic Cotton T-Shirt Set', category: 'Kidswear & Toddlers', price: 999.00 },
+        { name: 'Handwoven Banarasi Silk Saree', category: "Women's Fashion", price: 6800.00 },
+        { name: 'Designer Leather Belt & Wallet Set', category: 'Fashion Accessories', price: 1299.00 }
+      ];
+
+  const prdOptions = activeProducts.map(p =>
+    `<option value="${p.name}" data-price="${p.price}" data-category="${p.category}">${p.name} (₹${Number(p.price).toLocaleString('en-IN')})</option>`
+  ).join('');
+
+  document.querySelectorAll('.item-name-select').forEach(select => {
+    const currentVal = select.value;
+    select.innerHTML = `
+      <option value="" disabled ${!currentVal ? 'selected' : ''}>-- Select Product --</option>
+      ${prdOptions}
+      <option value="custom" ${currentVal === 'custom' ? 'selected' : ''}>+ Custom Product...</option>
+    `;
+    if (currentVal && currentVal !== 'custom' && activeProducts.some(p => p.name === currentVal)) {
+      select.value = currentVal;
+    }
+  });
 }
 
 function updateBadges() {
@@ -404,6 +457,7 @@ function switchView(viewKey) {
     if (list && list.querySelectorAll('.page-invoice-item-row').length === 0) {
       initPageInvoiceForm();
     } else {
+      updateInvoiceProductSelectOptions();
       calculatePageInvoiceTotal();
     }
   }
@@ -631,13 +685,23 @@ function renderProductsTable(filterCategory = 'all', searchQuery = '') {
   const tbody = document.getElementById('products-table-tbody');
   if (!tbody) return;
 
-  let list = appData.products;
-  if (filterCategory !== 'all') {
-    list = list.filter(p => p.category === filterCategory);
+  let list = appData.products || [];
+  if (filterCategory && filterCategory !== 'all') {
+    const fc = filterCategory.toLowerCase().trim();
+    list = list.filter(p => {
+      if (!p || !p.category) return false;
+      const cat = p.category.toLowerCase().trim();
+      return cat === fc || cat.includes(fc) || fc.includes(cat) || (fc.includes('footwear') && cat.includes('footwear'));
+    });
   }
+
   if (searchQuery) {
-    const q = searchQuery.toLowerCase();
-    list = list.filter(p => p.id.toLowerCase().includes(q) || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
+    const q = searchQuery.toLowerCase().trim();
+    list = list.filter(p =>
+      (p.id && p.id.toLowerCase().includes(q)) ||
+      (p.name && p.name.toLowerCase().includes(q)) ||
+      (p.category && p.category.toLowerCase().includes(q))
+    );
   }
 
   if (list.length === 0) {
@@ -655,13 +719,23 @@ function renderProductsTable(filterCategory = 'all', searchQuery = '') {
         </span>
       </td>
       <td class="nowrap-cell text-right"><strong>${formatCurrency(prd.price)}</strong></td>
-      <td class="nowrap-cell text-center"><strong>${prd.count} units</strong></td>
+      <td class="nowrap-cell text-center"><strong>${prd.count || 50} units</strong></td>
       <td class="nowrap-cell text-center">
-        <span class="status-tag ${prd.stock === 'In Stock' ? 'paid' : 'pending'}">${prd.stock}</span>
+        <span class="status-tag ${prd.stock === 'In Stock' ? 'paid' : 'pending'}">${prd.stock || 'In Stock'}</span>
       </td>
     </tr>
   `).join('');
 }
+
+// Product Category Filter Button Listeners
+document.querySelectorAll('[data-prd-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-prd-filter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const filterCat = btn.getAttribute('data-prd-filter');
+    renderProductsTable(filterCat);
+  });
+});
 
 function renderCategoriesGrid() {
   const tbody = document.getElementById('categories-table-tbody');
@@ -934,19 +1008,38 @@ async function viewClientRelatedData(clientIdOrName) {
     let data;
     try {
       const res = await api.getClientRelatedData(clientIdOrName);
-      if (res.success) data = res;
+      if (res && res.success) data = res;
     } catch (e) {
-      const client = appData.clients.find(c => c.id === clientIdOrName || c.name === clientIdOrName);
-      if (!client) return showToast('Client not found', 'error');
-      const invoices = appData.invoices.filter(i => i.clientName === client.name || i.clientId === client.id);
+      console.warn('API getClientRelatedData call failed, using local appData:', e);
+    }
+
+    if (!data) {
+      const searchKey = (clientIdOrName || '').toLowerCase().trim();
+      const client = appData.clients.find(c => 
+        (c.id && c.id.toLowerCase() === searchKey) ||
+        (c.name && c.name.toLowerCase() === searchKey) ||
+        (c.name && c.name.toLowerCase().includes(searchKey))
+      ) || {
+        id: 'CLT-AUTO',
+        name: clientIdOrName,
+        contact: 'orders@client.com',
+        status: 'Active'
+      };
+
+      const invoices = appData.invoices.filter(i => 
+        (i.clientName && i.clientName.toLowerCase() === client.name.toLowerCase()) ||
+        (i.clientName && i.clientName.toLowerCase().includes(client.name.toLowerCase())) ||
+        (i.clientId && i.clientId.toLowerCase() === client.id.toLowerCase())
+      );
+
       data = {
         client,
         invoices,
         metrics: {
-          totalBilled: invoices.reduce((s, i) => s + i.amount, 0),
-          paidAmount: invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + i.amount, 0),
-          pendingAmount: invoices.filter(i => i.status === 'Pending').reduce((s, i) => s + i.amount, 0),
-          overdueAmount: invoices.filter(i => i.status === 'Overdue').reduce((s, i) => s + i.amount, 0),
+          totalBilled: invoices.reduce((s, i) => s + (i.amount || 0), 0),
+          paidAmount: invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + (i.amount || 0), 0),
+          pendingAmount: invoices.filter(i => i.status === 'Pending').reduce((s, i) => s + (i.amount || 0), 0),
+          overdueAmount: invoices.filter(i => i.status === 'Overdue').reduce((s, i) => s + (i.amount || 0), 0),
           invoicesCount: invoices.length
         }
       };
@@ -1372,33 +1465,33 @@ function createPageInvoiceRow() {
 
   const row = document.createElement('div');
   row.className = 'invoice-item-row page-invoice-item-row';
-  row.style.cssText = 'display: grid; grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.3fr) minmax(140px, 1.2fr) 65px 110px 110px 36px; gap: 10px; align-items: center; background: #ffffff; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border-light);';
+  row.style.cssText = 'display: grid; grid-template-columns: minmax(190px, 2fr) minmax(130px, 1.2fr) minmax(130px, 1.2fr) 70px 115px 115px 38px; gap: 10px; align-items: center; background: #ffffff; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border-light);';
 
   row.innerHTML = `
     <div>
-      <select class="item-name-select" style="padding: 9px 8px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main); width: 100%;">
+      <select class="item-name-select" style="padding: 0 10px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;">
         <option value="" disabled selected>-- Select Product --</option>
         ${prdOptions}
         <option value="custom">+ Custom Product...</option>
       </select>
-      <input type="text" class="item-name-input" placeholder="Type item name" style="display: none; padding: 8px 10px; margin-top: 4px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main); width: 100%;" />
+      <input type="text" class="item-name-input" placeholder="Type item name" style="display: none; padding: 0 10px; height: 38px; margin-top: 4px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" />
     </div>
     
-    <select class="item-category-select" style="padding: 9px 8px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.81rem; outline: none; color: var(--text-main); width: 100%;">
+    <select class="item-category-select" style="padding: 0 10px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;">
       ${catOptions}
     </select>
 
-    <select class="item-subcategory-select" style="padding: 9px 8px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.81rem; outline: none; color: var(--text-main); width: 100%;">
+    <select class="item-subcategory-select" style="padding: 0 10px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;">
       ${defaultSubOptions}
     </select>
 
-    <input type="number" class="item-qty-input" placeholder="1" min="1" value="1" style="padding: 9px 4px; text-align: center; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%;" required />
+    <input type="number" class="item-qty-input" placeholder="1" min="1" value="1" style="padding: 0 8px; height: 38px; text-align: center; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.85rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" required />
     
-    <input type="number" step="0.01" class="item-price-input" placeholder="0.00" style="padding: 9px 8px; text-align: right; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%;" required />
+    <input type="number" step="0.01" class="item-price-input" placeholder="0.00" style="padding: 0 10px; height: 38px; text-align: right; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.85rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" required />
 
-    <div class="item-subtotal-display" style="text-align: right; font-weight: 700; font-size: 0.88rem; color: var(--text-main); font-family: monospace;">₹0.00</div>
+    <div class="item-subtotal-display" style="height: 38px; display: flex; align-items: center; justify-content: flex-end; padding: 0 8px; text-align: right; font-weight: 700; font-size: 0.88rem; color: var(--text-main); font-family: 'JetBrains Mono', 'Fira Code', monospace; box-sizing: border-box;">₹0.00</div>
     
-    <button type="button" class="remove-item-btn" style="background: var(--rose-bg); color: var(--rose); border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-weight: bold; flex-shrink: 0; display: flex; align-items: center; justify-content: center;" title="Remove Item">&times;</button>
+    <button type="button" class="remove-item-btn" style="background: var(--rose-bg); color: var(--rose); border: none; width: 38px; height: 38px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 1.1rem; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; transition: all 0.2s ease;" title="Remove Item">&times;</button>
   `;
 
   return row;

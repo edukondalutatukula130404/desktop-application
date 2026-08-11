@@ -1,0 +1,10 @@
+{
+  "name": "login-page-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx concurrently \"npm --prefix backend dev\" \"npm --prefix frontend dev\"",
+    "backend": "npm --prefix backend dev",
+    "frontend": "npm --prefix frontend dev"
+  }
+}

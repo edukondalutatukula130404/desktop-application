@@ -472,7 +472,6 @@
                 <button class="filter-btn active" data-prd-filter="all">All Apparel</button>
                 <button class="filter-btn" data-prd-filter="Men's Apparel">Men's Apparel</button>
                 <button class="filter-btn" data-prd-filter="Women's Fashion">Women's Fashion</button>
-                <button class="filter-btn" data-prd-filter="Footwear & Shoes">Footwear</button>
               </div>
               <button id="quick-add-product-btn" onclick="openProductModal()" class="primary-action-btn sm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -490,7 +489,7 @@
                     <th class="nowrap-cell">SKU ID</th>
                     <th>Product Name</th>
                     <th>Category</th>
-                    <th class="nowrap-cell text-right">Price</th>
+                    <th class="nowrap-cell text-right">Unit Price (₹)</th>
                     <th class="nowrap-cell text-center">Stock Level</th>
                     <th class="nowrap-cell text-center">Status</th>
                   </tr>
@@ -630,11 +629,11 @@
                   </button>
                 </div>
 
-                <!-- Scrollable Table Outer Wrapper -->
-                <div style="overflow-x: auto; margin-bottom: 6px; width: 100%;">
+                <!-- Table Outer Wrapper -->
+                <div style="margin-bottom: 6px; width: 100%;" class="table-responsive">
                   <div style="min-width: 820px;">
                     <!-- Products Table Header -->
-                    <div style="display: grid; grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.3fr) minmax(140px, 1.2fr) 65px 110px 110px 36px; gap: 10px; align-items: center; margin-bottom: 10px; padding: 10px 12px; background: #f1f5f9; border-radius: 10px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+                    <div style="display: grid; grid-template-columns: minmax(190px, 2fr) minmax(130px, 1.2fr) minmax(130px, 1.2fr) 70px 115px 115px 38px; gap: 10px; align-items: center; margin-bottom: 10px; padding: 10px 12px; background: #f1f5f9; border-radius: 10px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
                       <div>Product Name</div>
                       <div>Category</div>
                       <div>Sub-Category</div>
@@ -646,9 +645,9 @@
 
                     <div id="page-invoice-items-list" style="display: flex; flex-direction: column; gap: 8px;">
                       <!-- Initial Product Item Row -->
-                      <div class="invoice-item-row page-invoice-item-row" style="display: grid; grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.3fr) minmax(140px, 1.2fr) 65px 110px 110px 36px; gap: 10px; align-items: center; background: #ffffff; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border-light);">
+                      <div class="invoice-item-row page-invoice-item-row" style="display: grid; grid-template-columns: minmax(190px, 2fr) minmax(130px, 1.2fr) minmax(130px, 1.2fr) 70px 115px 115px 38px; gap: 10px; align-items: center; background: #ffffff; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border-light);">
                         <div>
-                          <select class="item-name-select" style="padding: 9px 8px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main); width: 100%;">
+                          <select class="item-name-select" style="padding: 0 10px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;">
                             <option value="" disabled selected>-- Select Product --</option>
                             <option value="Classic Cotton Slim-Fit Shirt" data-price="1299.00" data-category="Men's Apparel">Classic Cotton Slim-Fit Shirt (₹1,299)</option>
                             <option value="Floral Print Summer Chiffon Dress" data-price="2499.00" data-category="Women's Fashion">Floral Print Summer Chiffon Dress (₹2,499)</option>
@@ -659,10 +658,10 @@
                             <option value="Designer Leather Belt & Wallet Set" data-price="1299.00" data-category="Fashion Accessories">Designer Leather Belt & Wallet Set (₹1,299)</option>
                             <option value="custom">+ Custom Product...</option>
                           </select>
-                          <input type="text" class="item-name-input" placeholder="Type item name" style="display: none; padding: 8px 10px; margin-top: 4px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main); width: 100%;" />
+                          <input type="text" class="item-name-input" placeholder="Type item name" style="display: none; padding: 0 10px; height: 38px; margin-top: 4px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" />
                         </div>
                         
-                        <select class="item-category-select" style="padding: 9px 8px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main); width: 100%;">
+                        <select class="item-category-select" style="padding: 0 10px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;">
                           <option value="Men's Apparel">Men's Apparel</option>
                           <option value="Women's Fashion">Women's Fashion</option>
                           <option value="Kidswear & Toddlers">Kidswear & Toddlers</option>
@@ -671,7 +670,7 @@
                           <option value="Winterwear & Outerwear">Winterwear & Outerwear</option>
                         </select>
 
-                        <select class="item-subcategory-select" style="padding: 9px 8px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main); width: 100%;">
+                        <select class="item-subcategory-select" style="padding: 0 10px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;">
                           <option value="Shirts">Shirts</option>
                           <option value="T-Shirts">T-Shirts</option>
                           <option value="Jeans & Trousers">Jeans & Trousers</option>
@@ -679,13 +678,13 @@
                           <option value="Ethnic Wear">Ethnic Wear</option>
                         </select>
 
-                        <input type="number" class="item-qty-input" placeholder="1" min="1" value="1" style="padding: 9px 4px; text-align: center; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.84rem; outline: none; color: var(--text-main); width: 100%;" required />
+                        <input type="number" class="item-qty-input" placeholder="1" min="1" value="1" style="padding: 0 8px; height: 38px; text-align: center; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.85rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" required />
                         
-                        <input type="number" step="0.01" class="item-price-input" placeholder="0.00" style="padding: 9px 8px; text-align: right; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.84rem; outline: none; color: var(--text-main); width: 100%;" required />
+                        <input type="number" step="0.01" class="item-price-input" placeholder="0.00" style="padding: 0 10px; height: 38px; text-align: right; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.85rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" required />
 
-                        <div class="item-subtotal-display" style="text-align: right; font-weight: 700; font-size: 0.88rem; color: var(--text-main); font-family: monospace;">₹0.00</div>
+                        <div class="item-subtotal-display" style="height: 38px; display: flex; align-items: center; justify-content: flex-end; padding: 0 8px; text-align: right; font-weight: 700; font-size: 0.88rem; color: var(--text-main); font-family: 'JetBrains Mono', 'Fira Code', monospace; box-sizing: border-box;">₹0.00</div>
                         
-                        <button type="button" class="remove-item-btn" style="background: var(--rose-bg); color: var(--rose); border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-weight: bold; flex-shrink: 0; display: flex; align-items: center; justify-content: center;" title="Remove Item">&times;</button>
+                        <button type="button" class="remove-item-btn" style="background: var(--rose-bg); color: var(--rose); border: none; width: 38px; height: 38px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 1.1rem; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; transition: all 0.2s ease;" title="Remove Item">&times;</button>
                       </div>
                     </div>
                   </div>
@@ -976,7 +975,7 @@
             <div>Category</div>
             <div>Sub-Category</div>
             <div style="text-align: center;">Qty</div>
-            <div>Price (₹)</div>
+            <div style="text-align: right;">Unit Price (₹)</div>
             <div></div>
           </div>
 

@@ -124,10 +124,12 @@ const initialData = {
     }
   ],
   clients: [
-    { id: 'CLT-01', name: 'Acme Corporation', contact: 'billing@acme.corp', status: 'Active', totalBilled: 1450.00 },
-    { id: 'CLT-02', name: 'Starlight Media', contact: 'accounts@starlight.io', status: 'Active', totalBilled: 3200.00 },
-    { id: 'CLT-03', name: 'Apex Logistics', contact: 'finance@apexlogistics.com', status: 'Notice', totalBilled: 890.00 },
-    { id: 'CLT-04', name: 'Nexus Global', contact: 'contact@nexusglobal.com', status: 'Active', totalBilled: 4750.00 }
+    { id: 'CLT-01', name: 'Royal Heritage Boutique', contact: 'orders@royalheritage.com', status: 'Active', totalBilled: 12490.00 },
+    { id: 'CLT-02', name: 'Starlight Apparel Store', contact: 'accounts@starlightapparel.in', status: 'Active', totalBilled: 8950.00 },
+    { id: 'CLT-03', name: 'Velvet Trendz Fashion', contact: 'finance@velvettrendz.com', status: 'Active', totalBilled: 15800.00 },
+    { id: 'CLT-04', name: 'Urban Fit Clothing Hub', contact: 'billing@urbanfit.co', status: 'Active', totalBilled: 6750.00 },
+    { id: 'CLT-05', name: 'Little Wonders Kidswear', contact: 'contact@littlewonders.in', status: 'Notice', totalBilled: 4200.00 },
+    { id: 'CLT-06', name: 'Metro Shoes & Accessories', contact: 'accounts@metrofashion.in', status: 'Active', totalBilled: 11250.00 }
   ],
   products: [
     { id: 'SKU-PRD-01', name: 'Classic Cotton Slim-Fit Shirt', category: "Men's Apparel", price: 1299.00, stock: 'In Stock', count: 85 },
@@ -136,7 +138,12 @@ const initialData = {
     { id: 'SKU-PRD-04', name: 'Leather Formal Oxford Shoes', category: 'Footwear & Shoes', price: 4250.00, stock: 'In Stock', count: 30 },
     { id: 'SKU-PRD-05', name: 'Kids Organic Cotton T-Shirt Set', category: 'Kidswear & Toddlers', price: 999.00, stock: 'In Stock', count: 65 },
     { id: 'SKU-PRD-06', name: 'Handwoven Banarasi Silk Saree', category: "Women's Fashion", price: 6800.00, stock: 'In Stock', count: 12 },
-    { id: 'SKU-PRD-07', name: 'Designer Leather Belt & Wallet Set', category: 'Fashion Accessories', price: 1299.00, stock: 'Low Stock', count: 4 }
+    { id: 'SKU-PRD-07', name: 'Designer Leather Belt & Wallet Set', category: 'Fashion Accessories', price: 1299.00, stock: 'Low Stock', count: 4 },
+    { id: 'SKU-PRD-08', name: 'Pure Linen Button-Down Formal Shirt', category: "Men's Apparel", price: 1899.00, stock: 'In Stock', count: 50 },
+    { id: 'SKU-PRD-09', name: 'Casual Canvas & Leather Sneakers', category: 'Footwear & Shoes', price: 2199.00, stock: 'In Stock', count: 28 },
+    { id: 'SKU-PRD-10', name: 'Embroidered Anarkali Kurti Set', category: "Women's Fashion", price: 3499.00, stock: 'In Stock', count: 18 },
+    { id: 'SKU-PRD-11', name: 'Wool Blend Tailored Winter Coat', category: 'Winterwear & Outerwear', price: 4999.00, stock: 'Low Stock', count: 8 },
+    { id: 'SKU-PRD-12', name: 'Toddler Denim Overalls & Polo Combo', category: 'Kidswear & Toddlers', price: 1499.00, stock: 'In Stock', count: 35 }
   ],
   categories: [
     {
@@ -208,39 +215,46 @@ const initialData = {
   ]
 };
 
-// Seed initial data if MongoDB collections are empty or need refresh
+let isSeedingPromise = null;
+
+// Seed initial data if MongoDB collections are empty
 async function seedInitialDataIfNeeded() {
-  try {
-    await Invoice.deleteMany({
-      $or: [
-        { clientName: { $regex: /starlight media|nexus global|acme|apex logistics|cyberdyne|husle|nexus shop/i } },
-        { category: { $regex: /software|consulting|redesign|api|cloud|infrastructure|mobiles/i } }
-      ]
-    });
-    const invoiceCount = await Invoice.countDocuments();
-    if (invoiceCount === 0) {
-      await Invoice.insertMany(initialData.invoices);
+  if (isSeedingPromise) return isSeedingPromise;
+
+  isSeedingPromise = (async () => {
+    try {
+      const invoiceCount = await Invoice.countDocuments();
+      if (invoiceCount === 0) {
+        await Invoice.insertMany(initialData.invoices);
+      }
+
+      const billCount = await Bill.countDocuments();
+      if (billCount === 0) {
+        await Bill.insertMany(initialData.bills);
+      }
+
+      const clientCount = await Client.countDocuments();
+      if (clientCount === 0) {
+        await Client.insertMany(initialData.clients);
+      }
+
+      const categoryCount = await Category.countDocuments();
+      if (categoryCount === 0) {
+        await Category.insertMany(initialData.categories);
+      }
+
+      const productCount = await Product.countDocuments();
+      if (productCount === 0) {
+        await Product.insertMany(initialData.products);
+      }
+    } catch (error) {
+      console.error('Error seeding initial MongoDB data:', error.message);
+    } finally {
+      isSeedingPromise = null;
     }
+  })();
 
-    const billCount = await Bill.countDocuments();
-    if (billCount === 0) {
-      await Bill.insertMany(initialData.bills);
-    }
-
-    const clientCount = await Client.countDocuments();
-    if (clientCount === 0) {
-      await Client.insertMany(initialData.clients);
-    }
-
-    // Refresh Category and Product data with clothing categories
-    await Category.deleteMany({});
-    await Category.insertMany(initialData.categories);
-
-    await Product.deleteMany({});
-    await Product.insertMany(initialData.products);
-  } catch (error) {
-    console.error('Error seeding initial MongoDB data:', error.message);
-  }
+  return isSeedingPromise;
 }
 
 const dataStore = {
@@ -248,18 +262,14 @@ const dataStore = {
 
   getInvoices: async () => {
     await seedInitialDataIfNeeded();
-    await Invoice.deleteMany({
-      $or: [
-        { clientName: { $regex: /husle|nexus shop|apex logistics|acme|starlight media|cyberdyne|nexus global/i } },
-        { clientEmail: { $regex: /billing@client.com|apexlogistics/i } },
-        { category: { $regex: /^mobiles$|^clothing$|cloud|software|consulting|redesign|api|infrastructure/i } },
-        { amount: { $gte: 100000 } }
-      ]
-    });
     let invoices = await Invoice.find().sort({ createdAt: -1 }).lean().exec();
     if (!invoices.length) {
-      await Invoice.insertMany(initialData.invoices);
-      invoices = await Invoice.find().sort({ createdAt: -1 }).lean().exec();
+      try {
+        await Invoice.insertMany(initialData.invoices);
+        invoices = await Invoice.find().sort({ createdAt: -1 }).lean().exec();
+      } catch (err) {
+        invoices = initialData.invoices;
+      }
     }
     return invoices;
   },
@@ -298,16 +308,14 @@ const dataStore = {
 
   getBills: async () => {
     await seedInitialDataIfNeeded();
-    await Bill.deleteMany({
-      $or: [
-        { vendor: { $regex: /openai|datadog|mongodb|google|slack|vercel|figma|github|aws|twilio|azure|stripe/i } },
-        { category: { $regex: /ai model|telemetry|monitoring|version control|database|infrastructure|hosting/i } }
-      ]
-    });
     let bills = await Bill.find().sort({ createdAt: -1 }).lean().exec();
     if (!bills.length) {
-      await Bill.insertMany(initialData.bills);
-      bills = await Bill.find().sort({ createdAt: -1 }).lean().exec();
+      try {
+        await Bill.insertMany(initialData.bills);
+        bills = await Bill.find().sort({ createdAt: -1 }).lean().exec();
+      } catch (err) {
+        bills = initialData.bills;
+      }
     }
     return bills;
   },
@@ -351,7 +359,17 @@ const dataStore = {
 
   getClients: async () => {
     await seedInitialDataIfNeeded();
-    return await Client.find().lean().exec();
+    let clients = await Client.find().lean().exec();
+    if (!clients.length || clients.some(c => c.name && (c.name.includes('Acme') || c.name.includes('Apex') || c.name.includes('Cyberdyne')))) {
+      try {
+        await Client.deleteMany({});
+        await Client.insertMany(initialData.clients);
+        clients = await Client.find().lean().exec();
+      } catch (err) {
+        clients = initialData.clients;
+      }
+    }
+    return clients;
   },
 
   toggleClientStatus: async (id) => {
@@ -366,10 +384,14 @@ const dataStore = {
   getProducts: async () => {
     await seedInitialDataIfNeeded();
     let products = await Product.find().lean().exec();
-    if (!products.length || products.some(p => (p.name && (p.name.toLowerCase().includes('enterprise') || p.name.toLowerCase().includes('ui/ux') || p.name.toLowerCase().includes('cloud') || p.name.toLowerCase().includes('security') || p.name.toLowerCase().includes('audit') || p.name.toLowerCase().includes('license'))) || (p.category && (p.category.toLowerCase().includes('software') || p.category.toLowerCase().includes('hardware') || p.category.toLowerCase().includes('professional') || p.category.toLowerCase().includes('services'))))) {
-      await Product.deleteMany({});
-      await Product.insertMany(initialData.products);
-      products = await Product.find().lean().exec();
+    if (!products.length || products.length < 12) {
+      try {
+        await Product.deleteMany({});
+        await Product.insertMany(initialData.products);
+        products = await Product.find().lean().exec();
+      } catch (err) {
+        products = initialData.products;
+      }
     }
     return products;
   },
@@ -392,10 +414,13 @@ const dataStore = {
   getCategories: async () => {
     await seedInitialDataIfNeeded();
     let categories = await Category.find().lean().exec();
-    if (!categories.length || categories.some(c => c.name.includes('Software') || c.name.includes('Hardware') || c.name.includes('Cloud') || c.name.includes('Services') || c.name.includes('Subscriptions'))) {
-      await Category.deleteMany({});
-      await Category.insertMany(initialData.categories);
-      categories = await Category.find().lean().exec();
+    if (!categories.length) {
+      try {
+        await Category.insertMany(initialData.categories);
+        categories = await Category.find().lean().exec();
+      } catch (err) {
+        categories = initialData.categories;
+      }
     }
     return categories;
   },
@@ -431,21 +456,42 @@ const dataStore = {
   },
 
   getClientRelatedData: async (clientId) => {
-    const clients = await Client.find().lean().exec();
+    let clients = await Client.find().lean().exec();
     const invoices = await Invoice.find().lean().exec();
 
-    const client = clients.find(c =>
-      c.id.toLowerCase() === clientId.toLowerCase() ||
-      c.name.toLowerCase() === clientId.toLowerCase() ||
-      c.contact.toLowerCase() === clientId.toLowerCase()
+    const searchKey = (clientId || '').toLowerCase().trim();
+
+    let client = clients.find(c =>
+      (c.id && c.id.toLowerCase() === searchKey) ||
+      (c.name && c.name.toLowerCase() === searchKey) ||
+      (c.contact && c.contact.toLowerCase() === searchKey) ||
+      (c.name && c.name.toLowerCase().includes(searchKey))
     );
+
+    if (!client) {
+      const matchInv = invoices.find(inv =>
+        (inv.clientName && inv.clientName.toLowerCase() === searchKey) ||
+        (inv.clientName && inv.clientName.toLowerCase().includes(searchKey)) ||
+        (inv.clientEmail && inv.clientEmail.toLowerCase() === searchKey) ||
+        (inv.id && inv.id.toLowerCase() === searchKey)
+      );
+      if (matchInv) {
+        client = {
+          id: matchInv.clientId || 'CLT-AUTO',
+          name: matchInv.clientName,
+          contact: matchInv.clientEmail || 'billing@client.com',
+          status: 'Active',
+          totalBilled: matchInv.amount || 0
+        };
+      }
+    }
 
     if (!client) return null;
 
     const relatedInvoices = invoices.filter(inv =>
       (inv.clientId && inv.clientId.toLowerCase() === client.id.toLowerCase()) ||
       (inv.clientName && inv.clientName.toLowerCase() === client.name.toLowerCase()) ||
-      (inv.clientEmail && inv.clientEmail.toLowerCase() === client.contact.toLowerCase())
+      (inv.clientEmail && client.contact && inv.clientEmail.toLowerCase() === client.contact.toLowerCase())
     );
 
     const totalBilled = relatedInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0);
