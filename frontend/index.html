@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nexus Suite | Enterprise Invoices & Bills Dashboard</title>
+  <link rel="icon" type="image/png" href="/icon.png" />
   <meta name="description" content="A sleek, modern full-stack SaaS portal featuring Invoice management, Bills tracking, customer directory, and JWT authentication." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,11 +28,12 @@
     <div id="auth-card" class="auth-card">
       
       <!-- Brand Logo Header -->
-      <div class="brand-header">
-        <div class="brand-logo-img-wrapper">
-          <img src="/logo.png" alt="Nexus Suite Logo" class="brand-logo-img" />
+      <div class="brand-header" style="text-align: center; margin-bottom: 24px;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 68px; height: 68px; margin-bottom: 8px;">
+          <img src="/icon.png" alt="Nexus Suite Logo" style="width: 60px; height: 60px; border-radius: 15px; object-fit: cover; box-shadow: 0 6px 20px rgba(147, 51, 234, 0.22);" />
         </div>
-        <p class="brand-subtitle" style="margin-top: 6px;">Financial & Invoicing Enterprise Portal</p>
+        <h1 style="font-size: 1.8rem; font-weight: 800; color: #9333ea; font-family: 'Times New Roman', Georgia, serif; letter-spacing: 2px; text-transform: uppercase; margin: 4px 0 2px 0;">NEXUS SUITE</h1>
+        <p class="brand-subtitle" style="margin-top: 4px;">Financial & Invoicing Enterprise Portal</p>
       </div>
 
       <!-- LOGIN FORM -->
@@ -58,8 +60,8 @@
               <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             </svg>
             <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password" />
-            <button type="button" class="toggle-password-btn" aria-label="Toggle password visibility" data-target="login-password">
-              <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button type="button" class="toggle-password-btn" data-target="login-password" title="Toggle password visibility">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
               </svg>
@@ -75,18 +77,9 @@
           </label>
         </div>
 
-        <button type="button" id="login-submit-btn" class="submit-btn">
-          <span class="btn-text">Sign In to Workspace</span>
-          <svg class="btn-spinner hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="2" x2="12" y2="6"></line>
-            <line x1="12" y1="18" x2="12" y2="22"></line>
-            <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
-            <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
-            <line x1="2" y1="12" x2="6" y2="12"></line>
-            <line x1="18" y1="12" x2="22" y2="12"></line>
-            <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
-            <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
-          </svg>
+        <button type="submit" id="login-submit-btn" class="submit-btn">
+          <span class="btn-text">Sign In to Dashboard</span>
+          <div class="btn-spinner hidden"></div>
         </button>
       </form>
 
@@ -95,6 +88,8 @@
       </div>
     </div>
   </main>
+
+
 
   <!-- FORGOT PASSWORD MODAL -->
   <div id="forgot-modal" class="modal-overlay hidden">
@@ -134,18 +129,14 @@
     
     <!-- SIDEBAR NAVIGATION -->
     <aside class="sidebar">
-      <div class="sidebar-brand">
-        <img src="/logo.png" alt="Nexus Suite Logo" class="sidebar-logo-img" />
-        <div class="brand-name">Nexus<span class="gradient-text">Suite</span></div>
-        <button id="sidebar-toggle-btn" class="sidebar-hamburger-btn" title="Toggle Sidebar">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
-          </svg>
-        </button>
+      <div class="sidebar-brand" style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; padding: 6px 8px 4px 8px; width: 100%; box-sizing: border-box;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; flex-shrink: 0;">
+          <img src="/icon.png" alt="Nexus Suite Logo" style="width: 36px; height: 36px; border-radius: 9px; object-fit: cover; box-shadow: 0 3px 10px rgba(147, 51, 234, 0.25);" />
+        </div>
+        <div style="font-size: 1.12rem; font-weight: 800; color: #9333ea; font-family: 'Times New Roman', Georgia, serif; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; line-height: 1;">
+          NEXUS SUITE
+        </div>
       </div>
-
 
       <!-- Nav Links -->
       <nav class="sidebar-nav">
@@ -170,17 +161,8 @@
             <polyline points="10 9 9 9 8 9"></polyline>
           </svg>
           <span>Invoices</span>
-          <span id="nav-invoice-badge" class="nav-badge">4</span>
         </button>
 
-        <button class="nav-item" data-view="bills">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-            <line x1="1" y1="10" x2="23" y2="10"></line>
-          </svg>
-          <span>Bills & Payments</span>
-          <span id="nav-bill-badge" class="nav-badge warning">3</span>
-        </button>
 
         <button class="nav-item" data-view="products">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -191,12 +173,21 @@
           <span>Products Catalog</span>
         </button>
 
+        <button class="nav-item" data-view="inventory">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+          <span>Inventory Management</span>
+        </button>
+
         <button class="nav-item" data-view="categories">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
             <line x1="7" y1="7" x2="7.01" y2="7"></line>
           </svg>
-          <span>Categories Directory</span>
+          <span>Category Management</span>
         </button>
 
         <button class="nav-item" data-view="clients">
@@ -206,7 +197,7 @@
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
           </svg>
-          <span>Customers & Clients</span>
+          <span>Customers Directory</span>
         </button>
 
         <div class="nav-section-title">PREFERENCES</div>
@@ -222,7 +213,6 @@
 
       <!-- Sidebar User Profile Footer -->
       <div class="sidebar-user-footer">
-        <div class="user-avatar-sm" id="sidebar-avatar">U</div>
         <div class="user-info-sm">
           <div id="sidebar-user-name" class="user-name-text">User Name</div>
           <div id="sidebar-user-email" class="user-email-text">user@email.com</div>
@@ -242,9 +232,18 @@
       
       <!-- TOP HEADER BAR -->
       <header class="top-header">
-        <div class="header-title-block">
-          <h2 id="header-page-title">Dashboard Overview</h2>
-          <p id="header-page-subtitle" class="text-muted">Financial summary & real-time analytics</p>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <button id="topbar-sidebar-toggle-btn" onclick="toggleSidebarMenu()" class="secondary-btn" style="width: 48px; height: 48px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 14px; cursor: pointer; background: #ffffff; border: 1px solid var(--border-light); color: var(--primary-accent); transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.04);" title="Toggle Sidebar Menu">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          <div class="header-title-block">
+            <h2 id="header-page-title">Overview</h2>
+            <p id="header-page-subtitle" class="text-muted" style="display: none;"></p>
+          </div>
         </div>
       </header>
 
@@ -254,15 +253,16 @@
         <!-- VIEW 1: DASHBOARD OVERVIEW -->
         <div id="view-overview" class="view-panel active">
           <!-- Metrics Cards Grid -->
-          <div class="metrics-grid">
+          <div class="metrics-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; width: 100%; box-sizing: border-box;">
+            <!-- Card 1: Today's Revenue -->
             <div class="metric-card">
               <div class="metric-header">
-                <span class="metric-title">Total Revenue</span>
-                <span class="metric-badge positive">+14.2%</span>
+                <span class="metric-title">Today's Revenue</span>
+                <span class="metric-badge positive">Today</span>
               </div>
-              <div class="metric-value">₹10,290.00</div>
+              <div id="stat-today-revenue" class="metric-value">₹12,490.00</div>
               <div class="metric-footer-wrapper">
-                <div class="metric-footer">Billed across 4 active clients</div>
+                <div class="metric-footer">Real-time daily collection</div>
                 <div class="sparkline-container">
                   <svg class="metric-sparkline" viewBox="0 0 90 35" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <defs>
@@ -278,14 +278,15 @@
               </div>
             </div>
 
+            <!-- Card 2: Weekly Revenue -->
             <div class="metric-card">
               <div class="metric-header">
-                <span class="metric-title">Pending Invoices</span>
-                <span class="metric-badge info">2 Unpaid</span>
+                <span class="metric-title">Weekly Revenue</span>
+                <span class="metric-badge info">This Week</span>
               </div>
-              <div id="stat-pending-invoices" class="metric-value">₹8,840.00</div>
+              <div id="stat-weekly-revenue" class="metric-value">₹1,42,800.00</div>
               <div class="metric-footer-wrapper">
-                <div class="metric-footer">Expected within 14 days</div>
+                <div class="metric-footer">Past 7 days total collection</div>
                 <div class="sparkline-container">
                   <svg class="metric-sparkline" viewBox="0 0 90 35" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <defs>
@@ -301,37 +302,15 @@
               </div>
             </div>
 
+            <!-- Card 3: Monthly Revenue -->
             <div class="metric-card">
               <div class="metric-header">
-                <span class="metric-title">Upcoming Bills</span>
-                <span class="metric-badge warning">3 Due Soon</span>
+                <span class="metric-title">Monthly Revenue</span>
+                <span class="metric-badge active">This Month</span>
               </div>
-              <div id="stat-unpaid-bills" class="metric-value">₹1,686.25</div>
+              <div id="stat-monthly-revenue" class="metric-value">₹4,25,900.00</div>
               <div class="metric-footer-wrapper">
-                <div class="metric-footer">Scheduled vendor payouts</div>
-                <div class="sparkline-container">
-                  <svg class="metric-sparkline" viewBox="0 0 90 35" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <linearGradient id="sparkline-orange" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#f97316" stop-opacity="0.3" />
-                        <stop offset="100%" stop-color="#f97316" stop-opacity="0.0" />
-                      </linearGradient>
-                    </defs>
-                    <path d="M0 30 Q 25 32, 45 18 T 70 24 T 90 8 L 90 35 L 0 35 Z" fill="url(#sparkline-orange)" />
-                    <path d="M0 30 Q 25 32, 45 18 T 70 24 T 90 8" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            <div class="metric-card">
-              <div class="metric-header">
-                <span class="metric-title">JWT Session</span>
-                <span class="metric-badge active">Verified</span>
-              </div>
-              <div class="metric-value text-emerald">24h Active</div>
-              <div class="metric-footer-wrapper">
-                <div id="stat-session-user" class="metric-footer">Logged in as User</div>
+                <div class="metric-footer">Current month collection</div>
                 <div class="sparkline-container">
                   <svg class="metric-sparkline" viewBox="0 0 90 35" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <defs>
@@ -348,23 +327,23 @@
             </div>
           </div>
 
-          <!-- Overview Details Grid -->
-          <div class="dashboard-grid">
-            <!-- Recent Invoices Panel -->
-            <div class="panel-card flex-2">
+          <!-- 2-Column Section: Recent Invoices (left) & Low Stock Items (right) -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; width: 100%; box-sizing: border-box; margin-top: 20px;">
+            
+            <!-- Left Panel: Recent Invoices -->
+            <div class="panel-card" style="width: 100%; box-sizing: border-box; margin: 0;">
               <div class="panel-header">
                 <h3>Recent Invoices</h3>
-                <button class="link-btn" data-target="invoices">View All &rarr;</button>
+                <button class="link-btn" data-target="all_invoices">View All &rarr;</button>
               </div>
               <div class="table-responsive">
                 <table class="data-table">
                   <thead>
                     <tr>
                       <th class="nowrap-cell">Invoice ID</th>
-                      <th>Client</th>
+                      <th class="nowrap-cell">Sub-Category</th>
+                      <th class="nowrap-cell">Date</th>
                       <th class="nowrap-cell text-right">Amount</th>
-                      <th class="nowrap-cell">Due Date</th>
-                      <th class="nowrap-cell text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody id="overview-invoices-tbody">
@@ -374,16 +353,31 @@
               </div>
             </div>
 
-            <!-- Recent Bills Panel -->
-            <div class="panel-card flex-1">
+            <!-- Right Panel: Low Stock Items (Beside Recent Invoices) -->
+            <div class="panel-card" style="width: 100%; box-sizing: border-box; margin: 0;">
               <div class="panel-header">
-                <h3>Upcoming Bills</h3>
-                <button class="link-btn" data-target="bills">Manage Bills &rarr;</button>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #f59e0b;"></span>
+                  <h3 style="margin: 0;">Low Stock Items</h3>
+                </div>
+                <button class="link-btn" onclick="openLowStockInventoryView()" style="font-weight: 600;">Manage Inventory &rarr;</button>
               </div>
-              <div id="overview-bills-list" class="mini-bills-list">
-                <!-- Populated via JS -->
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Product Name</th>
+                      <th>Category</th>
+                      <th class="nowrap-cell text-center">Stock</th>
+                    </tr>
+                  </thead>
+                  <tbody id="overview-low-stock-tbody">
+                    <!-- Dynamic Low Stock Items -->
+                  </tbody>
+                </table>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -391,12 +385,6 @@
         <div id="view-invoices" class="view-panel">
           <div class="panel-card">
             <div class="table-toolbar">
-              <div class="filter-tabs">
-                <button class="filter-btn active" data-filter="all">All Invoices</button>
-                <button class="filter-btn" data-filter="Paid">Paid</button>
-                <button class="filter-btn" data-filter="Pending">Pending</button>
-                <button class="filter-btn" data-filter="Overdue">Overdue</button>
-              </div>
               <button id="quick-create-invoice-btn" onclick="openInvoiceModal()" class="primary-action-btn sm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -411,13 +399,9 @@
                 <thead>
                   <tr>
                     <th class="nowrap-cell">Invoice ID</th>
-                    <th class="nowrap-cell">Client Name</th>
-                    <th class="nowrap-cell">Category</th>
-                    <th class="nowrap-cell">Issue Date</th>
-                    <th class="nowrap-cell">Due Date</th>
+                    <th class="nowrap-cell">Sub-Category</th>
+                    <th class="nowrap-cell">Date</th>
                     <th class="nowrap-cell text-right">Amount</th>
-                    <th class="nowrap-cell text-center">Status</th>
-                    <th class="nowrap-cell text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="invoices-table-tbody">
@@ -425,43 +409,7 @@
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-
-        <!-- VIEW 3: BILLS & PAYMENTS -->
-        <div id="view-bills" class="view-panel">
-          <div class="panel-card">
-            <div class="table-toolbar">
-              <h3>Vendor Bills & Subscriptions</h3>
-              <button id="quick-add-bill-btn" onclick="openBillModal()" class="primary-action-btn sm">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                <span>Add Vendor Bill</span>
-              </button>
-            </div>
-
-            <div class="table-responsive">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th class="nowrap-cell">Bill ID</th>
-                    <th class="nowrap-cell">Vendor</th>
-                    <th class="nowrap-cell">Category</th>
-                    <th class="nowrap-cell">Due Date</th>
-                    <th class="nowrap-cell text-right">Amount</th>
-                    <th class="nowrap-cell text-center">Auto-Pay</th>
-                    <th class="nowrap-cell text-center">Status</th>
-                    <th class="nowrap-cell text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody id="bills-table-tbody">
-                  <!-- Dynamic Content -->
-                </tbody>
-              </table>
-            </div>
-          </div>
+             </div>
         </div>
 
         <!-- VIEW 4: PRODUCTS CATALOG -->
@@ -491,10 +439,51 @@
                     <th>Category</th>
                     <th class="nowrap-cell text-right">Unit Price (₹)</th>
                     <th class="nowrap-cell text-center">Stock Level</th>
-                    <th class="nowrap-cell text-center">Status</th>
+                    <th class="nowrap-cell text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody id="products-table-tbody">
+                  <!-- Dynamic Content -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: INVENTORY MANAGEMENT -->
+        <div id="view-inventory" class="view-panel">
+
+          <!-- Glass Table Panel Card -->
+          <div class="inv-table-card">
+            <div class="inv-table-toolbar">
+              <div class="inv-pill-tabs">
+                <button class="inv-tab-pill active" data-inv-filter="all">
+                  <span>All Catalog Items</span>
+                </button>
+                <button class="inv-tab-pill" data-inv-filter="in_stock">
+                  <span>In Stock</span>
+                </button>
+                <button class="inv-tab-pill" data-inv-filter="low_stock">
+                  <span>Low Stock Alert</span>
+                </button>
+                <button class="inv-tab-pill" data-inv-filter="out_stock">
+                  <span>Out of Stock</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="inv-data-table">
+                <thead>
+                  <tr>
+                    <th class="nowrap-cell">SKU ID</th>
+                    <th>Product &amp; Category</th>
+                    <th class="nowrap-cell text-center">Stock</th>
+                    <th class="nowrap-cell text-center">Status</th>
+                    <th class="nowrap-cell text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="inventory-table-tbody">
                   <!-- Dynamic Content -->
                 </tbody>
               </table>
@@ -506,7 +495,6 @@
         <div id="view-categories" class="view-panel">
           <div class="panel-card">
             <div class="table-toolbar">
-              <h3>Product & Billing Classification Groups</h3>
               <button id="quick-add-category-btn" onclick="openCategoryModal()" class="primary-action-btn sm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -522,9 +510,6 @@
                   <tr>
                     <th class="nowrap-cell">Category ID</th>
                     <th>Category & Sub-Categories</th>
-                    <th class="nowrap-cell text-center">Department & Season</th>
-                    <th class="nowrap-cell text-center">Associated Items</th>
-                    <th class="nowrap-cell text-center">Status</th>
                     <th class="nowrap-cell text-right">Actions</th>
                   </tr>
                 </thead>
@@ -536,26 +521,172 @@
           </div>
         </div>
 
+        <!-- VIEW: CATEGORY DETAIL PAGE (LIKE SCREENSHOT) -->
+        <div id="view-category_detail" class="view-panel">
+          <div class="panel-card" style="padding: 32px 36px; background: #ffffff; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); width: 100%;">
+            
+            <!-- Top Navigation & Badge -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 12px;">
+              <span style="padding: 5px 14px; background: #f3e8ff; color: #9333ea; border-radius: 20px; font-size: 0.76rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;">
+                CATEGORY RELATED DATA
+              </span>
+              <button type="button" class="secondary-btn" onclick="switchView('categories')" style="padding: 8px 18px; font-weight: 600; cursor: pointer; border-radius: 12px; font-size: 0.88rem;">
+                &larr; Back to Category Management
+              </button>
+            </div>
+
+            <!-- Title & Description Subtitle -->
+            <h2 id="category-detail-title" style="font-size: 1.85rem; font-weight: 800; color: #0f172a; margin: 0 0 6px;">Men's Apparel</h2>
+            <p id="category-detail-subtitle" style="font-size: 0.92rem; color: #64748b; margin-bottom: 24px; line-height: 1.5;">Shirts, T-shirts, Trousers, Suits, and Ethnic Wear.</p>
+
+            <!-- 3 Stat Metrics Cards Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px;">
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; text-align: center;">
+                <div style="font-size: 0.78rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">PRODUCTS SKU</div>
+                <div id="category-detail-sku-count" style="font-size: 2rem; font-weight: 800; color: #0f172a;">0</div>
+              </div>
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; text-align: center;">
+                <div style="font-size: 0.78rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">INVOICES COUNT</div>
+                <div id="category-detail-inv-count" style="font-size: 2rem; font-weight: 800; color: #0f172a;">0</div>
+              </div>
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; text-align: center;">
+                <div style="font-size: 0.78rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">CATEGORY REVENUE</div>
+                <div id="category-detail-revenue" style="font-size: 1.9rem; font-weight: 800; color: #9333ea;">₹0.00</div>
+              </div>
+            </div>
+
+            <!-- Tabbed Navigation -->
+            <div style="display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px;">
+              <button type="button" id="cat-tab-invoices-btn" class="cat-detail-tab-btn active" onclick="switchCategoryDetailTab('invoices')" style="padding: 10px 20px; background: #f3e8ff; color: #9333ea; border: none; border-radius: 12px; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease;">
+                Related Invoices (<span id="cat-detail-tab-inv-num">0</span>)
+              </button>
+              <button type="button" id="cat-tab-products-btn" class="cat-detail-tab-btn" onclick="switchCategoryDetailTab('products')" style="padding: 10px 20px; background: transparent; color: #64748b; border: none; border-radius: 12px; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease;">
+                Related Products (<span id="cat-detail-tab-prd-num">0</span>)
+              </button>
+            </div>
+
+            <!-- Table Container -->
+            <div id="cat-detail-invoices-panel" style="margin-bottom: 28px;">
+              <div class="table-responsive" style="border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden;">
+                <table class="data-table">
+                  <thead>
+                    <tr style="background: #f8fafc;">
+                      <th class="nowrap-cell">INVOICE ID</th>
+                      <th class="nowrap-cell text-right">AMOUNT</th>
+                    </tr>
+                  </thead>
+                  <tbody id="category-detail-invoices-tbody">
+                    <!-- Dynamic Related Invoices -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div id="cat-detail-products-panel" style="margin-bottom: 28px; display: none;">
+              <div class="table-responsive" style="border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden;">
+                <table class="data-table">
+                  <thead>
+                    <tr style="background: #f8fafc;">
+                      <th class="nowrap-cell">SKU ID</th>
+                      <th>PRODUCT NAME</th>
+                      <th class="nowrap-cell text-right">PRICE</th>
+                      <th class="nowrap-cell text-center">STOCK STATUS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="category-detail-products-tbody">
+                    <!-- Dynamic Related Products -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Footer Action Bar -->
+            <div style="display: flex; justify-content: flex-end; gap: 12px; align-items: center; border-top: 1px solid #f1f5f9; margin-top: 20px; padding-top: 16px;">
+              <button type="button" class="secondary-btn" onclick="switchView('categories')" style="padding: 12px 24px; font-weight: 600; border-radius: 14px; cursor: pointer;">
+                Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+
         <!-- VIEW 6: CUSTOMERS DIRECTORY -->
         <div id="view-clients" class="view-panel">
-          <div class="panel-card">
-            <div class="panel-header" style="margin-bottom: 16px;">
-              <h3>Client & Customer Contact Directory</h3>
+          <!-- 1. Date Filter Toolbar Card -->
+          <div class="panel-card" style="margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+              <!-- Filter Options Group (Date & Payment Mode) -->
+              <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                <!-- Date Filter -->
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-accent);">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    Filter Date:
+                  </label>
+                  <input type="date" id="customer-date-picker" style="padding: 8px 12px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.88rem; outline: none; color: var(--text-main);" />
+                </div>
+
+                <!-- Payment Mode Filter -->
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-accent);">
+                      <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                      <line x1="2" y1="10" x2="22" y2="10"></line>
+                    </svg>
+                    Payment Mode:
+                  </label>
+                  <select id="customer-payment-mode-filter" style="padding: 8px 14px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.88rem; font-weight: 600; outline: none; color: var(--text-main); cursor: pointer;">
+                    <option value="all" selected>All Payment Modes</option>
+                    <option value="Cash">💵 Cash</option>
+                    <option value="Online / UPI">📱 Online / UPI</option>
+                    <option value="Card / Net Banking">💳 Card / Net Banking</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Download PDF Action -->
+              <div>
+                <button type="button" id="customer-download-pdf-btn" class="primary-action-btn sm" style="padding: 8px 18px; background: linear-gradient(135deg, #9333ea 0%, #a855f7 100%);">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  <span>Download PDF</span>
+                </button>
+              </div>
             </div>
+          </div>
+
+          <!-- 2. Customer Directory Table Card -->
+          <div class="panel-card">
             <div class="table-responsive">
               <table class="data-table">
                 <thead>
                   <tr>
                     <th class="nowrap-cell">Customer ID</th>
-                    <th class="nowrap-cell">Client Name</th>
-                    <th class="nowrap-cell">Contact Email</th>
-                    <th class="nowrap-cell text-right">Total Invoiced</th>
-                    <th class="nowrap-cell text-center">Status</th>
+                    <th class="nowrap-cell">Date</th>
+                    <th class="nowrap-cell">Payment Mode</th>
+                    <th class="nowrap-cell text-right">Customer Amount</th>
                   </tr>
                 </thead>
                 <tbody id="clients-table-tbody">
                   <!-- Dynamic Clients Table Content -->
                 </tbody>
+                <tfoot id="clients-table-tfoot">
+                  <tr style="background: rgba(124, 58, 237, 0.04); font-weight: 700;">
+                    <td colspan="3"></td>
+                    <td class="nowrap-cell text-right" style="padding: 14px 16px;">
+                      <span style="font-weight: 700; color: var(--text-main); font-size: 0.9rem; margin-right: 8px;">TOTAL AMOUNT:</span>
+                      <strong id="customer-total-amount-val" style="color: var(--primary-accent); font-size: 1.05rem;">₹0.00</strong>
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
@@ -563,40 +694,83 @@
 
         <!-- VIEW 5: ACCOUNT SETTINGS -->
         <div id="view-settings" class="view-panel">
-          <div class="settings-layout">
-            <div class="panel-card">
-              <h3>User Profile Settings</h3>
-              <form id="profile-settings-form" class="settings-form">
-                <div class="input-group">
-                  <label>Full Name</label>
-                  <input type="text" id="settings-name-input" />
+          <div class="settings-layout" style="width: 100%; display: flex; flex-direction: column; gap: 24px;">
+            <div class="panel-card" style="background: #ffffff; border-radius: 20px; padding: 32px 36px; border: 1px solid var(--border-light); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);">
+              <div style="margin-bottom: 24px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px;">
+                <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Account & Profile Details</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Manage your user account credentials and system reference identifier</p>
+              </div>
+              <form id="profile-settings-form" class="settings-form" style="display: flex; flex-direction: column; gap: 20px;">
+                <div class="input-group" style="display: flex; flex-direction: column; gap: 8px;">
+                  <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);">Full Name</label>
+                  <input type="text" id="settings-name-input" style="width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 0.95rem; color: var(--text-main); font-weight: 500; outline: none; transition: all 0.2s ease;" />
                 </div>
-                <div class="input-group">
-                  <label>Email Address</label>
-                  <input type="email" id="settings-email-input" readonly disabled />
+                <div class="input-group" style="display: flex; flex-direction: column; gap: 8px;">
+                  <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);">Email Address</label>
+                  <input type="email" id="settings-email-input" readonly disabled style="width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: #f1f5f9; font-size: 0.95rem; color: #64748b; font-weight: 500; cursor: not-allowed;" />
                 </div>
-                <div class="input-group">
-                  <label>Account Reference ID</label>
-                  <input type="text" id="settings-id-input" readonly disabled />
+                <div class="input-group" style="display: flex; flex-direction: column; gap: 8px;">
+                  <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);">Store / Business Address</label>
+                  <textarea id="settings-address-input" rows="2" placeholder="e.g. #104, Starlight Plaza, MG Road, Hyderabad - 500001" style="width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 0.95rem; color: var(--text-main); font-weight: 500; outline: none; transition: all 0.2s ease; resize: vertical; font-family: inherit;"></textarea>
                 </div>
-                <button type="button" id="save-settings-btn" class="submit-btn sm">Save Changes</button>
+                <div class="input-group" style="display: flex; flex-direction: column; gap: 8px;">
+                  <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);">Default GST / Tax Rate (%)</label>
+                  <input type="number" id="settings-gst-input" min="0" max="100" step="0.1" placeholder="e.g. 18" style="width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 0.95rem; color: var(--text-main); font-weight: 500; outline: none; transition: all 0.2s ease;" />
+                </div>
+                <div style="margin-top: 8px; display: flex; justify-content: flex-start;">
+                  <button type="button" id="save-settings-btn" style="padding: 12px 30px; font-size: 0.92rem; font-weight: 700; border-radius: 12px; cursor: pointer; background: var(--gradient-primary); color: #ffffff; border: none; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25); transition: all 0.2s ease;">
+                    Save Changes
+                  </button>
+                </div>
               </form>
             </div>
 
-            <div class="panel-card">
-              <h3>JWT Token Security</h3>
-              <div class="security-info">
-                <div class="info-row">
-                  <span class="text-muted">Algorithm</span>
-                  <span class="font-mono">HS256 (HMAC SHA-256)</span>
+            <!-- PDF Paper Size Settings Card -->
+            <div class="panel-card" style="background: #ffffff; border-radius: 20px; padding: 32px 36px; border: 1px solid var(--border-light); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);">
+              <div style="margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px;">
+                <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">PDF Paper Size Preferences</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Select default paper format for generated invoice PDF statements & thermal prints</p>
+              </div>
+              
+              <div class="paper-size-cards-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; width: 100%;">
+                <!-- Option 1: A4 -->
+                <div class="paper-card-option" data-size="A4" style="border: 1px solid var(--border-light); background: #ffffff; border-radius: 16px; padding: 18px; cursor: pointer; transition: all 0.2s ease; position: relative;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-weight: 700; font-size: 1rem; color: var(--text-main);">A4 Standard</span>
+                    <span class="badge-icon" style="display: none; background: var(--primary-accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; align-items: center; justify-content: center; font-size: 0.75rem;">✓</span>
+                  </div>
+                  <div style="font-size: 0.82rem; color: var(--text-muted); font-family: monospace;">210 × 297 mm</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin-top: 8px;">Standard Office Invoice</div>
                 </div>
-                <div class="info-row">
-                  <span class="text-muted">Expiration</span>
-                  <span>24 Hours</span>
+
+                <!-- Option 2: A3 -->
+                <div class="paper-card-option" data-size="A3" style="border: 1px solid var(--border-light); background: #ffffff; border-radius: 16px; padding: 18px; cursor: pointer; transition: all 0.2s ease; position: relative;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-weight: 700; font-size: 1rem; color: var(--text-main);">A3 Large</span>
+                    <span class="badge-icon" style="display: none; background: var(--primary-accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; align-items: center; justify-content: center; font-size: 0.75rem;">✓</span>
+                  </div>
+                  <div style="font-size: 0.82rem; color: var(--text-muted); font-family: monospace;">297 × 420 mm</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin-top: 8px;">Large Sheet Statement</div>
                 </div>
-                <div class="info-row">
-                  <span class="text-muted">Headers</span>
-                  <span class="font-mono">Authorization: Bearer &lt;jwt&gt;</span>
+
+                <!-- Option 3: Thermal 50 -->
+                <div class="paper-card-option" data-size="thermal50" style="border: 1px solid var(--border-light); background: #ffffff; border-radius: 16px; padding: 18px; cursor: pointer; transition: all 0.2s ease; position: relative;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-weight: 700; font-size: 1rem; color: var(--text-main);">Thermal 50</span>
+                    <span class="badge-icon" style="display: none; background: var(--primary-accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; align-items: center; justify-content: center; font-size: 0.75rem;">✓</span>
+                  </div>
+                  <div style="font-size: 0.82rem; color: var(--text-muted); font-family: monospace;">50 mm Receipt</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin-top: 8px;">Compact POS Receipt</div>
+                </div>
+
+                <!-- Option 4: Thermal 88 -->
+                <div class="paper-card-option" data-size="thermal88" style="border: 1px solid var(--border-light); background: #ffffff; border-radius: 16px; padding: 18px; cursor: pointer; transition: all 0.2s ease; position: relative;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-weight: 700; font-size: 1rem; color: var(--text-main);">Thermal 88</span>
+                    <span class="badge-icon" style="display: none; background: var(--primary-accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; align-items: center; justify-content: center; font-size: 0.75rem;">✓</span>
+                  </div>
+                  <div style="font-size: 0.82rem; color: var(--text-muted); font-family: monospace;">88 mm Receipt</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin-top: 8px;">Wide Thermal Receipt</div>
                 </div>
               </div>
             </div>
@@ -606,77 +780,46 @@
         <!-- VIEW 8: CREATE NEW INVOICE DEDICATED PAGE -->
         <div id="view-create_invoice" class="view-panel">
           <div class="panel-card" style="padding: 28px; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); width: 100%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light);">
-              <div>
-                <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Create New Invoice</h2>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Enter shop name, line items, categories & generate PDF statement</p>
-              </div>
-              <button type="button" class="secondary-btn back-to-invoices-btn" onclick="switchView('invoices')" style="padding: 9px 18px; font-weight: 600; cursor: pointer; border-radius: 12px;">
-                &larr; Back to Invoices List
-              </button>
-            </div>
-
             <form id="create-invoice-page-form">
               <!-- 1. Products List (Dynamic Line Items with Categories & Sub-Categories) -->
               <div style="background: #ffffff; border: 1px solid var(--border-light); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                  <div>
-                    <h4 style="font-size: 0.92rem; font-weight: 700; color: var(--primary-accent); margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px;">Products, Categories & Pricing Items *</h4>
-                    <span style="font-size: 0.82rem; color: var(--text-muted);">Add clothing items, choose categories and sub-categories.</span>
-                  </div>
+                <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 16px;">
                   <button type="button" id="page-add-invoice-item-btn" class="secondary-btn" style="padding: 9px 18px; font-size: 0.85rem; background: var(--cyan-bg); color: var(--primary-accent); border: none; font-weight: 600; border-radius: 10px; cursor: pointer;">
-                    + Add Product Item
+                    Add Product Item
                   </button>
                 </div>
 
                 <!-- Table Outer Wrapper -->
-                <div style="margin-bottom: 6px; width: 100%;" class="table-responsive">
-                  <div style="min-width: 820px;">
+                <div style="margin-bottom: 6px; width: 100%; overflow: visible !important;" class="table-responsive">
+                  <div style="min-width: 820px; overflow: visible !important;">
                     <!-- Products Table Header -->
-                    <div style="display: grid; grid-template-columns: minmax(190px, 2fr) minmax(130px, 1.2fr) minmax(130px, 1.2fr) 70px 115px 115px 38px; gap: 10px; align-items: center; margin-bottom: 10px; padding: 10px 12px; background: #f1f5f9; border-radius: 10px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
-                      <div>Product Name</div>
-                      <div>Category</div>
-                      <div>Sub-Category</div>
+                    <div class="invoice-grid-row" style="margin-bottom: 10px; background: #f1f5f9; border-radius: 10px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+                      <div style="padding-left: 2px;">Category</div>
+                      <div style="padding-left: 2px;">Sub-Category</div>
+                      <div style="padding-left: 2px;">Product Name</div>
                       <div style="text-align: center;">Qty</div>
-                      <div style="text-align: right;">Unit Price (₹)</div>
-                      <div style="text-align: right;">Subtotal (₹)</div>
+                      <div style="text-align: right; padding-right: 2px;">Unit Price (₹)</div>
+                      <div style="text-align: right; padding-right: 2px;">Subtotal (₹)</div>
                       <div></div>
                     </div>
 
-                    <div id="page-invoice-items-list" style="display: flex; flex-direction: column; gap: 8px;">
+                    <div id="page-invoice-items-list" style="display: flex; flex-direction: column; gap: 8px; overflow: visible !important;">
                       <!-- Initial Product Item Row -->
-                      <div class="invoice-item-row page-invoice-item-row" style="display: grid; grid-template-columns: minmax(190px, 2fr) minmax(130px, 1.2fr) minmax(130px, 1.2fr) 70px 115px 115px 38px; gap: 10px; align-items: center; background: #ffffff; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border-light);">
-                        <div>
-                          <select class="item-name-select" style="padding: 0 10px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;">
-                            <option value="" disabled selected>-- Select Product --</option>
-                            <option value="Classic Cotton Slim-Fit Shirt" data-price="1299.00" data-category="Men's Apparel">Classic Cotton Slim-Fit Shirt (₹1,299)</option>
-                            <option value="Floral Print Summer Chiffon Dress" data-price="2499.00" data-category="Women's Fashion">Floral Print Summer Chiffon Dress (₹2,499)</option>
-                            <option value="Denim Jacket with Fleece Lining" data-price="2799.00" data-category="Winterwear & Outerwear">Denim Jacket with Fleece Lining (₹2,799)</option>
-                            <option value="Leather Formal Oxford Shoes" data-price="4250.00" data-category="Footwear & Shoes">Leather Formal Oxford Shoes (₹4,250)</option>
-                            <option value="Kids Organic Cotton T-Shirt Set" data-price="999.00" data-category="Kidswear & Toddlers">Kids Organic Cotton T-Shirt Set (₹999)</option>
-                            <option value="Handwoven Banarasi Silk Saree" data-price="6800.00" data-category="Women's Fashion">Handwoven Banarasi Silk Saree (₹6,800)</option>
-                            <option value="Designer Leather Belt & Wallet Set" data-price="1299.00" data-category="Fashion Accessories">Designer Leather Belt & Wallet Set (₹1,299)</option>
-                            <option value="custom">+ Custom Product...</option>
-                          </select>
-                          <input type="text" class="item-name-input" placeholder="Type item name" style="display: none; padding: 0 10px; height: 38px; margin-top: 4px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" />
+                      <div class="invoice-item-row page-invoice-item-row invoice-grid-row" style="background: #ffffff; border-radius: 12px; border: 1px solid var(--border-light); overflow: visible !important; position: relative;">
+                        <div class="autocomplete-wrapper" style="position: relative; width: 100%;">
+                          <input type="text" class="item-category-input search-suggestion-input" placeholder="Search category..." autocomplete="off" style="padding: 0 10px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" required />
+                          <div class="autocomplete-suggestions-panel" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 1000; background: #ffffff; border: 1px solid var(--border-light); border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.12); max-height: 200px; overflow-y: auto; box-sizing: border-box; padding: 4px;"></div>
                         </div>
-                        
-                        <select class="item-category-select" style="padding: 0 10px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;">
-                          <option value="Men's Apparel">Men's Apparel</option>
-                          <option value="Women's Fashion">Women's Fashion</option>
-                          <option value="Kidswear & Toddlers">Kidswear & Toddlers</option>
-                          <option value="Footwear & Shoes">Footwear & Shoes</option>
-                          <option value="Fashion Accessories">Fashion Accessories</option>
-                          <option value="Winterwear & Outerwear">Winterwear & Outerwear</option>
-                        </select>
 
-                        <select class="item-subcategory-select" style="padding: 0 10px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;">
-                          <option value="Shirts">Shirts</option>
-                          <option value="T-Shirts">T-Shirts</option>
-                          <option value="Jeans & Trousers">Jeans & Trousers</option>
-                          <option value="Suits & Blazers">Suits & Blazers</option>
-                          <option value="Ethnic Wear">Ethnic Wear</option>
-                        </select>
+                        <div class="autocomplete-wrapper" style="position: relative; width: 100%;">
+                          <input type="text" class="item-subcategory-input search-suggestion-input" placeholder="Search sub-category..." autocomplete="off" style="padding: 0 10px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" required />
+                          <div class="autocomplete-suggestions-panel" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 1000; background: #ffffff; border: 1px solid var(--border-light); border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.12); max-height: 200px; overflow-y: auto; box-sizing: border-box; padding: 4px;"></div>
+                        </div>
+
+                        <div class="autocomplete-wrapper" style="position: relative; width: 100%;">
+                          <input type="text" class="item-name-input search-suggestion-input" placeholder="Search product..." autocomplete="off" style="padding: 0 10px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.83rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" required />
+                          <div class="autocomplete-suggestions-panel" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 1000; background: #ffffff; border: 1px solid var(--border-light); border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.12); max-height: 200px; overflow-y: auto; box-sizing: border-box; padding: 4px;"></div>
+                        </div>
 
                         <input type="number" class="item-qty-input" placeholder="1" min="1" value="1" style="padding: 0 8px; height: 38px; text-align: center; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.85rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" required />
                         
@@ -684,46 +827,121 @@
 
                         <div class="item-subtotal-display" style="height: 38px; display: flex; align-items: center; justify-content: flex-end; padding: 0 8px; text-align: right; font-weight: 700; font-size: 0.88rem; color: var(--text-main); font-family: 'JetBrains Mono', 'Fira Code', monospace; box-sizing: border-box;">₹0.00</div>
                         
-                        <button type="button" class="remove-item-btn" style="background: var(--rose-bg); color: var(--rose); border: none; width: 38px; height: 38px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 1.1rem; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; transition: all 0.2s ease;" title="Remove Item">&times;</button>
+                        <button type="button" class="remove-item-btn" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; width: 38px; height: 38px; border-radius: 10px; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; transition: all 0.2s ease;" title="Remove Item">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="pointer-events: none;">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <!-- 3. Grand Total & Action Footer Bar -->
-              <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid var(--border-light); border-radius: 16px; padding: 20px 24px;">
-                <div>
-                  <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">TOTAL AMOUNT (₹)</span>
-                  <div id="page-inv-total-display" style="font-size: 1.8rem; font-weight: 800; color: var(--primary-accent); font-family: monospace;">₹0.00</div>
-                </div>
-
-                <div style="display: flex; gap: 12px; align-items: center;">
-                  <button type="button" class="secondary-btn back-to-invoices-btn" onclick="switchView('invoices')" style="padding: 12px 20px; font-weight: 600; border-radius: 12px; cursor: pointer;">
-                    Cancel
-                  </button>
-                  <button type="submit" id="page-submit-create-invoice-btn" class="primary-action-btn" style="padding: 12px 26px; font-size: 0.95rem; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                      <polyline points="7 10 12 15 17 10"></polyline>
-                      <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    <span>Save & Download PDF</span>
-                  </button>
+              <!-- 3. Grand Total Card -->
+              <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: 16px; padding: 18px 24px; margin-bottom: 20px; display: flex; align-items: center; justify-content: flex-end;">
+                <div style="text-align: right;">
+                  <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL AMOUNT (₹)</span>
+                  <div id="page-inv-total-display" style="font-size: 2.2rem; font-weight: 800; color: var(--primary-accent); font-family: monospace; line-height: 1;">₹0.00</div>
                 </div>
               </div>
+
+              <!-- 4. Action Buttons Bar with Compact Payment Mode right beside Cancel -->
+              <div style="display: flex; gap: 12px; align-items: center; justify-content: flex-end; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <label for="page-inv-client-phone" style="font-size: 0.82rem; font-weight: 700; color: #15803d; white-space: nowrap;">WhatsApp No:</label>
+                  <div style="position: relative; display: flex; align-items: center;">
+                    <span style="position: absolute; left: 10px; font-size: 0.82rem; font-weight: 700; color: #166534;">+91</span>
+                    <input type="tel" id="page-inv-client-phone" placeholder="9876543210" style="padding-left: 36px; padding-right: 10px; width: 145px; height: 38px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; outline: none; color: #166534; box-sizing: border-box;" />
+                  </div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <label for="page-inv-payment-mode" style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); white-space: nowrap;">Payment Mode:</label>
+                  <select id="page-inv-payment-mode" style="padding: 6px 12px; height: 38px; border-radius: 10px; border: 1px solid var(--input-border); background: #ffffff; font-size: 0.82rem; font-weight: 600; color: var(--text-main); outline: none; cursor: pointer; min-width: 120px;">
+                    <option value="Cash" selected>💵 Cash</option>
+                    <option value="Online / UPI">📱 Online / UPI</option>
+                    <option value="Card / Net Banking">💳 Card / Net Banking</option>
+                  </select>
+                </div>
+
+                <button type="button" class="secondary-btn back-to-invoices-btn" onclick="switchView('invoices')" style="padding: 9px 20px; height: 38px; font-size: 0.88rem; font-weight: 600; border-radius: 10px; cursor: pointer;">
+                  Cancel
+                </button>
+                <button type="button" id="page-print-invoice-btn" onclick="printInvoiceDirect()" class="secondary-btn" style="padding: 9px 18px; height: 38px; font-size: 0.88rem; font-weight: 700; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--border-light); background: #ffffff;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                    <rect x="6" y="14" width="12" height="8"></rect>
+                  </svg>
+                  <span>Print Invoice</span>
+                </button>
+                <button type="button" id="page-submit-create-invoice-btn" onclick="openInvoicePreviewModal()" class="primary-action-btn" style="padding: 9px 24px; height: 38px; font-size: 0.88rem; font-weight: 700; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  <span>Preview Invoice</span>
+                </button>
+              </div>
             </form>
+          </div>
+        </div>
+
+        <!-- VIEW: DEDICATED INVOICE PREVIEW PAGE -->
+        <div id="view-preview_invoice" class="view-panel">
+          <div class="panel-card" style="padding: 24px 28px; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); width: 100%;">
+
+            <!-- Paper Statement Preview Container -->
+            <div id="page-invoice-preview-container" style="margin-bottom: 24px;">
+              <!-- Dynamic Statement Content -->
+            </div>
+
+            <!-- Action Buttons Bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 20px; border-top: 1px solid var(--border-light); flex-wrap: wrap; gap: 14px;">
+              <button type="button" class="secondary-btn" onclick="switchView('create_invoice')" style="padding: 11px 22px; font-weight: 700; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                <span>Edit Invoice Details</span>
+              </button>
+              
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <button type="button" onclick="window.print()" class="secondary-btn" style="padding: 11px 20px; font-weight: 700; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                    <rect x="6" y="14" width="12" height="8"></rect>
+                  </svg>
+                  <span>Print Receipt</span>
+                </button>
+                <button type="button" onclick="shareInvoiceWhatsApp()" class="secondary-btn" style="padding: 11px 20px; font-weight: 700; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid #25d366; background: #f0fdf4; color: #15803d;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#25d366">
+                    <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984 0 1.764.459 3.486 1.333 5.001L2 22l5.129-1.344c1.46.797 3.109 1.217 4.88 1.217h.005c5.505 0 9.988-4.478 9.989-9.985 0-2.668-1.038-5.176-2.925-7.063C17.19 2.938 14.682 2 12.012 2zM12.012 20.316h-.004c-1.494 0-2.959-.401-4.237-1.159l-.304-.18-3.04.797.81-2.964-.197-.314c-.833-1.325-1.273-2.862-1.273-4.444 0-4.63 3.768-8.397 8.4-8.397 2.246 0 4.358.875 5.945 2.463 1.587 1.588 2.461 3.7 2.461 5.946 0 4.63-3.768 8.397-8.397 8.397zm4.604-6.284c-.253-.127-1.494-.737-1.726-.821-.232-.085-.401-.127-.57.127-.169.253-.655.821-.803.99-.148.169-.296.19-.549.063-.253-.127-1.07-.394-2.037-1.256-.753-.671-1.261-1.501-1.409-1.754-.148-.253-.016-.39.111-.516.114-.113.253-.296.38-.444.127-.148.169-.253.253-.422.085-.169.042-.317-.021-.444-.063-.127-.57-1.373-.781-1.88-.206-.493-.415-.426-.57-.434l-.486-.008c-.169 0-.444.063-.676.317-.232.253-.887.866-.887 2.112s.908 2.449 1.035 2.618c.127.169 1.787 2.729 4.33 3.827.605.261 1.077.417 1.445.534.608.193 1.162.166 1.6.101.489-.072 1.494-.611 1.705-1.201.211-.591.211-1.096.148-1.201-.063-.105-.232-.169-.485-.296z"/>
+                  </svg>
+                  <span>Share WhatsApp</span>
+                </button>
+                <button type="button" id="page-confirm-download-pdf-btn" onclick="downloadInvoicePDFDirectFromPage()" class="primary-action-btn" style="padding: 11px 28px; font-size: 0.95rem; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center; background: linear-gradient(135deg, #9333ea 0%, #a855f7 100%); color: #ffffff; border: none; font-weight: 700; gap: 8px; box-shadow: 0 6px 20px rgba(147, 51, 234, 0.25);">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  <span>Download Invoice PDF</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- VIEW 9: ADD VENDOR BILL DEDICATED PAGE -->
         <div id="view-add_bill" class="view-panel">
           <div class="panel-card" style="padding: 28px; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); width: 100%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light);">
-              <div>
-                <h2 style="font-size: 1.45rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Add Vendor Bill / Subscription</h2>
-                <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0;">Record a new recurring subscription or vendor payable invoice</p>
-              </div>
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
               <button type="button" class="secondary-btn back-to-bills-btn" onclick="switchView('bills')" style="padding: 8px 18px; font-weight: 600; cursor: pointer; border-radius: 12px;">
                 &larr; Back to Bills List
               </button>
@@ -789,7 +1007,7 @@
                   Cancel
                 </button>
                 <button type="submit" id="page-submit-create-bill-btn" class="primary-action-btn" style="padding: 12px 28px; font-size: 0.95rem; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center;">
-                  <span>Save Vendor Bill</span>
+                  <span>Save Bill</span>
                 </button>
               </div>
             </form>
@@ -799,17 +1017,14 @@
         <!-- VIEW 10: ADD NEW PRODUCT DEDICATED PAGE -->
         <div id="view-add_product" class="view-panel">
           <div class="panel-card" style="padding: 28px; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); width: 100%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light);">
-              <div>
-                <h2 style="font-size: 1.45rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Add New Product</h2>
-                <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0;">Add a new SKU item to your billing product catalog</p>
-              </div>
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
               <button type="button" class="secondary-btn back-to-products-btn" onclick="switchView('products')" style="padding: 8px 18px; font-weight: 600; cursor: pointer; border-radius: 12px;">
                 &larr; Back to Products Catalog
               </button>
             </div>
 
             <form id="create-product-page-form" class="modal-form">
+              <input type="hidden" id="page-prd-edit-id" value="" />
               <!-- 1. Product Name -->
               <div class="input-group">
                 <label for="page-prd-name" style="font-weight: 700;">Product Name *</label>
@@ -869,17 +1084,14 @@
         <!-- VIEW 11: ADD APPAREL CATEGORY DEDICATED PAGE -->
         <div id="view-add_category" class="view-panel">
           <div class="panel-card" style="padding: 28px; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); width: 100%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light);">
-              <div>
-                <h2 style="font-size: 1.45rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Add Apparel Category</h2>
-                <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0;">Create a new clothing classification group, sub-categories, and seasonal options</p>
-              </div>
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
               <button type="button" class="secondary-btn back-to-categories-btn" onclick="switchView('categories')" style="padding: 8px 18px; font-weight: 600; cursor: pointer; border-radius: 12px;">
-                &larr; Back to Categories Directory
+                &larr; Back to Category Management
               </button>
             </div>
 
             <form id="create-category-page-form" class="modal-form">
+              <input type="hidden" id="page-cat-edit-id" value="" />
               <!-- 1. Category Name -->
               <div class="input-group">
                 <label for="page-cat-name" style="font-weight: 700;">Category Name *</label>
@@ -892,41 +1104,13 @@
                 <input type="text" id="page-cat-subcategories" placeholder="e.g. Kurta Sets, Sarees, Lehengas, Sherwanis, Anarkalis" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; outline: none; color: var(--text-main);" required />
               </div>
 
-              <!-- 3. Target Department & Season Grid -->
-              <div class="form-grid-2">
-                <div class="input-group">
-                  <label for="page-cat-department" style="font-weight: 700;">Target Department / Gender</label>
-                  <select id="page-cat-department" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
-                    <option value="Unisex / All">Unisex / All</option>
-                    <option value="Men's">Men's</option>
-                    <option value="Women's">Women's</option>
-                    <option value="Kids / Boys & Girls">Kids / Boys & Girls</option>
-                  </select>
-                </div>
-                <div class="input-group">
-                  <label for="page-cat-season" style="font-weight: 700;">Season / Collection Tag</label>
-                  <select id="page-cat-season" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
-                    <option value="All Season / Everyday">All Season / Everyday</option>
-                    <option value="Festive / Wedding">Festive / Wedding</option>
-                    <option value="Summer Collection">Summer Collection</option>
-                    <option value="Winter / Autumn">Winter / Autumn</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- 4. Products Count & Status Grid -->
-              <div class="form-grid-2">
-                <div class="input-group">
-                  <label for="page-cat-count" style="font-weight: 700;">Associated Products Count *</label>
-                  <input type="number" id="page-cat-count" placeholder="10" value="10" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; outline: none; color: var(--text-main);" required />
-                </div>
-                <div class="input-group">
-                  <label for="page-cat-status" style="font-weight: 700;">Status</label>
-                  <select id="page-cat-status" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
+              <!-- 3. Status -->
+              <div class="input-group">
+                <label for="page-cat-status" style="font-weight: 700;">Status</label>
+                <select id="page-cat-status" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
               </div>
 
               <!-- 5. Action Footer -->
@@ -1098,41 +1282,13 @@
           <input type="text" id="cat-subcategories" placeholder="e.g. Kurta Sets, Sarees, Lehengas, Sherwanis, Anarkalis" required />
         </div>
 
-        <!-- Target Gender & Season Options Grid -->
-        <div class="form-grid-2">
-          <div class="input-group">
-            <label for="cat-gender">Target Department / Gender</label>
-            <select id="cat-gender" style="width:100%; padding:12px; background:var(--input-bg); border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main);">
-              <option value="Men">Men</option>
-              <option value="Women">Women</option>
-              <option value="Kids / Toddlers">Kids / Toddlers</option>
-              <option value="Unisex" selected>Unisex / All</option>
-            </select>
-          </div>
-          <div class="input-group">
-            <label for="cat-season">Season / Collection Tag</label>
-            <select id="cat-season" style="width:100%; padding:12px; background:var(--input-bg); border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main);">
-              <option value="All Season" selected>All Season / Everyday</option>
-              <option value="Summer Collection">Summer Collection</option>
-              <option value="Winter Special">Winter Special</option>
-              <option value="Festive & Wedding">Festive & Wedding</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Associated Items & Status -->
-        <div class="form-grid-2">
-          <div class="input-group">
-            <label for="cat-item-counts">Associated Products Count *</label>
-            <input type="number" id="cat-item-counts" placeholder="e.g. 10" min="0" value="10" required />
-          </div>
-          <div class="input-group">
-            <label for="cat-status">Status</label>
-            <select id="cat-status" style="width:100%; padding:12px; background:var(--input-bg); border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main);">
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-          </div>
+        <!-- Status -->
+        <div class="input-group">
+          <label for="cat-status">Status</label>
+          <select id="cat-status" style="width:100%; padding:12px; background:var(--input-bg); border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main);">
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
         </div>
 
         <div class="modal-footer-actions" style="margin-top: 10px;">
@@ -1149,7 +1305,7 @@
   <div id="create-bill-modal" class="modal-overlay hidden">
     <div class="modal-card">
       <button id="close-bill-modal-btn" class="modal-close-btn">&times;</button>
-      <h2 class="modal-title">Add Vendor Bill / Subscription</h2>
+      <h2 class="modal-title">Add Bill / Subscription</h2>
       <p class="modal-subtitle">Record a new recurring subscription or vendor payable invoice.</p>
 
       <form id="create-bill-form" class="modal-form">
@@ -1185,7 +1341,7 @@
         <div class="modal-footer-actions">
           <button type="button" id="cancel-bill-modal-btn" class="secondary-btn">Cancel</button>
           <button type="submit" class="primary-action-btn">
-            <span>Save Vendor Bill</span>
+            <span>Save Bill</span>
           </button>
         </div>
       </form>
@@ -1261,6 +1417,144 @@
     </div>
   </div>
 
+  <!-- STOCK ADJUSTMENT MODAL -->
+  <div id="stock-adjust-modal" class="modal-overlay hidden" style="z-index: 999998 !important;">
+    <div class="modal-card sm" style="max-width: 480px; width: 90%; padding: 24px; background: #ffffff; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.18);">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 1px solid var(--border-light); margin-bottom: 18px;">
+        <div>
+          <span style="font-size: 0.72rem; font-weight: 800; color: var(--primary-accent); text-transform: uppercase; letter-spacing: 0.8px;">Inventory Control</span>
+          <h2 id="stock-modal-product-title" style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-top: 2px;">Adjust Product Stock</h2>
+        </div>
+        <button type="button" onclick="closeStockAdjustModal()" class="modal-close-btn" style="background: var(--input-bg); border: none; font-size: 1.2rem; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;">&times;</button>
+      </div>
+
+      <form id="stock-adjust-form" onsubmit="submitStockAdjustment(event)">
+        <input type="hidden" id="stock-adjust-product-id">
+
+        <div style="background: var(--bg-surface); padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid var(--border-light);">
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Selected Item SKU</div>
+          <div id="stock-modal-sku-code" style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">-</div>
+          <div id="stock-modal-current-count" style="font-size: 0.85rem; color: var(--primary-accent); font-weight: 600; margin-top: 4px;">Current Stock: 0 units</div>
+        </div>
+
+        <div class="form-group mb-3">
+          <label style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; color: var(--text-main);">Adjustment Action</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+            <button type="button" id="stock-type-add" class="stock-type-btn active" onclick="selectStockType('add')" style="padding: 8px; border-radius: 8px; border: 1px solid var(--primary-accent); background: var(--primary-light, #eff6ff); color: var(--primary-accent); font-weight: 600; font-size: 0.8rem; cursor: pointer; text-align: center;">
+              ➕ Restock (+)
+            </button>
+            <button type="button" id="stock-type-subtract" class="stock-type-btn" onclick="selectStockType('subtract')" style="padding: 8px; border-radius: 8px; border: 1px solid var(--border-light); background: #ffffff; color: var(--text-main); font-weight: 600; font-size: 0.8rem; cursor: pointer; text-align: center;">
+              ➖ Dispatch (-)
+            </button>
+            <button type="button" id="stock-type-set" class="stock-type-btn" onclick="selectStockType('set')" style="padding: 8px; border-radius: 8px; border: 1px solid var(--border-light); background: #ffffff; color: var(--text-main); font-weight: 600; font-size: 0.8rem; cursor: pointer; text-align: center;">
+              ⚙️ Set Count
+            </button>
+          </div>
+          <input type="hidden" id="stock-adjust-action-type" value="add">
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="stock-adjust-quantity" style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; color: var(--text-main);">Quantity Amount</label>
+          <input type="number" id="stock-adjust-quantity" class="form-input" min="1" value="10" required style="width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border-light); font-size: 1rem; font-weight: 600;">
+        </div>
+
+        <div class="form-group mb-4">
+          <label for="stock-adjust-reason" style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; color: var(--text-main);">Reason / Reference Note</label>
+          <input type="text" id="stock-adjust-reason" class="form-input" placeholder="e.g., Supplier shipment, Manual audit, Sales dispatch" style="width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border-light); font-size: 0.88rem;">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-light); padding-top: 14px;">
+          <button type="button" onclick="closeStockAdjustModal()" class="secondary-btn" style="padding: 10px 18px; border-radius: 10px; font-weight: 600;">Cancel</button>
+          <button type="submit" class="primary-action-btn" style="padding: 10px 22px; border-radius: 10px; font-weight: 700; background: var(--gradient-primary); color: #ffffff; border: none; cursor: pointer;">Save Adjustment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- INVOICE PREVIEW MODAL -->
+  <div id="invoice-preview-modal" class="modal-overlay hidden" style="z-index: 999999 !important;">
+    <div class="modal-card lg" style="max-width: 840px; width: 92%; padding: 28px; background: #ffffff; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.18);">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 2px solid var(--border-light); margin-bottom: 20px;">
+        <div>
+          <span style="font-size: 0.75rem; font-weight: 800; color: var(--primary-accent); text-transform: uppercase; letter-spacing: 1px;">Live Statement Preview</span>
+          <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); margin-top: 2px;">Invoice Preview Statement</h2>
+        </div>
+        <button type="button" id="close-invoice-preview-btn" class="modal-close-btn" style="background: var(--input-bg); border: none; font-size: 1.2rem; width: 36px; height: 36px; border-radius: 50%; cursor: pointer;">&times;</button>
+      </div>
+
+      <div id="invoice-preview-content" style="background: #fafafa; border: 1px solid var(--border-light); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+        <!-- Dynamic Invoice Statement Content -->
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-light); padding-top: 16px;">
+        <button type="button" id="edit-invoice-preview-btn" class="secondary-btn" style="padding: 11px 22px; font-weight: 600; border-radius: 12px; cursor: pointer;">
+          ✏️ Back to Edit
+        </button>
+        <button type="button" id="confirm-download-pdf-btn" class="primary-action-btn" style="padding: 12px 28px; font-size: 0.95rem; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center; background: var(--gradient-primary); color: #ffffff; border: none; font-weight: 700; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Download Invoice</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let lastSidebarToggleTime = 0;
+
+    function openSidebarMenu() {
+      document.body.classList.add('sidebar-open');
+      document.body.classList.remove('sidebar-closed');
+      const saasContainer = document.getElementById('saas-dashboard');
+      const sidebarEl = document.querySelector('.sidebar');
+      if (sidebarEl) {
+        sidebarEl.classList.remove('is-hidden', 'hidden-sidebar');
+        sidebarEl.style.display = 'flex';
+      }
+      if (saasContainer) {
+        saasContainer.classList.remove('sidebar-hidden');
+        saasContainer.classList.add('sidebar-open');
+      }
+    }
+
+    function closeSidebarMenu() {
+      document.body.classList.remove('sidebar-open');
+      document.body.classList.add('sidebar-closed');
+      const saasContainer = document.getElementById('saas-dashboard');
+      const sidebarEl = document.querySelector('.sidebar');
+      if (sidebarEl) {
+        sidebarEl.classList.add('is-hidden', 'hidden-sidebar');
+        sidebarEl.style.display = 'none';
+      }
+      if (saasContainer) {
+        saasContainer.classList.add('sidebar-hidden');
+        saasContainer.classList.remove('sidebar-open');
+      }
+    }
+
+    function toggleSidebarMenu(e) {
+      if (e) {
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (typeof e.stopPropagation === 'function') e.stopPropagation();
+      }
+      const now = Date.now();
+      if (now - lastSidebarToggleTime < 250) return;
+      lastSidebarToggleTime = now;
+
+      if (document.body.classList.contains('sidebar-open')) {
+        closeSidebarMenu();
+      } else {
+        openSidebarMenu();
+      }
+    }
+
+    window.openSidebarMenu = openSidebarMenu;
+    window.closeSidebarMenu = closeSidebarMenu;
+    window.toggleSidebarMenu = toggleSidebarMenu;
+  </script>
   <script type="module" src="/src/js/app.js"></script>
 </body>
 </html>

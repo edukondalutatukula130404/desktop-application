@@ -13,12 +13,12 @@ const businessController = {
 
   createInvoice: async (req, res) => {
     try {
-      const { clientName, clientEmail, amount, dueDate, category } = req.body;
+      const { clientName, clientEmail, amount, dueDate, category, paymentMode } = req.body;
       if (!clientName || !amount) {
         return res.status(400).json({ success: false, message: 'Client name and amount are required' });
       }
 
-      const invoice = await dataStore.createInvoice({ clientName, clientEmail, amount, dueDate, category });
+      const invoice = await dataStore.createInvoice({ clientName, clientEmail, amount, dueDate, category, paymentMode });
       res.status(201).json({ success: true, invoice, message: 'Invoice created successfully' });
     } catch (error) {
       console.error('createInvoice error:', error);
@@ -119,6 +119,17 @@ const businessController = {
     }
   },
 
+  createClient: async (req, res) => {
+    try {
+      const client = await dataStore.createClient(req.body);
+      res.status(201).json({ success: true, client, message: 'Customer created successfully' });
+    } catch (error) {
+      console.error('createClient error:', error);
+      const status = error.statusCode || 500;
+      res.status(status).json({ success: false, message: error.message || 'Failed to create customer' });
+    }
+  },
+
   toggleClientStatus: async (req, res) => {
     try {
       const { id } = req.params;
@@ -157,6 +168,47 @@ const businessController = {
     }
   },
 
+  deleteProduct: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = await dataStore.deleteProduct(id);
+      res.json({ success: true, message: 'Product deleted successfully', ...result });
+    } catch (error) {
+      console.error('deleteProduct error:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete product' });
+    }
+  },
+
+  updateProduct: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name, category, price, count, stock } = req.body;
+      const updated = await dataStore.updateProduct(id, { name, category, price, count, stock });
+      if (!updated) {
+        return res.status(404).json({ success: false, message: 'Product not found' });
+      }
+      res.json({ success: true, product: updated, message: 'Product updated successfully' });
+    } catch (error) {
+      console.error('updateProduct error:', error);
+      res.status(500).json({ success: false, message: 'Failed to update product' });
+    }
+  },
+
+  updateProductStock: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { count, stock } = req.body;
+      const updated = await dataStore.updateProductStock(id, { count, stock });
+      if (!updated) {
+        return res.status(404).json({ success: false, message: 'Product not found' });
+      }
+      res.json({ success: true, product: updated, message: 'Product stock updated successfully' });
+    } catch (error) {
+      console.error('updateProductStock error:', error);
+      res.status(500).json({ success: false, message: 'Failed to update product stock' });
+    }
+  },
+
   getCategories: async (req, res) => {
     try {
       const categories = await dataStore.getCategories();
@@ -178,6 +230,29 @@ const businessController = {
     } catch (error) {
       console.error('createCategory error:', error);
       res.status(500).json({ success: false, message: 'Failed to create category' });
+    }
+  },
+
+  updateCategory: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name, subCategories, genderType, seasonTag, status } = req.body;
+      const updated = await dataStore.updateCategory(id, { name, subCategories, genderType, seasonTag, status });
+      res.json({ success: true, category: updated, message: 'Category updated successfully' });
+    } catch (error) {
+      console.error('updateCategory error:', error);
+      res.status(500).json({ success: false, message: 'Failed to update category' });
+    }
+  },
+
+  deleteCategory: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = await dataStore.deleteCategory(id);
+      res.json({ success: true, message: 'Category deleted successfully', ...result });
+    } catch (error) {
+      console.error('deleteCategory error:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete category' });
     }
   },
 

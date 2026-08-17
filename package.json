@@ -1,10 +1,71 @@
 {
-  "name": "login-page-workspace",
+  "name": "invoicepro-desktop",
   "version": "1.0.0",
+  "description": "InvoicePro Desktop Application with persistent local MongoDB storage",
+  "main": "electron/main.cjs",
   "private": true,
   "scripts": {
-    "dev": "npx concurrently \"npm --prefix backend dev\" \"npm --prefix frontend dev\"",
-    "backend": "npm --prefix backend dev",
-    "frontend": "npm --prefix frontend dev"
+    "dev": "node scripts/electron-dev.cjs",
+    "backend": "npm --prefix backend run dev",
+    "frontend": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "electron:dev": "node scripts/electron-dev.cjs",
+    "electron:start": "electron .",
+    "electron:build": "npm run dist:installer",
+    "dist:win": "npm run frontend:build && npx electron-packager . InvoiceProDesktop --platform=win32 --arch=x64 --out=dist-desktop --overwrite --ignore=\"dist-desktop\" --ignore=\"release\"",
+    "dist:installer": "npm run frontend:build && npx electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.invoicepro.desktop",
+    "productName": "InvoicePro Desktop",
+    "icon": "electron/icon.png",
+    "forceCodeSigning": false,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "backend/**/*",
+      "frontend/dist/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/mongodb-memory-server/**",
+      "**/node_modules/mongodb-memory-server-core/**"
+    ],
+    "win": {
+      "icon": "electron/icon.png",
+      "target": [
+        "nsis"
+      ],
+      "forceCodeSigning": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "InvoicePro Desktop",
+      "artifactName": "InvoicePro-Setup-1.0.0.exe"
+    }
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.3.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb-memory-server": "^10.0.0",
+    "mongoose": "^8.0.0"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3",
+    "wait-on": "^7.2.0"
   }
 }

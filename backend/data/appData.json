@@ -1,70 +1,76 @@
 {
   "invoices": [
     {
-      "id": "INV-2026-001",
-      "clientId": "CLT-01",
+      "id": "INV-20260801-001",
+      "clientId": "CUST-2026-08-01-001",
       "clientName": "Royal Heritage Boutique",
       "clientEmail": "orders@royalheritage.com",
       "issueDate": "2026-08-01",
       "dueDate": "2026-08-15",
       "amount": 12490,
       "status": "Paid",
-      "category": "Ethnic & Festive Wear"
+      "category": "Ethnic & Festive Wear",
+      "subCategory": "Silk Sarees"
     },
     {
-      "id": "INV-2026-002",
-      "clientId": "CLT-02",
+      "id": "INV-20260805-002",
+      "clientId": "CUST-2026-08-05-002",
       "clientName": "Starlight Apparel Store",
       "clientEmail": "accounts@starlightapparel.in",
       "issueDate": "2026-08-05",
       "dueDate": "2026-08-20",
       "amount": 8950,
       "status": "Paid",
-      "category": "Men's Apparel"
+      "category": "Men's Apparel",
+      "subCategory": "Shirts & T-Shirts"
     },
     {
-      "id": "INV-2026-003",
-      "clientId": "CLT-03",
+      "id": "INV-20260808-003",
+      "clientId": "CUST-2026-08-08-003",
       "clientName": "Velvet Trendz Fashion",
       "clientEmail": "finance@velvettrendz.com",
       "issueDate": "2026-08-08",
       "dueDate": "2026-08-22",
       "amount": 15800,
       "status": "Pending",
-      "category": "Women's Fashion"
+      "category": "Women's Fashion",
+      "subCategory": "Chiffons & Dresses"
     },
     {
-      "id": "INV-2026-004",
-      "clientId": "CLT-04",
+      "id": "INV-20260810-004",
+      "clientId": "CUST-2026-08-10-004",
       "clientName": "Urban Fit Clothing Hub",
       "clientEmail": "billing@urbanfit.co",
       "issueDate": "2026-08-10",
       "dueDate": "2026-08-24",
       "amount": 6750,
       "status": "Pending",
-      "category": "Casuals & Denim"
+      "category": "Casuals & Denim",
+      "subCategory": "Chino Trousers"
     },
     {
-      "id": "INV-2026-005",
-      "clientId": "CLT-05",
+      "id": "INV-20260725-005",
+      "clientId": "CUST-2026-07-25-005",
       "clientName": "Little Wonders Kidswear",
       "clientEmail": "contact@littlewonders.in",
       "issueDate": "2026-07-25",
       "dueDate": "2026-08-08",
       "amount": 4200,
       "status": "Overdue",
-      "category": "Kidswear & Toddlers"
+      "category": "Kidswear & Toddlers",
+      "subCategory": "Infant Onesies"
     },
     {
-      "id": "INV-2026-006",
-      "clientId": "CLT-06",
+      "id": "INV-20260811-006",
+      "clientId": "CUST-2026-08-11-006",
       "clientName": "Metro Shoes & Accessories",
       "clientEmail": "accounts@metrofashion.in",
       "issueDate": "2026-08-11",
       "dueDate": "2026-08-25",
       "amount": 11250,
       "status": "Pending",
-      "category": "Footwear & Accessories"
+      "category": "Footwear & Accessories",
+      "subCategory": "Sneakers & Boots"
     }
   ],
   "bills": [
@@ -125,35 +131,35 @@
   ],
   "clients": [
     {
-      "id": "CLT-01",
+      "id": "CUST-20260801001",
       "name": "Acme Corporation",
       "contact": "billing@acme.corp",
       "status": "Active",
       "totalBilled": 4400
     },
     {
-      "id": "CLT-02",
+      "id": "CUST-20260805002",
       "name": "Starlight Media",
       "contact": "accounts@starlight.io",
       "status": "Active",
       "totalBilled": 3200
     },
     {
-      "id": "CLT-03",
+      "id": "CUST-20260808003",
       "name": "Apex Logistics",
       "contact": "finance@apexlogistics.com",
       "status": "Notice",
       "totalBilled": 890
     },
     {
-      "id": "CLT-04",
+      "id": "CUST-20260810004",
       "name": "Nexus Global",
       "contact": "contact@nexusglobal.com",
       "status": "Active",
       "totalBilled": 4750
     },
     {
-      "id": "CLT-05",
+      "id": "CUST-20260725005",
       "name": "Cyberdyne Systems",
       "contact": "billing@cyberdyne.net",
       "status": "Active",
@@ -187,9 +193,9 @@
     },
     {
       "id": "SKU-PRD-04",
-      "name": "Leather Formal Oxford Shoes",
-      "category": "Footwear & Shoes",
-      "price": 4250,
+      "name": "Casual Cotton Chino Trousers",
+      "category": "Men's Apparel",
+      "price": 1999,
       "stock": "In Stock",
       "count": 30
     },
@@ -211,9 +217,9 @@
     },
     {
       "id": "SKU-PRD-07",
-      "name": "Designer Leather Belt & Wallet Set",
-      "category": "Fashion Accessories",
-      "price": 1299,
+      "name": "Merino Wool Knitted Cardigan",
+      "category": "Winterwear & Outerwear",
+      "price": 2299,
       "stock": "Low Stock",
       "count": 4
     }

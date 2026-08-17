@@ -7,64 +7,70 @@ const Category = require('../models/Category');
 const initialData = {
   invoices: [
     {
-      id: 'INV-2026-001',
+      id: 'INV-20260801-001',
       clientName: 'Royal Heritage Boutique',
       clientEmail: 'orders@royalheritage.com',
       issueDate: '2026-08-01',
       dueDate: '2026-08-15',
       amount: 12490.00,
       status: 'Paid',
-      category: 'Ethnic & Festive Wear'
+      category: 'Ethnic & Festive Wear',
+      subCategory: 'Silk Sarees'
     },
     {
-      id: 'INV-2026-002',
+      id: 'INV-20260805-002',
       clientName: 'Starlight Apparel Store',
       clientEmail: 'accounts@starlightapparel.in',
       issueDate: '2026-08-05',
       dueDate: '2026-08-20',
       amount: 8950.00,
       status: 'Paid',
-      category: "Men's Apparel"
+      category: "Men's Apparel",
+      subCategory: 'Shirts & T-Shirts'
     },
     {
-      id: 'INV-2026-003',
+      id: 'INV-20260808-003',
       clientName: 'Velvet Trendz Fashion',
       clientEmail: 'finance@velvettrendz.com',
       issueDate: '2026-08-08',
       dueDate: '2026-08-22',
       amount: 15800.00,
       status: 'Pending',
-      category: "Women's Fashion"
+      category: "Women's Fashion",
+      subCategory: 'Chiffons & Dresses'
     },
     {
-      id: 'INV-2026-004',
+      id: 'INV-20260810-004',
       clientName: 'Urban Fit Clothing Hub',
       clientEmail: 'billing@urbanfit.co',
       issueDate: '2026-08-10',
       dueDate: '2026-08-24',
       amount: 6750.00,
       status: 'Pending',
-      category: 'Casuals & Denim'
+      category: 'Casuals & Denim',
+      subCategory: 'Chino Trousers'
     },
     {
-      id: 'INV-2026-005',
+      id: 'INV-20260725-005',
       clientName: 'Little Wonders Kidswear',
       clientEmail: 'contact@littlewonders.in',
       issueDate: '2026-07-25',
       dueDate: '2026-08-08',
       amount: 4200.00,
       status: 'Overdue',
-      category: 'Kidswear & Toddlers'
+      category: 'Kidswear & Toddlers',
+      subCategory: 'Infant Onesies'
     },
     {
-      id: 'INV-2026-006',
+      id: 'INV-20260811-006',
       clientName: 'Metro Shoes & Accessories',
       clientEmail: 'accounts@metrofashion.in',
       issueDate: '2026-08-11',
       dueDate: '2026-08-25',
       amount: 11250.00,
       status: 'Pending',
-      category: 'Footwear & Accessories'
+      category: 'Footwear & Accessories',
+      subCategory: 'Sneakers & Boots'
     }
   ],
   bills: [
@@ -124,23 +130,23 @@ const initialData = {
     }
   ],
   clients: [
-    { id: 'CLT-01', name: 'Royal Heritage Boutique', contact: 'orders@royalheritage.com', status: 'Active', totalBilled: 12490.00 },
-    { id: 'CLT-02', name: 'Starlight Apparel Store', contact: 'accounts@starlightapparel.in', status: 'Active', totalBilled: 8950.00 },
-    { id: 'CLT-03', name: 'Velvet Trendz Fashion', contact: 'finance@velvettrendz.com', status: 'Active', totalBilled: 15800.00 },
-    { id: 'CLT-04', name: 'Urban Fit Clothing Hub', contact: 'billing@urbanfit.co', status: 'Active', totalBilled: 6750.00 },
-    { id: 'CLT-05', name: 'Little Wonders Kidswear', contact: 'contact@littlewonders.in', status: 'Notice', totalBilled: 4200.00 },
-    { id: 'CLT-06', name: 'Metro Shoes & Accessories', contact: 'accounts@metrofashion.in', status: 'Active', totalBilled: 11250.00 }
+    { id: 'CUST-20260801001', name: 'Royal Heritage Boutique', contact: 'orders@royalheritage.com', status: 'Active', totalBilled: 12490.00 },
+    { id: 'CUST-20260805002', name: 'Starlight Apparel Store', contact: 'accounts@starlightapparel.in', status: 'Active', totalBilled: 8950.00 },
+    { id: 'CUST-20260808003', name: 'Velvet Trendz Fashion', contact: 'finance@velvettrendz.com', status: 'Active', totalBilled: 15800.00 },
+    { id: 'CUST-20260810004', name: 'Urban Fit Clothing Hub', contact: 'billing@urbanfit.co', status: 'Active', totalBilled: 6750.00 },
+    { id: 'CUST-20260725005', name: 'Little Wonders Kidswear', contact: 'contact@littlewonders.in', status: 'Notice', totalBilled: 4200.00 },
+    { id: 'CUST-20260811006', name: 'Metro Shoes & Accessories', contact: 'accounts@metrofashion.in', status: 'Active', totalBilled: 11250.00 }
   ],
   products: [
     { id: 'SKU-PRD-01', name: 'Classic Cotton Slim-Fit Shirt', category: "Men's Apparel", price: 1299.00, stock: 'In Stock', count: 85 },
     { id: 'SKU-PRD-02', name: 'Floral Print Summer Chiffon Dress', category: "Women's Fashion", price: 2499.00, stock: 'In Stock', count: 42 },
     { id: 'SKU-PRD-03', name: 'Denim Jacket with Fleece Lining', category: 'Winterwear & Outerwear', price: 2799.00, stock: 'Low Stock', count: 6 },
-    { id: 'SKU-PRD-04', name: 'Leather Formal Oxford Shoes', category: 'Footwear & Shoes', price: 4250.00, stock: 'In Stock', count: 30 },
+    { id: 'SKU-PRD-04', name: 'Casual Cotton Chino Trousers', category: "Men's Apparel", price: 1999.00, stock: 'In Stock', count: 30 },
     { id: 'SKU-PRD-05', name: 'Kids Organic Cotton T-Shirt Set', category: 'Kidswear & Toddlers', price: 999.00, stock: 'In Stock', count: 65 },
     { id: 'SKU-PRD-06', name: 'Handwoven Banarasi Silk Saree', category: "Women's Fashion", price: 6800.00, stock: 'In Stock', count: 12 },
-    { id: 'SKU-PRD-07', name: 'Designer Leather Belt & Wallet Set', category: 'Fashion Accessories', price: 1299.00, stock: 'Low Stock', count: 4 },
+    { id: 'SKU-PRD-07', name: 'Merino Wool Knitted Cardigan', category: 'Winterwear & Outerwear', price: 2299.00, stock: 'Low Stock', count: 4 },
     { id: 'SKU-PRD-08', name: 'Pure Linen Button-Down Formal Shirt', category: "Men's Apparel", price: 1899.00, stock: 'In Stock', count: 50 },
-    { id: 'SKU-PRD-09', name: 'Casual Canvas & Leather Sneakers', category: 'Footwear & Shoes', price: 2199.00, stock: 'In Stock', count: 28 },
+    { id: 'SKU-PRD-09', name: 'Slim-Fit Stretch Denim Jeans', category: "Men's Apparel", price: 2199.00, stock: 'In Stock', count: 28 },
     { id: 'SKU-PRD-10', name: 'Embroidered Anarkali Kurti Set', category: "Women's Fashion", price: 3499.00, stock: 'In Stock', count: 18 },
     { id: 'SKU-PRD-11', name: 'Wool Blend Tailored Winter Coat', category: 'Winterwear & Outerwear', price: 4999.00, stock: 'Low Stock', count: 8 },
     { id: 'SKU-PRD-12', name: 'Toddler Denim Overalls & Polo Combo', category: 'Kidswear & Toddlers', price: 1499.00, stock: 'In Stock', count: 35 }
@@ -276,17 +282,56 @@ const dataStore = {
 
   createInvoice: async (invoiceData) => {
     const count = await Invoice.countDocuments();
+    const d = invoiceData.issueDate ? new Date(invoiceData.issueDate) : (invoiceData.dueDate ? new Date(invoiceData.dueDate) : new Date());
+    const year = d.getFullYear();
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const dateMerged = `${year}${month}${day}`;
+    const seq = String(count + 1).padStart(3, '0');
+    const customId = invoiceData.id || `INV-${dateMerged}-${seq}`;
+    const clientName = (invoiceData.clientName || 'Walk-in Retail Customer').trim();
+    const amount = parseFloat(invoiceData.amount) || 0;
+    const dateStr = `${year}-${month}-${day}`;
+
     const newInvoice = new Invoice({
-      id: 'INV-2026-00' + (count + 1),
-      clientName: invoiceData.clientName,
+      id: customId,
+      clientId: invoiceData.clientId || `CUST-${dateMerged}001`,
+      clientName: clientName,
       clientEmail: invoiceData.clientEmail || 'billing@client.com',
-      issueDate: new Date().toISOString().split('T')[0],
-      dueDate: invoiceData.dueDate || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
-      amount: parseFloat(invoiceData.amount) || 0,
-      status: invoiceData.status || 'Pending',
-      category: invoiceData.category || 'General Service'
+      issueDate: dateStr,
+      dueDate: invoiceData.dueDate || dateStr,
+      amount: amount,
+      status: invoiceData.status || 'Paid',
+      category: invoiceData.category || 'General Service',
+      paymentMode: invoiceData.paymentMode || 'Cash'
     });
-    return await newInvoice.save();
+
+    const savedInvoice = await newInvoice.save();
+
+    // Auto-create or update Client record in MongoDB
+    try {
+      let client = await Client.findOne({ name: { $regex: new RegExp(`^${clientName}$`, 'i') } }).exec();
+      if (!client) {
+        const clientCount = await Client.countDocuments();
+        const custSeq = String(clientCount + 1).padStart(2, '0');
+        client = new Client({
+          id: `CUST-${dateMerged}${String(custSeq).padStart(3, '0')}`,
+          name: clientName,
+          email: invoiceData.clientEmail || 'orders@client.com',
+          phone: '+91 98765 43210',
+          totalBilled: amount,
+          status: 'Active'
+        });
+        await client.save();
+      } else {
+        client.totalBilled = (Number(client.totalBilled) || 0) + amount;
+        await client.save();
+      }
+    } catch (err) {
+      console.warn('Auto-client creation error:', err);
+    }
+
+    return savedInvoice;
   },
 
   updateInvoiceStatus: async (id, status) => {
@@ -360,16 +405,53 @@ const dataStore = {
   getClients: async () => {
     await seedInitialDataIfNeeded();
     let clients = await Client.find().lean().exec();
-    if (!clients.length || clients.some(c => c.name && (c.name.includes('Acme') || c.name.includes('Apex') || c.name.includes('Cyberdyne')))) {
+    if (!clients.length) {
       try {
-        await Client.deleteMany({});
         await Client.insertMany(initialData.clients);
         clients = await Client.find().lean().exec();
       } catch (err) {
         clients = initialData.clients;
       }
     }
-    return clients;
+    return (clients || []).map((c, idx) => ({
+      ...c,
+      id: c.id ? c.id.replace(/^CLT-/i, 'CUST-') : `CUST-0${idx + 1}`
+    }));
+  },
+
+  createClient: async (clientData) => {
+    let customId = clientData.id ? clientData.id.trim() : '';
+
+    if (customId) {
+      const existing = await Client.findOne({ id: { $regex: new RegExp(`^${customId}$`, 'i') } }).exec();
+      if (existing) {
+        const err = new Error(`Customer ID ${customId} already exists.`);
+        err.statusCode = 400;
+        throw err;
+      }
+    } else {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const allClients = await Client.find().lean().exec();
+      let maxNum = 0;
+      (allClients || []).forEach(c => {
+        const match = c.id && c.id.match(/^CUST-.*-(\d+)$/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      });
+      customId = `CUST-${todayStr.replace(/-/g, '')}${(maxNum + 1).toString().padStart(3, '0')}`;
+    }
+
+    const newClient = new Client({
+      id: customId,
+      name: clientData.name || 'New Customer',
+      contact: clientData.contact || 'contact@client.com',
+      status: clientData.status || 'Active',
+      totalBilled: parseFloat(clientData.totalBilled) || 0
+    });
+
+    return await newClient.save();
   },
 
   toggleClientStatus: async (id) => {
@@ -411,6 +493,72 @@ const dataStore = {
     return await newProduct.save();
   },
 
+  deleteProduct: async (id) => {
+    try {
+      await Product.deleteOne({ id }).exec();
+      return { success: true };
+    } catch (err) {
+      return { success: false };
+    }
+  },
+
+  updateProduct: async (id, productData) => {
+    const priceNum = parseFloat(productData.price) || 0;
+    const countNum = parseInt(productData.count, 10) || 0;
+    const stockStatus = productData.stock || (countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock'));
+
+    let product = await Product.findOneAndUpdate(
+      { id: { $regex: new RegExp(`^${id}$`, 'i') } },
+      {
+        $set: {
+          name: productData.name,
+          category: productData.category,
+          price: priceNum,
+          count: countNum,
+          stock: stockStatus
+        }
+      },
+      { new: true }
+    ).lean().exec();
+
+    if (!product) {
+      product = await Product.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            name: productData.name,
+            category: productData.category,
+            price: priceNum,
+            count: countNum,
+            stock: stockStatus
+          }
+        },
+        { new: true }
+      ).lean().exec();
+    }
+    return product;
+  },
+
+  updateProductStock: async (id, stockData) => {
+    const countNum = Math.max(0, parseInt(stockData.count, 10) || 0);
+    const stockStatus = stockData.stock || (countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock'));
+    
+    let product = await Product.findOneAndUpdate(
+      { id: { $regex: new RegExp(`^${id}$`, 'i') } },
+      { $set: { count: countNum, stock: stockStatus } },
+      { new: true }
+    ).lean().exec();
+
+    if (!product) {
+      product = await Product.findByIdAndUpdate(
+        id,
+        { $set: { count: countNum, stock: stockStatus } },
+        { new: true }
+      ).lean().exec();
+    }
+    return product;
+  },
+
   getCategories: async () => {
     await seedInitialDataIfNeeded();
     let categories = await Category.find().lean().exec();
@@ -448,6 +596,34 @@ const dataStore = {
     return await newCat.save();
   },
 
+  updateCategory: async (id, catData) => {
+    const subs = Array.isArray(catData.subCategories)
+      ? catData.subCategories
+      : (typeof catData.subCategories === 'string'
+          ? catData.subCategories.split(',').map(s => s.trim()).filter(Boolean)
+          : []);
+
+    const updated = await Category.findOneAndUpdate(
+      { id },
+      {
+        $set: {
+          name: catData.name,
+          subCategories: subs,
+          genderType: catData.genderType || 'Unisex',
+          seasonTag: catData.seasonTag || 'All Season',
+          status: catData.status || 'Active'
+        }
+      },
+      { new: true }
+    ).exec();
+    return updated;
+  },
+
+  deleteCategory: async (id) => {
+    const deleted = await Category.findOneAndDelete({ id }).exec();
+    return { deleted: !!deleted };
+  },
+
   toggleCategoryStatus: async (id) => {
     const cat = await Category.findOne({ id }).exec();
     if (!cat) return null;
@@ -477,7 +653,7 @@ const dataStore = {
       );
       if (matchInv) {
         client = {
-          id: matchInv.clientId || 'CLT-AUTO',
+          id: matchInv.clientId || 'CUST-AUTO',
           name: matchInv.clientName,
           contact: matchInv.clientEmail || 'billing@client.com',
           status: 'Active',

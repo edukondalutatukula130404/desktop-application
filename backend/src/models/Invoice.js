@@ -8,7 +8,8 @@ const invoiceSchema = new mongoose.Schema({
   dueDate: { type: String, required: true },
   amount: { type: Number, required: true },
   status: { type: String, enum: ['Paid', 'Pending', 'Overdue', 'Cancelled'], default: 'Pending' },
-  category: { type: String, default: 'General' }
+  category: { type: String, default: 'General' },
+  paymentMode: { type: String, default: 'Cash' }
 }, {
   timestamps: true
 });

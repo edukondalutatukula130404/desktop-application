@@ -30,11 +30,16 @@ async function request(endpoint, options = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 1500);
+
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
-      headers
+      headers,
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
 
     const data = await response.json().catch(() => ({
       success: false,
@@ -47,7 +52,8 @@ async function request(endpoint, options = {}) {
 
     return data;
   } catch (error) {
-    console.error(`API Error [${endpoint}]:`, error);
+    clearTimeout(timeoutId);
+    console.warn(`API Request [${endpoint}] offline/timeout:`, error.message);
     throw error;
   }
 }
@@ -101,6 +107,11 @@ export const api = {
 
   getClients: () => request('/business/clients', { method: 'GET' }),
 
+  createClient: (payload) => request('/business/clients', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+
   toggleClientStatus: (id) => request(`/business/clients/${id}/status`, { method: 'PATCH' }),
 
   getProducts: () => request('/business/products', { method: 'GET' }),
@@ -110,12 +121,31 @@ export const api = {
     body: JSON.stringify(payload)
   }),
 
+  updateProduct: (id, payload) => request(`/business/products/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }),
+
+  updateProductStock: (id, payload) => request(`/business/products/${encodeURIComponent(id)}/stock`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  }),
+
+  deleteProduct: (id) => request(`/business/products/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
   getCategories: () => request('/business/categories', { method: 'GET' }),
 
   createCategory: (payload) => request('/business/categories', {
     method: 'POST',
     body: JSON.stringify(payload)
   }),
+
+  updateCategory: (id, payload) => request(`/business/categories/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }),
+
+  deleteCategory: (id) => request(`/business/categories/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
   toggleCategoryStatus: (id) => request(`/business/categories/${id}/status`, { method: 'PATCH' }),
 
