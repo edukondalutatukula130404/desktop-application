@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { api, tokenStorage } from './api.js';
+import { NEXUS_LOGO_BASE64 } from './logoBase64.js';
 
 // Application State
 let appData = {
@@ -3430,7 +3431,15 @@ function renderInvoicePreviewHTML(draft) {
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-  const maxW = paperSize === 'thermal50' ? '380px' : (paperSize === 'thermal88' ? '480px' : (paperSize === 'A3' ? '780px' : '640px'));
+  const isThermal50 = paperSize === 'thermal50';
+  const isThermal88 = paperSize === 'thermal88';
+
+  const maxW = isThermal50 ? '360px' : (isThermal88 ? '460px' : (paperSize === 'A3' ? '780px' : '640px'));
+  const cardPadding = isThermal50 ? '24px 18px' : (isThermal88 ? '32px 24px' : '48px 42px');
+  const qtyWidth = isThermal50 ? '40px' : (isThermal88 ? '50px' : '60px');
+  const amountWidth = isThermal50 ? '90px' : (isThermal88 ? '110px' : '130px');
+  const titleFontSize = isThermal50 ? '1.4rem' : (isThermal88 ? '1.8rem' : '2.2rem');
+  const totalFontSize = isThermal50 ? '1.5rem' : (isThermal88 ? '1.8rem' : '2.3rem');
 
   const itemRows = items.map((item, idx) => {
     const q = Number(item.qty) || 1;
@@ -3439,14 +3448,14 @@ function renderInvoicePreviewHTML(draft) {
     const subtotalText = subtotalVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return `
-      <div style="padding: 12px 0; border-bottom: 1px dashed #e9d5ff; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; font-size: 0.95rem; color: #1a1a1a; font-family: sans-serif;">
-        <div style="flex: 1; min-width: 0; font-weight: 600; line-height: 1.4;">
+      <div style="padding: ${isThermal50 ? '8px' : '12px'} 0; border-bottom: 1px dashed #e9d5ff; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; font-size: ${isThermal50 ? '0.85rem' : '0.95rem'}; color: #1a1a1a; font-family: sans-serif;">
+        <div style="flex: 1; min-width: 0; font-weight: 600; line-height: 1.4; word-break: break-word;">
           ${idx + 1}. ${item.name}
         </div>
-        <div style="width: 60px; text-align: center; font-weight: 600; color: #1a1a1a;">
+        <div style="width: ${qtyWidth}; text-align: center; font-weight: 600; color: #1a1a1a; flex-shrink: 0;">
           ${q}
         </div>
-        <div style="text-align: right; font-weight: 700; white-space: nowrap; width: 130px; color: #9333ea;">
+        <div style="text-align: right; font-weight: 700; white-space: nowrap; width: ${amountWidth}; color: #9333ea; flex-shrink: 0;">
           Rs. ${subtotalText}
         </div>
       </div>
@@ -3454,35 +3463,35 @@ function renderInvoicePreviewHTML(draft) {
   }).join('');
 
   return `
-    <div style="background: #faf5ff; padding: 40px 20px; border-radius: 20px; display: flex; justify-content: center; width: 100%; box-sizing: border-box;">
-      <div style="background: #ffffff; border-radius: 16px; padding: 48px 42px; border: 1.5px solid #e9d5ff; box-shadow: 0 15px 40px rgba(168, 85, 247, 0.12); max-width: ${maxW}; width: 100%; box-sizing: border-box; font-family: 'Times New Roman', Georgia, serif; color: #1a1a1a;">
+    <div style="background: #faf5ff; padding: ${isThermal50 ? '20px 10px' : '40px 20px'}; border-radius: 20px; display: flex; justify-content: center; width: 100%; box-sizing: border-box;">
+      <div style="background: #ffffff; border-radius: 16px; padding: ${cardPadding}; border: 1.5px solid #e9d5ff; box-shadow: 0 15px 40px rgba(168, 85, 247, 0.12); max-width: ${maxW}; width: 100%; box-sizing: border-box; font-family: 'Times New Roman', Georgia, serif; color: #1a1a1a;">
         
         <!-- Nexus Suite Glassmorphic Logo "N" -->
         <div style="text-align: center; margin-bottom: 16px;">
-          <div style="display: inline-flex; align-items: center; justify-content: center; width: 72px; height: 72px; margin-bottom: 10px;">
-            <img src="/icon.png" alt="Nexus Suite Logo" style="width: 68px; height: 68px; border-radius: 16px; object-fit: cover; box-shadow: 0 6px 20px rgba(147, 51, 234, 0.22);" />
+          <div style="display: inline-flex; align-items: center; justify-content: center; width: ${isThermal50 ? '54px' : '72px'}; height: ${isThermal50 ? '54px' : '72px'}; margin-bottom: 10px;">
+            <img src="/icon.png" alt="Nexus Suite Logo" style="width: ${isThermal50 ? '50px' : '68px'}; height: ${isThermal50 ? '50px' : '68px'}; border-radius: 14px; object-fit: cover; box-shadow: 0 6px 20px rgba(147, 51, 234, 0.22);" />
           </div>
 
-          <h1 style="font-size: 2.2rem; font-weight: 700; color: #9333ea; margin: 0 0 4px 0; letter-spacing: 2px; text-transform: uppercase; font-family: 'Times New Roman', Georgia, serif;">NEXUS SUITE</h1>
-          <p style="font-size: 1rem; color: #1a1a1a; margin: 0 0 16px 0; font-family: 'Times New Roman', Georgia, serif;">Enterprise Billing Suite</p>
+          <h1 style="font-size: ${titleFontSize}; font-weight: 700; color: #9333ea; margin: 0 0 4px 0; letter-spacing: 1.5px; text-transform: uppercase; font-family: 'Times New Roman', Georgia, serif;">NEXUS SUITE</h1>
+          <p style="font-size: ${isThermal50 ? '0.85rem' : '1rem'}; color: #1a1a1a; margin: 0 0 12px 0; font-family: 'Times New Roman', Georgia, serif;">Enterprise Billing Suite</p>
           
-          <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px;">
-            <span style="height: 1.5px; width: 45px; background: #a855f7; display: inline-block;"></span>
-            <span style="font-size: 1.05rem; font-weight: 800; color: #1a1a1a; letter-spacing: 5px; font-family: sans-serif;">I N V O I C E</span>
-            <span style="height: 1.5px; width: 45px; background: #a855f7; display: inline-block;"></span>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px;">
+            <span style="height: 1.5px; width: 30px; background: #a855f7; display: inline-block;"></span>
+            <span style="font-size: ${isThermal50 ? '0.85rem' : '1.05rem'}; font-weight: 800; color: #1a1a1a; letter-spacing: 3px; font-family: sans-serif;">I N V O I C E</span>
+            <span style="height: 1.5px; width: 30px; background: #a855f7; display: inline-block;"></span>
           </div>
 
-          <div style="display: inline-block; background: #f3e8ff; color: #7e22ce; font-size: 0.95rem; font-weight: 800; padding: 6px 24px; border-radius: 20px; font-family: sans-serif; letter-spacing: 0.5px;">
+          <div style="display: inline-block; background: #f3e8ff; color: #7e22ce; font-size: ${isThermal50 ? '0.8rem' : '0.95rem'}; font-weight: 800; padding: 4px 16px; border-radius: 20px; font-family: sans-serif; letter-spacing: 0.5px;">
             ${invoiceId}
           </div>
         </div>
 
         <!-- Dashed Divider Line -->
-        <div style="border-top: 1.5px dashed #a855f7; margin: 20px 0;"></div>
+        <div style="border-top: 1.5px dashed #a855f7; margin: 16px 0;"></div>
 
         <!-- Billed To & Metadata Block -->
-        <div style="font-family: sans-serif; font-size: 0.95rem; color: #1a1a1a; line-height: 1.8; margin-bottom: 20px;">
-          <div style="margin-bottom: 6px;"><strong style="font-weight: 800;">Billed To:</strong> ${shopName}</div>
+        <div style="font-family: sans-serif; font-size: ${isThermal50 ? '0.85rem' : '0.95rem'}; color: #1a1a1a; line-height: 1.7; margin-bottom: 16px;">
+          <div style="margin-bottom: 4px; word-break: break-word;"><strong style="font-weight: 800;">Billed To:</strong> ${shopName}</div>
           <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
             <span><strong style="font-weight: 800;">Date:</strong> ${displayDateStr}</span>
             <span><strong style="font-weight: 800;">Time:</strong> ${timeStr}</span>
@@ -3494,22 +3503,22 @@ function renderInvoicePreviewHTML(draft) {
         </div>
 
         <!-- Solid Divider Line -->
-        <div style="border-top: 1.5px solid #a855f7; margin-bottom: 12px;"></div>
+        <div style="border-top: 1.5px solid #a855f7; margin-bottom: 10px;"></div>
 
         <!-- Table Header -->
-        <div style="display: flex; justify-content: space-between; font-family: sans-serif; font-size: 0.95rem; font-weight: 800; color: #9333ea; padding-bottom: 8px; border-bottom: 1px dashed #e9d5ff;">
+        <div style="display: flex; justify-content: space-between; font-family: sans-serif; font-size: ${isThermal50 ? '0.85rem' : '0.95rem'}; font-weight: 800; color: #9333ea; padding-bottom: 6px; border-bottom: 1px dashed #e9d5ff; gap: 8px;">
           <div style="flex: 1;">Item</div>
-          <div style="width: 60px; text-align: center;">Qty</div>
-          <div style="width: 130px; text-align: right;">Amount</div>
+          <div style="width: ${qtyWidth}; text-align: center; flex-shrink: 0;">Qty</div>
+          <div style="width: ${amountWidth}; text-align: right; flex-shrink: 0;">Amount</div>
         </div>
 
         <!-- Item Rows -->
-        <div style="margin-bottom: 16px;">
+        <div style="margin-bottom: 14px;">
           ${itemRows || '<div style="padding: 16px; text-align: center; color: #64748b; font-size: 0.9rem;">No items added</div>'}
         </div>
 
         <!-- Subtotal & GST -->
-        <div style="font-family: sans-serif; font-size: 0.95rem; color: #1a1a1a; line-height: 1.9; margin-bottom: 16px;">
+        <div style="font-family: sans-serif; font-size: ${isThermal50 ? '0.85rem' : '0.95rem'}; color: #1a1a1a; line-height: 1.8; margin-bottom: 14px;">
           <div style="display: flex; justify-content: space-between;">
             <span>Subtotal</span>
             <span style="font-weight: 600;">Rs. ${Number(subtotal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -3521,9 +3530,9 @@ function renderInvoicePreviewHTML(draft) {
         </div>
 
         <!-- Ornate Flourish Divider -->
-        <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 20px 0 16px 0;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin: 16px 0 12px 0;">
           <span style="height: 1.5px; flex: 1; background: #a855f7; display: inline-block;"></span>
-          <svg width="28" height="14" viewBox="0 0 24 12" fill="#a855f7">
+          <svg width="24" height="12" viewBox="0 0 24 12" fill="#a855f7">
             <path d="M12 0L16 6L12 12L8 6Z"/>
             <circle cx="3" cy="6" r="2"/>
             <circle cx="21" cy="6" r="2"/>
@@ -3532,25 +3541,25 @@ function renderInvoicePreviewHTML(draft) {
         </div>
 
         <!-- TOTAL AMOUNT Callout -->
-        <div style="text-align: center; margin-bottom: 20px;">
-          <div style="font-size: 1rem; font-weight: 800; letter-spacing: 2px; color: #1a1a1a; text-transform: uppercase; font-family: sans-serif; margin-bottom: 4px;">TOTAL AMOUNT</div>
-          <div style="font-size: 2.3rem; font-weight: 800; color: #9333ea; font-family: 'Times New Roman', Georgia, serif; letter-spacing: 0.5px;">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <div style="font-size: ${isThermal50 ? '0.85rem' : '1rem'}; font-weight: 800; letter-spacing: 2px; color: #1a1a1a; text-transform: uppercase; font-family: sans-serif; margin-bottom: 4px;">TOTAL AMOUNT</div>
+          <div style="font-size: ${totalFontSize}; font-weight: 800; color: #9333ea; font-family: 'Times New Roman', Georgia, serif; letter-spacing: 0.5px;">
             Rs. ${Number(totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
 
         <!-- Solid Bottom Line -->
-        <div style="border-top: 1.5px solid #a855f7; margin-bottom: 16px;"></div>
+        <div style="border-top: 1.5px solid #a855f7; margin-bottom: 14px;"></div>
 
         <!-- Footer Text & Flourish -->
-        <div style="text-align: center; font-family: sans-serif; font-size: 0.95rem; color: #1a1a1a;">
+        <div style="text-align: center; font-family: sans-serif; font-size: ${isThermal50 ? '0.85rem' : '0.95rem'}; color: #1a1a1a;">
           <div>Thank you for choosing Nexus Suite!</div>
-          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px;">
-            <span style="height: 1px; width: 40px; background: #a855f7; display: inline-block;"></span>
-            <svg width="18" height="10" viewBox="0 0 24 12" fill="#a855f7">
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px;">
+            <span style="height: 1px; width: 30px; background: #a855f7; display: inline-block;"></span>
+            <svg width="14" height="8" viewBox="0 0 24 12" fill="#a855f7">
               <path d="M12 0L16 6L12 12L8 6Z"/>
             </svg>
-            <span style="height: 1px; width: 40px; background: #a855f7; display: inline-block;"></span>
+            <span style="height: 1px; width: 30px; background: #a855f7; display: inline-block;"></span>
           </div>
         </div>
 
@@ -4176,19 +4185,40 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
   const cleanGstAmount = typeof gstAmount === 'number' ? gstAmount : (totalAmount - cleanSubtotal);
   const cleanTotal = typeof totalAmount === 'number' ? totalAmount : (cleanSubtotal + cleanGstAmount);
 
+  const isThermal50 = paperSize === 'thermal50';
+  const isThermal88 = paperSize === 'thermal88';
+
+  // Compute precise height for thermal receipt rolls to eliminate white bottom space
+  let pageHeight = 297;
+  if (paperSize === 'A3') {
+    pageHeight = 420;
+  } else if (isThermal50) {
+    const itemExtraLines = (items || []).reduce((acc, item) => {
+      const name = (item.name || '');
+      return acc + (Math.ceil(name.length / 15) * 3.6) + 4;
+    }, 0);
+    pageHeight = Math.max(95, Math.ceil(88 + itemExtraLines));
+  } else if (isThermal88) {
+    const itemExtraLines = (items || []).reduce((acc, item) => {
+      const name = (item.name || '');
+      return acc + (Math.ceil(name.length / 28) * 4) + 4.5;
+    }, 0);
+    pageHeight = Math.max(115, Math.ceil(102 + itemExtraLines));
+  }
+
   let doc;
   if (paperSize === 'A3') {
     doc = new jsPDF('p', 'mm', 'a3');
-  } else if (paperSize === 'thermal50') {
-    doc = new jsPDF('p', 'mm', [50, 180]);
-  } else if (paperSize === 'thermal88') {
-    doc = new jsPDF('p', 'mm', [88, 220]);
+  } else if (isThermal50) {
+    doc = new jsPDF('p', 'mm', [50, pageHeight]);
+  } else if (isThermal88) {
+    doc = new jsPDF('p', 'mm', [88, pageHeight]);
   } else {
     doc = new jsPDF('p', 'mm', 'a4');
   }
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = paperSize.startsWith('thermal') ? 5 : 14;
+  const margin = isThermal50 ? 3 : (isThermal88 ? 4 : 14);
   const rightX = pageWidth - margin;
   const printableW = pageWidth - (margin * 2);
   const centerX = pageWidth / 2;
@@ -4213,168 +4243,268 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
   const purplePrimary = [168, 85, 247];  // #a855f7
   const purpleDark = [147, 51, 234];     // #9333ea
   const textDark = [26, 26, 26];        // #1a1a1a
-  const textMuted = [85, 85, 85];       // #555555
   const borderLight = [233, 213, 255];  // #e9d5ff
   const purplePillBg = [243, 232, 255]; // #f3e8ff
   const purplePillText = [126, 34, 206];// #7e22ce
 
-  let y = 10;
+  let y = isThermal50 ? 4 : (isThermal88 ? 6 : 8);
 
-  // Ornate Mandala Crest Circle Emblem "N" in Purple
-  doc.setDrawColor(...purplePrimary);
-  doc.setLineWidth(0.6);
-  doc.circle(centerX, y + 6, 7, 'S');
-  doc.setLineWidth(0.3);
-  doc.circle(centerX, y + 6, 6, 'S');
+  // 1. Header Logo & Title
+  if (isThermal50) {
+    try {
+      doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 5, y, 10, 10);
+    } catch (e) {
+      console.warn('Failed to render logo image in PDF:', e);
+    }
 
-  doc.setFontSize(11);
-  doc.setFont('times', 'bold');
-  doc.setTextColor(...purpleDark);
-  doc.text('N', centerX, y + 9.8, { align: 'center' });
+    y += 13.5;
+    doc.setFontSize(11);
+    doc.setFont('times', 'bold');
+    doc.setTextColor(...purpleDark);
+    doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
 
-  y += 18;
-  doc.setFontSize(16);
-  doc.setFont('times', 'bold');
-  doc.setTextColor(...purpleDark);
-  doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
+    y += 4.2;
+    doc.setFontSize(6.5);
+    doc.setFont('times', 'normal');
+    doc.setTextColor(...textDark);
+    doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
 
-  y += 5;
-  doc.setFontSize(8.5);
-  doc.setFont('times', 'normal');
-  doc.setTextColor(...textDark);
-  doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
+    y += 4.8;
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...textDark);
+    doc.text('I N V O I C E', centerX, y, { align: 'center' });
 
-  y += 6.5;
-  doc.setDrawColor(...purplePrimary);
-  doc.setLineWidth(0.4);
-  doc.line(centerX - 24, y - 1, centerX - 10, y - 1);
-  doc.line(centerX + 10, y - 1, centerX + 24, y - 1);
+    y += 4.2;
+    doc.setFillColor(...purplePillBg);
+    doc.roundedRect(centerX - 15, y, 30, 5, 2.5, 2.5, 'F');
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...purplePillText);
+    doc.text(cleanInvId, centerX, y + 3.5, { align: 'center' });
 
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...textDark);
-  doc.text('I N V O I C E', centerX, y, { align: 'center' });
+    y += 9;
+  } else if (isThermal88) {
+    try {
+      doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 6, y, 12, 12);
+    } catch (e) {
+      console.warn('Failed to render logo image in PDF:', e);
+    }
 
-  y += 5.5;
-  // Invoice ID Badge
-  doc.setFillColor(...purplePillBg);
-  doc.roundedRect(centerX - 24, y, 48, 6, 3, 3, 'F');
-  doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...purplePillText);
-  doc.text(cleanInvId, centerX, y + 4.2, { align: 'center' });
+    y += 15.5;
+    doc.setFontSize(13);
+    doc.setFont('times', 'bold');
+    doc.setTextColor(...purpleDark);
+    doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
 
-  y += 10;
-  // Dashed divider line top
+    y += 4.5;
+    doc.setFontSize(7.5);
+    doc.setFont('times', 'normal');
+    doc.setTextColor(...textDark);
+    doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
+
+    y += 5.5;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...textDark);
+    doc.text('I N V O I C E', centerX, y, { align: 'center' });
+
+    y += 4.8;
+    doc.setFillColor(...purplePillBg);
+    doc.roundedRect(centerX - 19, y, 38, 5.5, 2.8, 2.8, 'F');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...purplePillText);
+    doc.text(cleanInvId, centerX, y + 3.9, { align: 'center' });
+
+    y += 10;
+  } else {
+    try {
+      doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 8, y, 16, 16);
+    } catch (e) {
+      console.warn('Failed to render logo image in PDF:', e);
+    }
+
+    y += 20;
+    doc.setFontSize(16);
+    doc.setFont('times', 'bold');
+    doc.setTextColor(...purpleDark);
+    doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
+
+    y += 5.5;
+    doc.setFontSize(8.5);
+    doc.setFont('times', 'normal');
+    doc.setTextColor(...textDark);
+    doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
+
+    y += 7;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...textDark);
+    doc.text('I N V O I C E', centerX, y, { align: 'center' });
+
+    y += 6;
+    doc.setFillColor(...purplePillBg);
+    doc.roundedRect(centerX - 24, y, 48, 6.5, 3.2, 3.2, 'F');
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...purplePillText);
+    doc.text(cleanInvId, centerX, y + 4.5, { align: 'center' });
+
+    y += 11;
+  }
+
+  // 2. Dashed Divider Line Top
   doc.setDrawColor(...purplePrimary);
   doc.setLineWidth(0.4);
   doc.line(margin, y, rightX, y);
 
-  y += 5.5;
-  // Billed To & Metadata
-  doc.setFontSize(8.5);
+  // 3. Customer & Info Metadata Section
+  y += isThermal50 ? 4.5 : (isThermal88 ? 5.5 : 6.5);
+
+  const metaFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : 8.5);
+  doc.setFontSize(metaFontSize);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...textDark);
-  doc.text(`Billed To: ${formattedShopName}`, margin, y);
 
-  y += 4.8;
+  const customerText = `Billed To: ${formattedShopName}`;
+  const customerLines = doc.splitTextToSize(customerText, printableW);
+  doc.text(customerLines, margin, y);
+
+  y += (customerLines.length * 3.4) + 2.2;
+
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...textDark);
-  doc.text(`Date: ${displayDate}`, margin, y);
-  doc.text(`Time: ${timeStr}`, rightX, y, { align: 'right' });
 
-  y += 4.8;
-  doc.text(`Mode: ${paymentMode}`, margin, y);
-  doc.text(`Status: Paid`, rightX, y, { align: 'right' });
+  if (isThermal50) {
+    doc.text(`Date: ${displayDate}`, margin, y);
+    doc.text(`Time: ${timeStr}`, rightX, y, { align: 'right' });
+    y += 3.8;
+    doc.text(`Mode: ${paymentMode}`, margin, y);
+    doc.text(`Status: Paid`, rightX, y, { align: 'right' });
+    y += 4.2;
+  } else {
+    doc.text(`Date: ${displayDate}`, margin, y);
+    doc.text(`Time: ${timeStr}`, rightX, y, { align: 'right' });
+    y += 4.8;
+    doc.text(`Mode: ${paymentMode}`, margin, y);
+    doc.text(`Status: Paid`, rightX, y, { align: 'right' });
+    y += 5.2;
+  }
 
-  y += 4.5;
   doc.setDrawColor(...purplePrimary);
   doc.setLineWidth(0.4);
   doc.line(margin, y, rightX, y);
 
-  y += 5.5;
-  // Table Header
-  doc.setFontSize(8.5);
+  y += isThermal50 ? 4.5 : (isThermal88 ? 5.5 : 6.5);
+
+  // 4. Table Header & Column Positions
+  let qtyX, nameWidth;
+  if (isThermal50) {
+    qtyX = 29;
+    nameWidth = 22;
+  } else if (isThermal88) {
+    qtyX = 52;
+    nameWidth = 45;
+  } else {
+    qtyX = centerX + 10;
+    nameWidth = printableW - 45;
+  }
+
+  const tableHeaderFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : 8.5);
+  doc.setFontSize(tableHeaderFontSize);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...purpleDark);
+
   doc.text('Item', margin, y);
-  doc.text('Qty', centerX + 10, y, { align: 'center' });
+  doc.text('Qty', qtyX, y, { align: 'center' });
   doc.text('Amount', rightX, y, { align: 'right' });
 
-  y += 2.5;
+  y += isThermal50 ? 2.2 : 2.8;
   doc.setDrawColor(...borderLight);
   doc.setLineWidth(0.3);
   doc.line(margin, y, rightX, y);
 
-  y += 5;
+  y += isThermal50 ? 4 : (isThermal88 ? 4.5 : 5.5);
+
+  // 5. Table Items Loop
   let itemIdx = 1;
+  const itemFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : 8.5);
 
   items.forEach((item) => {
     const qty = Number(item.qty || 1);
     const price = Number(item.price || 0);
     const itemSubtotal = qty * price;
 
-    doc.setFontSize(8.5);
+    doc.setFontSize(itemFontSize);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...textDark);
 
     const itemName = `${itemIdx}. ${item.name}`;
-    const nameLines = doc.splitTextToSize(itemName, printableW - 35);
+    const nameLines = doc.splitTextToSize(itemName, nameWidth);
     doc.text(nameLines, margin, y);
 
     doc.setFont('helvetica', 'normal');
-    doc.text(String(qty), centerX + 10, y, { align: 'center' });
+    doc.text(String(qty), qtyX, y, { align: 'center' });
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...purpleDark);
     doc.text(formatPdfCurrency(itemSubtotal), rightX, y, { align: 'right' });
 
-    y += (nameLines.length * 4) + 2;
+    const nameExtraH = (nameLines.length - 1) * (itemFontSize * 0.45);
+    y += nameExtraH + (isThermal50 ? 4.5 : 5.5);
+
     doc.setDrawColor(...borderLight);
     doc.setLineWidth(0.2);
-    doc.line(margin, y - 1, rightX, y - 1);
+    doc.line(margin, y - 1.2, rightX, y - 1.2);
     itemIdx++;
   });
 
-  y += 2;
+  y += isThermal50 ? 2 : 2.5;
 
-  // Subtotal & GST Summary
-  doc.setFontSize(8.5);
+  // 6. Subtotal & GST Summary
+  const summaryFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : 8.5);
+  doc.setFontSize(summaryFontSize);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...textDark);
   doc.text('Subtotal', margin, y);
   doc.text(formatPdfCurrency(cleanSubtotal), rightX, y, { align: 'right' });
 
-  y += 4.8;
+  y += isThermal50 ? 3.8 : (isThermal88 ? 4.2 : 5);
   doc.text(`GST (${cleanGstRate}%)`, margin, y);
   doc.setTextColor(...purpleDark);
   doc.text(formatPdfCurrency(cleanGstAmount), rightX, y, { align: 'right' });
 
-  y += 6.5;
+  y += isThermal50 ? 5 : (isThermal88 ? 6 : 7);
   doc.setDrawColor(...purplePrimary);
   doc.setLineWidth(0.4);
   doc.line(margin, y, rightX, y);
 
-  y += 6.5;
-  // TOTAL AMOUNT Callout
-  doc.setFontSize(9);
+  y += isThermal50 ? 5 : (isThermal88 ? 6 : 7);
+
+  // 7. TOTAL AMOUNT Callout
+  const totalLabelFontSize = isThermal50 ? 7.5 : (isThermal88 ? 8.5 : 9);
+  const totalAmountFontSize = isThermal50 ? 12 : (isThermal88 ? 14 : 18);
+
+  doc.setFontSize(totalLabelFontSize);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...textDark);
   doc.text('TOTAL AMOUNT', centerX, y, { align: 'center' });
 
-  y += 6.5;
-  doc.setFontSize(18);
+  y += isThermal50 ? 5 : (isThermal88 ? 6 : 7);
+  doc.setFontSize(totalAmountFontSize);
   doc.setFont('times', 'bold');
   doc.setTextColor(...purpleDark);
   doc.text(formatPdfCurrency(cleanTotal), centerX, y, { align: 'center' });
 
-  y += 8.5;
+  y += isThermal50 ? 6.5 : (isThermal88 ? 8 : 9.5);
   doc.setDrawColor(...purplePrimary);
   doc.setLineWidth(0.4);
   doc.line(margin, y, rightX, y);
 
-  y += 6.5;
-  doc.setFontSize(8);
+  y += isThermal50 ? 5 : (isThermal88 ? 6 : 7);
+  const footerFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : 8);
+  doc.setFontSize(footerFontSize);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...textDark);
   doc.text('Thank you for choosing Nexus Suite!', centerX, y, { align: 'center' });
