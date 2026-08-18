@@ -2634,58 +2634,58 @@ document.addEventListener('click', (e) => {
   // Close Related Data Modal
   if (e.target.closest('#close-related-modal-btn') || e.target.closest('#close-related-footer-btn')) {
     e.preventDefault();
-    closeRelatedModal();
+    if (typeof closeRelatedModal === 'function') closeRelatedModal();
     return;
   }
 
   // Product Modal Triggers & Controls
   if (e.target.closest('#quick-add-product-btn')) {
     e.preventDefault();
-    openProductModal();
+    if (typeof openProductModal === 'function') openProductModal();
   }
   if (e.target.closest('#close-product-modal-btn') || e.target.closest('#cancel-product-modal-btn')) {
     e.preventDefault();
-    closeProductModal();
+    if (typeof closeProductModal === 'function') closeProductModal();
   }
 
   // Category Modal Triggers & Controls
   if (e.target.closest('#quick-add-category-btn')) {
     e.preventDefault();
-    openCategoryModal();
+    if (typeof openCategoryModal === 'function') openCategoryModal();
   }
   if (e.target.closest('#close-category-modal-btn') || e.target.closest('#cancel-category-modal-btn')) {
     e.preventDefault();
-    closeCategoryModal();
+    if (typeof closeCategoryModal === 'function') closeCategoryModal();
   }
 
   // Invoice Modal Triggers & Controls
   if (e.target.closest('#quick-create-invoice-btn') || e.target.closest('#invoice-page-create-btn')) {
     e.preventDefault();
-    openInvoiceModal();
+    if (typeof openInvoiceModal === 'function') openInvoiceModal();
   }
   if (e.target.closest('#close-invoice-modal-btn') || e.target.closest('#cancel-invoice-modal-btn')) {
     e.preventDefault();
-    closeInvoiceModal();
+    if (typeof closeInvoiceModal === 'function') closeInvoiceModal();
   }
 
   // Bill Modal Triggers & Controls
   if (e.target.closest('#quick-add-bill-btn')) {
     e.preventDefault();
-    openBillModal();
+    if (typeof openBillModal === 'function') openBillModal();
   }
   if (e.target.closest('#close-bill-modal-btn') || e.target.closest('#cancel-bill-modal-btn')) {
     e.preventDefault();
-    closeBillModal();
+    if (typeof closeBillModal === 'function') closeBillModal();
   }
 
   // Backdrop Overlays Click-to-Close
-  if (e.target === createInvoiceModal) closeInvoiceModal();
-  if (e.target === createProductModal) closeProductModal();
-  if (e.target === createCategoryModal) closeCategoryModal();
-  if (e.target === createBillModal) closeBillModal();
-  if (e.target === relatedDataModal) closeRelatedModal();
-  if (e.target === invoicePreviewModal) closeInvoicePreviewModal();
-  if (e.target === forgotModal) forgotModal.classList.add('hidden');
+  if (typeof createInvoiceModal !== 'undefined' && createInvoiceModal && e.target === createInvoiceModal) closeInvoiceModal();
+  if (typeof createProductModal !== 'undefined' && createProductModal && e.target === createProductModal) closeProductModal();
+  if (typeof createCategoryModal !== 'undefined' && createCategoryModal && e.target === createCategoryModal) closeCategoryModal();
+  if (typeof createBillModal !== 'undefined' && createBillModal && e.target === createBillModal) closeBillModal();
+  if (typeof relatedDataModal !== 'undefined' && relatedDataModal && e.target === relatedDataModal && typeof closeRelatedModal === 'function') closeRelatedModal();
+  if (typeof invoicePreviewModal !== 'undefined' && invoicePreviewModal && e.target === invoicePreviewModal && typeof closeInvoicePreviewModal === 'function') closeInvoicePreviewModal();
+  if (typeof forgotModal !== 'undefined' && forgotModal && e.target === forgotModal) forgotModal.classList.add('hidden');
 });
 
 
@@ -4976,17 +4976,27 @@ async function initSession() {
       const res = await api.getMe();
       if (res && res.success && res.user) {
         appData.user = res.user;
+        await enterWorkspace();
       } else {
+        tokenStorage.clear();
+        appData.user = null;
+        if (saasDashboard) saasDashboard.classList.add('hidden');
+        if (authViewport) authViewport.classList.remove('hidden');
+      }
+    } catch (err) {
+      if (err.status === 401 || !tokenStorage.get()) {
+        tokenStorage.clear();
+        appData.user = null;
+        if (saasDashboard) saasDashboard.classList.add('hidden');
+        if (authViewport) authViewport.classList.remove('hidden');
+      } else {
+        // Server offline fallback
         const savedEmail = localStorage.getItem('nexus_user_email') || 'admin@gmail.com';
         const nameRaw = savedEmail.split('@')[0] || 'Admin';
         appData.user = { id: 'usr_offline', name: nameRaw.charAt(0).toUpperCase() + nameRaw.slice(1), email: savedEmail };
+        await enterWorkspace();
       }
-    } catch {
-      const savedEmail = localStorage.getItem('nexus_user_email') || 'admin@gmail.com';
-      const nameRaw = savedEmail.split('@')[0] || 'Admin';
-      appData.user = { id: 'usr_offline', name: nameRaw.charAt(0).toUpperCase() + nameRaw.slice(1), email: savedEmail };
     }
-    await enterWorkspace();
   }
 }
 

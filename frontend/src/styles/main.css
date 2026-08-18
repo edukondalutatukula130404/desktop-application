@@ -244,6 +244,7 @@ h1, h2, h3, h4, h5, h6,
 .gradient-text {
   background: var(--gradient-primary);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 .brand-subtitle { color: var(--text-muted); font-size: 0.88rem; margin-top: 4px; }
@@ -774,10 +775,12 @@ body.sidebar-open .sidebar,
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
+  appearance: none;
   margin: 0;
 }
 input[type="number"] {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .sidebar-logout-icon {
@@ -1563,7 +1566,7 @@ input[type="number"] {
   }
 
   .panel-header {
-    flex-direction: row !alignment;
+    flex-direction: row !important;
     justify-content: space-between !important;
     gap: 10px !important;
     white-space: normal !important;

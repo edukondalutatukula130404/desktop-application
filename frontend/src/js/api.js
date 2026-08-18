@@ -31,7 +31,7 @@ async function request(endpoint, options = {}) {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 1500);
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -47,13 +47,18 @@ async function request(endpoint, options = {}) {
     }));
 
     if (!response.ok) {
-      throw new Error(data.message || `HTTP Error ${response.status}`);
+      if (response.status === 401) {
+        tokenStorage.clear();
+      }
+      const err = new Error(data.message || `HTTP Error ${response.status}`);
+      err.status = response.status;
+      throw err;
     }
 
     return data;
   } catch (error) {
     clearTimeout(timeoutId);
-    console.warn(`API Request [${endpoint}] offline/timeout:`, error.message);
+    console.warn(`API Request [${endpoint}] error:`, error.message);
     throw error;
   }
 }
