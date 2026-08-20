@@ -18,7 +18,7 @@
   "build": {
     "appId": "com.invoicepro.desktop",
     "productName": "InvoicePro Desktop",
-    "icon": "electron/icon.png",
+    "icon": "electron/icon.ico",
     "forceCodeSigning": false,
     "directories": {
       "output": "release"
@@ -35,7 +35,7 @@
       "**/node_modules/mongodb-memory-server-core/**"
     ],
     "win": {
-      "icon": "electron/icon.png",
+      "icon": "electron/icon.ico",
       "target": [
         "nsis"
       ],

@@ -1876,11 +1876,12 @@ function renderClientsGrid(filterDateStr = null) {
     });
   }
 
+  // Filter strictly for valid customer amounts
+  customerTransactions = customerTransactions.filter(item => item.amount > 0);
+
   // Filter strictly by selected date when targetIso date is selected via Search
   if (targetIso) {
     customerTransactions = customerTransactions.filter(item => item.isoDate === targetIso);
-  } else {
-    customerTransactions = customerTransactions.filter(item => item.amount > 0);
   }
 
   // Filter by selected Payment Mode dropdown
@@ -1906,7 +1907,6 @@ function renderClientsGrid(filterDateStr = null) {
   const dayCounters = {};
 
   customerTransactions.forEach((item) => {
-    if (item.amount <= 0) return;
 
     const isoKey = item.isoDate || normalizeDateToIso(item.invDate);
     if (!dayCounters[isoKey]) {
@@ -2099,8 +2099,9 @@ function downloadCustomerDirectoryPDF(filterDateStr = null) {
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...purplePrimary);
     doc.text('NEXUS', margin, y);
+    const nexusWidth = doc.getTextWidth('NEXUS');
     doc.setTextColor(...textDark);
-    doc.text('SUITE', margin + 28, y);
+    doc.text('SUITE', margin + nexusWidth + 2.5, y);
 
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
@@ -2136,10 +2137,11 @@ function downloadCustomerDirectoryPDF(filterDateStr = null) {
       });
     }
 
+    // Filter strictly for valid customer amounts
+    customerTransactions = customerTransactions.filter(item => item.amount > 0);
+
     if (targetIso) {
       customerTransactions = customerTransactions.filter(item => item.isoDate === targetIso);
-    } else {
-      customerTransactions = customerTransactions.filter(item => item.amount > 0);
     }
 
     const modeFilterEl = document.getElementById('customer-payment-mode-filter');
@@ -2160,21 +2162,25 @@ function downloadCustomerDirectoryPDF(filterDateStr = null) {
 
     y += 10;
 
-    // Table Header
+    // Table Header Helper
     const tableWidth = pageWidth - (margin * 2);
-    doc.setFillColor(248, 247, 255);
-    doc.rect(margin, y, tableWidth, 9, 'F');
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...textDark);
-
     const col1X = margin + 4;
     const col2X = margin + 60;
     const col3X = margin + 110;
-    doc.text('Customer ID', col1X, y + 6);
-    doc.text('Date', col2X, y + 6);
-    doc.text('Payment Mode', col3X, y + 6);
-    doc.text('Customer Amount', rightX, y + 6, { align: 'right' });
+
+    const drawTableHeader = (currentY) => {
+      doc.setFillColor(248, 247, 255);
+      doc.rect(margin, currentY, tableWidth, 9, 'F');
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...textDark);
+      doc.text('Customer ID', col1X, currentY + 6);
+      doc.text('Date', col2X, currentY + 6);
+      doc.text('Payment Mode', col3X, currentY + 6);
+      doc.text('Customer Amount', rightX, currentY + 6, { align: 'right' });
+    };
+
+    drawTableHeader(y);
 
     y += 11;
     doc.setFont('helvetica', 'normal');
@@ -2184,7 +2190,15 @@ function downloadCustomerDirectoryPDF(filterDateStr = null) {
     const dayCountersPdf = {};
 
     customerTransactions.forEach((item) => {
-      if (item.amount <= 0) return;
+      // Automatic Page Pagination
+      if (y > 265) {
+        doc.addPage();
+        y = 18;
+        drawTableHeader(y);
+        y += 11;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+      }
 
       const isoKey = item.isoDate || normalizeDateToIso(item.invDate);
       if (!dayCountersPdf[isoKey]) {
@@ -2208,6 +2222,11 @@ function downloadCustomerDirectoryPDF(filterDateStr = null) {
       doc.line(margin, y, pageWidth - margin, y);
       y += 3;
     });
+
+    if (y > 265) {
+      doc.addPage();
+      y = 20;
+    }
 
     y += 6;
     doc.setDrawColor(...borderLight);
@@ -3468,8 +3487,8 @@ function renderInvoicePreviewHTML(draft) {
         
         <!-- Nexus Suite Glassmorphic Logo "N" -->
         <div style="text-align: center; margin-bottom: 16px;">
-          <div style="display: inline-flex; align-items: center; justify-content: center; width: ${isThermal50 ? '54px' : '72px'}; height: ${isThermal50 ? '54px' : '72px'}; margin-bottom: 10px;">
-            <img src="/icon.png" alt="Nexus Suite Logo" style="width: ${isThermal50 ? '50px' : '68px'}; height: ${isThermal50 ? '50px' : '68px'}; border-radius: 14px; object-fit: cover; box-shadow: 0 6px 20px rgba(147, 51, 234, 0.22);" />
+          <div style="display: inline-flex; align-items: center; justify-content: center; width: ${isThermal50 ? '80px' : '115px'}; height: ${isThermal50 ? '80px' : '115px'}; margin-bottom: 12px;">
+            <img src="/icon.png?v=6" alt="Nexus Suite Logo" style="width: ${isThermal50 ? '76px' : '108px'}; height: ${isThermal50 ? '76px' : '108px'}; object-fit: contain; filter: drop-shadow(0 8px 20px rgba(147, 51, 234, 0.25));" />
           </div>
 
           <h1 style="font-size: ${titleFontSize}; font-weight: 700; color: #9333ea; margin: 0 0 4px 0; letter-spacing: 1.5px; text-transform: uppercase; font-family: 'Times New Roman', Georgia, serif;">NEXUS SUITE</h1>
@@ -4188,7 +4207,7 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
   const isThermal50 = paperSize === 'thermal50';
   const isThermal88 = paperSize === 'thermal88';
 
-  // Compute precise height for thermal receipt rolls to eliminate white bottom space
+  // Compute precise height for thermal receipt rolls to eliminate white bottom space and prevent truncation
   let pageHeight = 297;
   if (paperSize === 'A3') {
     pageHeight = 420;
@@ -4197,13 +4216,13 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
       const name = (item.name || '');
       return acc + (Math.ceil(name.length / 15) * 3.6) + 4;
     }, 0);
-    pageHeight = Math.max(95, Math.ceil(88 + itemExtraLines));
+    pageHeight = Math.max(140, Math.ceil(125 + itemExtraLines));
   } else if (isThermal88) {
     const itemExtraLines = (items || []).reduce((acc, item) => {
       const name = (item.name || '');
       return acc + (Math.ceil(name.length / 28) * 4) + 4.5;
     }, 0);
-    pageHeight = Math.max(115, Math.ceil(102 + itemExtraLines));
+    pageHeight = Math.max(170, Math.ceil(150 + itemExtraLines));
   }
 
   let doc;
@@ -4247,52 +4266,52 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
   const purplePillBg = [243, 232, 255]; // #f3e8ff
   const purplePillText = [126, 34, 206];// #7e22ce
 
-  let y = isThermal50 ? 4 : (isThermal88 ? 6 : 8);
+  let y = isThermal50 ? 4 : (isThermal88 ? 5 : 7);
 
   // 1. Header Logo & Title
   if (isThermal50) {
     try {
-      doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 5, y, 10, 10);
+      doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 7, y, 14, 14);
     } catch (e) {
       console.warn('Failed to render logo image in PDF:', e);
     }
 
-    y += 13.5;
-    doc.setFontSize(11);
+    y += 17;
+    doc.setFontSize(10);
     doc.setFont('times', 'bold');
     doc.setTextColor(...purpleDark);
     doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
 
-    y += 4.2;
-    doc.setFontSize(6.5);
+    y += 4;
+    doc.setFontSize(6);
     doc.setFont('times', 'normal');
     doc.setTextColor(...textDark);
     doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
 
-    y += 4.8;
-    doc.setFontSize(7);
+    y += 4.5;
+    doc.setFontSize(6.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...textDark);
     doc.text('I N V O I C E', centerX, y, { align: 'center' });
 
-    y += 4.2;
+    y += 4;
     doc.setFillColor(...purplePillBg);
-    doc.roundedRect(centerX - 15, y, 30, 5, 2.5, 2.5, 'F');
+    doc.roundedRect(centerX - 14, y, 28, 5, 2.5, 2.5, 'F');
     doc.setFontSize(6.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...purplePillText);
     doc.text(cleanInvId, centerX, y + 3.5, { align: 'center' });
 
-    y += 9;
+    y += 8.5;
   } else if (isThermal88) {
     try {
-      doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 6, y, 12, 12);
+      doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 9, y, 18, 18);
     } catch (e) {
       console.warn('Failed to render logo image in PDF:', e);
     }
 
-    y += 15.5;
-    doc.setFontSize(13);
+    y += 21.5;
+    doc.setFontSize(12);
     doc.setFont('times', 'bold');
     doc.setTextColor(...purpleDark);
     doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
@@ -4303,55 +4322,55 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
     doc.setTextColor(...textDark);
     doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
 
-    y += 5.5;
+    y += 5;
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...textDark);
     doc.text('I N V O I C E', centerX, y, { align: 'center' });
 
-    y += 4.8;
+    y += 4.5;
     doc.setFillColor(...purplePillBg);
-    doc.roundedRect(centerX - 19, y, 38, 5.5, 2.8, 2.8, 'F');
+    doc.roundedRect(centerX - 18, y, 36, 5.5, 2.8, 2.8, 'F');
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...purplePillText);
     doc.text(cleanInvId, centerX, y + 3.9, { align: 'center' });
 
-    y += 10;
+    y += 9.5;
   } else {
     try {
-      doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 8, y, 16, 16);
+      doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 12, y, 24, 24);
     } catch (e) {
       console.warn('Failed to render logo image in PDF:', e);
     }
 
-    y += 20;
-    doc.setFontSize(16);
+    y += 27;
+    doc.setFontSize(15);
     doc.setFont('times', 'bold');
     doc.setTextColor(...purpleDark);
     doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
 
-    y += 5.5;
+    y += 5;
     doc.setFontSize(8.5);
     doc.setFont('times', 'normal');
     doc.setTextColor(...textDark);
     doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
 
-    y += 7;
+    y += 6.5;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...textDark);
     doc.text('I N V O I C E', centerX, y, { align: 'center' });
 
-    y += 6;
+    y += 5.5;
     doc.setFillColor(...purplePillBg);
-    doc.roundedRect(centerX - 24, y, 48, 6.5, 3.2, 3.2, 'F');
+    doc.roundedRect(centerX - 22, y, 44, 6, 3, 3, 'F');
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...purplePillText);
-    doc.text(cleanInvId, centerX, y + 4.5, { align: 'center' });
+    doc.text(cleanInvId, centerX, y + 4.2, { align: 'center' });
 
-    y += 11;
+    y += 10;
   }
 
   // 2. Dashed Divider Line Top

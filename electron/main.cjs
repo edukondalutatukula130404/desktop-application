@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, clipboard, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, clipboard, shell, nativeImage } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { startMongo, stopMongo } = require('./mongoManager.cjs');
@@ -27,14 +27,18 @@ if (!gotTheLock) {
 }
 
 async function createWindow() {
-  const appIconPath = path.join(__dirname, 'icon.png');
+  const appIcoPath = path.join(__dirname, 'icon.ico');
+  const appPngPath = path.join(__dirname, 'icon.png');
+  const iconPath = fs.existsSync(appIcoPath) ? appIcoPath : (fs.existsSync(appPngPath) ? appPngPath : undefined);
+  const appIcon = iconPath ? nativeImage.createFromPath(iconPath) : undefined;
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 840,
     minWidth: 960,
     minHeight: 640,
     title: 'Nexus Suite | Enterprise Invoices & Bills Dashboard',
-    icon: fs.existsSync(appIconPath) ? appIconPath : undefined,
+    icon: appIcon || iconPath,
     show: true,
     autoHideMenuBar: false,
     webPreferences: {
@@ -44,6 +48,14 @@ async function createWindow() {
       sandbox: true
     }
   });
+
+  if (appIcon && !appIcon.isEmpty()) {
+    try {
+      mainWindow.setIcon(appIcon);
+    } catch (e) {
+      console.warn('[Electron Main] setIcon error:', e);
+    }
+  }
 
   buildAppMenu(mainWindow);
 
