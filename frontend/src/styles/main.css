@@ -799,10 +799,10 @@ input[type="number"] {
 /* Precise Alignment Grid for Invoice Item Table Headers and Rows */
 .invoice-grid-row {
   display: grid !important;
-  grid-template-columns: 1.2fr 1.2fr 1.8fr 70px 120px 120px 38px !important;
-  gap: 12px !important;
+  grid-template-columns: 1.1fr 1.1fr 1.5fr 0.9fr 0.8fr 65px 105px 105px 38px !important;
+  gap: 8px !important;
   align-items: center !important;
-  padding: 10px 14px !important;
+  padding: 10px 12px !important;
   box-sizing: border-box !important;
   width: 100% !important;
 }

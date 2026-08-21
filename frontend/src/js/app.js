@@ -591,18 +591,18 @@ async function loadBusinessData() {
       appData.products = cleanPrds;
     } else {
       appData.products = [
-        { id: 'SKU-PRD-01', name: 'Classic Cotton Slim-Fit Shirt', category: "Men's Apparel", subCategory: 'Shirts', price: 1299.00, stock: 'In Stock', count: 85 },
-        { id: 'SKU-PRD-02', name: 'Floral Print Summer Chiffon Dress', category: "Women's Fashion", subCategory: 'Dresses & Maxis', price: 2499.00, stock: 'In Stock', count: 42 },
-        { id: 'SKU-PRD-03', name: 'Denim Jacket with Fleece Lining', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', price: 2799.00, stock: 'Low Stock', count: 6 },
-        { id: 'SKU-PRD-04', name: 'Casual Cotton Chino Trousers', category: "Men's Apparel", subCategory: 'Jeans & Trousers', price: 1999.00, stock: 'In Stock', count: 30 },
-        { id: 'SKU-PRD-05', name: 'Kids Organic Cotton T-Shirt Set', category: 'Kidswear & Toddlers', subCategory: 'Infant Onesies', price: 999.00, stock: 'In Stock', count: 65 },
-        { id: 'SKU-PRD-06', name: 'Handwoven Banarasi Silk Saree', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', price: 6800.00, stock: 'In Stock', count: 12 },
-        { id: 'SKU-PRD-07', name: 'Merino Wool Knitted Cardigan', category: 'Winterwear & Outerwear', subCategory: 'Sweaters & Cardigans', price: 2299.00, stock: 'Low Stock', count: 4 },
-        { id: 'SKU-PRD-08', name: 'Pure Linen Button-Down Formal Shirt', category: "Men's Apparel", subCategory: 'Shirts', price: 1899.00, stock: 'In Stock', count: 50 },
-        { id: 'SKU-PRD-09', name: 'Slim-Fit Stretch Denim Jeans', category: "Men's Apparel", subCategory: 'Jeans & Trousers', price: 2199.00, stock: 'In Stock', count: 28 },
-        { id: 'SKU-PRD-10', name: 'Embroidered Anarkali Kurti Set', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', price: 3499.00, stock: 'In Stock', count: 18 },
-        { id: 'SKU-PRD-11', name: 'Wool Blend Tailored Winter Coat', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', price: 4999.00, stock: 'Low Stock', count: 8 },
-        { id: 'SKU-PRD-12', name: 'Toddler Denim Overalls & Polo Combo', category: 'Kidswear & Toddlers', subCategory: 'Boys Casuals', price: 1499.00, stock: 'In Stock', count: 35 }
+        { id: 'SKU-PRD-01', name: 'Classic Cotton Slim-Fit Shirt', category: "Men's Apparel", subCategory: 'Shirts', color: 'Navy Blue', size: 'M', price: 1299.00, stock: 'In Stock', count: 85 },
+        { id: 'SKU-PRD-02', name: 'Floral Print Summer Chiffon Dress', category: "Women's Fashion", subCategory: 'Dresses & Maxis', color: 'Pink', size: 'S', price: 2499.00, stock: 'In Stock', count: 42 },
+        { id: 'SKU-PRD-03', name: 'Denim Jacket with Fleece Lining', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', color: 'Royal Blue', size: 'L', price: 2799.00, stock: 'Low Stock', count: 6 },
+        { id: 'SKU-PRD-04', name: 'Casual Cotton Chino Trousers', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Beige / Cream', size: 'XL', price: 1999.00, stock: 'In Stock', count: 30 },
+        { id: 'SKU-PRD-05', name: 'Kids Organic Cotton T-Shirt Set', category: 'Kidswear & Toddlers', subCategory: 'Infant Onesies', color: 'White', size: 'S', price: 999.00, stock: 'In Stock', count: 65 },
+        { id: 'SKU-PRD-06', name: 'Handwoven Banarasi Silk Saree', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', color: 'Wine Maroon', size: 'Free Size', price: 6800.00, stock: 'In Stock', count: 12 },
+        { id: 'SKU-PRD-07', name: 'Merino Wool Knitted Cardigan', category: 'Winterwear & Outerwear', subCategory: 'Sweaters & Cardigans', color: 'Grey / Charcoal', size: 'M', price: 2299.00, stock: 'Low Stock', count: 4 },
+        { id: 'SKU-PRD-08', name: 'Pure Linen Button-Down Formal Shirt', category: "Men's Apparel", subCategory: 'Shirts', color: 'White', size: 'L', price: 1899.00, stock: 'In Stock', count: 50 },
+        { id: 'SKU-PRD-09', name: 'Slim-Fit Stretch Denim Jeans', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Black', size: 'XL', price: 2199.00, stock: 'In Stock', count: 28 },
+        { id: 'SKU-PRD-10', name: 'Embroidered Anarkali Kurti Set', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', color: 'Red', size: 'M', price: 3499.00, stock: 'In Stock', count: 18 },
+        { id: 'SKU-PRD-11', name: 'Wool Blend Tailored Winter Coat', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', color: 'Black', size: 'XXL', price: 4999.00, stock: 'Low Stock', count: 8 },
+        { id: 'SKU-PRD-12', name: 'Toddler Denim Overalls & Polo Combo', category: 'Kidswear & Toddlers', subCategory: 'Boys Casuals', color: 'Olive Green', size: 'S', price: 1499.00, stock: 'In Stock', count: 35 }
       ];
     }
   }
@@ -700,6 +700,8 @@ function addNewProductToSystem(productData) {
     name: productData.name,
     category: productData.category || "Men's Apparel",
     subCategory: productData.subCategory || '',
+    color: productData.color || 'Black',
+    size: productData.size || 'M',
     price: priceNum,
     count: countNum,
     stock: stockStatus
@@ -728,40 +730,87 @@ function addNewProductToSystem(productData) {
 
 window.addNewProductToSystem = addNewProductToSystem;
 
+const SKU_PRESET_VARIANTS = {
+  'SKU-PRD-01': { color: 'Navy Blue', size: 'M' },
+  'SKU-PRD-02': { color: 'Pink', size: 'S' },
+  'SKU-PRD-03': { color: 'Royal Blue', size: 'L' },
+  'SKU-PRD-04': { color: 'Beige / Cream', size: 'XL' },
+  'SKU-PRD-05': { color: 'White', size: 'S' },
+  'SKU-PRD-06': { color: 'Wine Maroon', size: 'L' },
+  'SKU-PRD-07': { color: 'Grey / Charcoal', size: 'M' },
+  'SKU-PRD-08': { color: 'White', size: 'L' },
+  'SKU-PRD-09': { color: 'Black', size: 'XL' },
+  'SKU-PRD-10': { color: 'Red', size: 'M' },
+  'SKU-PRD-11': { color: 'Black', size: 'XXL' },
+  'SKU-PRD-12': { color: 'Olive Green', size: 'S' }
+};
+
+const COLOR_PALETTE = ['Navy Blue', 'Pink', 'Royal Blue', 'Beige / Cream', 'White', 'Wine Maroon', 'Grey / Charcoal', 'White', 'Black', 'Red', 'Black', 'Olive Green', 'Sky Blue', 'Yellow / Mustard', 'Multicolor'];
+const SIZE_PALETTE = ['M', 'L', 'XL', 'S', 'XXL', 'M', 'L', 'XL', 'S', 'XXL', '3XL', 'M', 'L', 'XL', 'S'];
+
+function normalizeSize(sz, idx = 0) {
+  if (!sz || sz === 'Free Size' || sz === 'All Sizes' || sz.toLowerCase().includes('free') || sz.toLowerCase().includes('universal')) {
+    const stds = ['M', 'L', 'XL', 'S', 'XXL'];
+    return stds[idx % stds.length];
+  }
+  return sz;
+}
+
+function assignProductColorAndSize(p, index = 0) {
+  if (!p) return p;
+  const preset = SKU_PRESET_VARIANTS[p.id];
+  if (preset) {
+    p.color = (p.color && p.color !== 'Black') ? p.color : preset.color;
+    p.size = normalizeSize(p.size, index) || preset.size;
+  } else {
+    p.color = (p.color && p.color !== 'Black') ? p.color : COLOR_PALETTE[index % COLOR_PALETTE.length];
+    p.size = normalizeSize(p.size, index) || SIZE_PALETTE[index % SIZE_PALETTE.length];
+  }
+  return p;
+}
+
 function getUnifiedProductsList() {
+  let list = [];
   const savedPrds = localStorage.getItem('nexus_custom_products');
   if (savedPrds) {
     try {
       const parsedPrds = JSON.parse(savedPrds);
       if (Array.isArray(parsedPrds) && parsedPrds.length > 0) {
-        appData.products = sortProductsBySku(parsedPrds);
-        return appData.products;
+        list = parsedPrds;
       }
     } catch (e) {
       console.warn('Error reading nexus_custom_products:', e);
     }
   }
 
-  if (!appData.products || appData.products.length === 0) {
-    appData.products = [
-      { id: 'SKU-PRD-01', name: 'Classic Cotton Slim-Fit Shirt', category: "Men's Apparel", subCategory: 'Shirts', price: 1299.00, stock: 'In Stock', count: 85 },
-      { id: 'SKU-PRD-02', name: 'Floral Print Summer Chiffon Dress', category: "Women's Fashion", subCategory: 'Dresses & Maxis', price: 2499.00, stock: 'In Stock', count: 42 },
-      { id: 'SKU-PRD-03', name: 'Denim Jacket with Fleece Lining', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', price: 2799.00, stock: 'Low Stock', count: 6 },
-      { id: 'SKU-PRD-04', name: 'Casual Cotton Chino Trousers', category: "Men's Apparel", subCategory: 'Jeans & Trousers', price: 1999.00, stock: 'In Stock', count: 30 },
-      { id: 'SKU-PRD-05', name: 'Kids Organic Cotton T-Shirt Set', category: 'Kidswear & Toddlers', subCategory: 'Infant Onesies', price: 999.00, stock: 'In Stock', count: 65 },
-      { id: 'SKU-PRD-06', name: 'Handwoven Banarasi Silk Saree', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', price: 6800.00, stock: 'In Stock', count: 12 },
-      { id: 'SKU-PRD-07', name: 'Merino Wool Knitted Cardigan', category: 'Winterwear & Outerwear', subCategory: 'Sweaters & Cardigans', price: 2299.00, stock: 'Low Stock', count: 4 },
-      { id: 'SKU-PRD-08', name: 'Pure Linen Button-Down Formal Shirt', category: "Men's Apparel", subCategory: 'Shirts', price: 1899.00, stock: 'In Stock', count: 50 },
-      { id: 'SKU-PRD-09', name: 'Slim-Fit Stretch Denim Jeans', category: "Men's Apparel", subCategory: 'Jeans & Trousers', price: 2199.00, stock: 'In Stock', count: 28 },
-      { id: 'SKU-PRD-10', name: 'Embroidered Anarkali Kurti Set', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', price: 3499.00, stock: 'In Stock', count: 18 },
-      { id: 'SKU-PRD-11', name: 'Wool Blend Tailored Winter Coat', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', price: 4999.00, stock: 'Low Stock', count: 8 },
-      { id: 'SKU-PRD-12', name: 'Toddler Denim Overalls & Polo Combo', category: 'Kidswear & Toddlers', subCategory: 'Boys Casuals', price: 1499.00, stock: 'In Stock', count: 35 }
+  if (list.length === 0) {
+    list = (appData.products && appData.products.length > 0) ? appData.products : [
+      { id: 'SKU-PRD-01', name: 'Classic Cotton Slim-Fit Shirt', category: "Men's Apparel", subCategory: 'Shirts', color: 'Navy Blue', size: 'M', price: 1299.00, stock: 'In Stock', count: 85 },
+      { id: 'SKU-PRD-02', name: 'Floral Print Summer Chiffon Dress', category: "Women's Fashion", subCategory: 'Dresses & Maxis', color: 'Pink', size: 'S', price: 2499.00, stock: 'In Stock', count: 42 },
+      { id: 'SKU-PRD-03', name: 'Denim Jacket with Fleece Lining', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', color: 'Royal Blue', size: 'L', price: 2799.00, stock: 'Low Stock', count: 6 },
+      { id: 'SKU-PRD-04', name: 'Casual Cotton Chino Trousers', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Beige / Cream', size: 'XL', price: 1999.00, stock: 'In Stock', count: 30 },
+      { id: 'SKU-PRD-05', name: 'Kids Organic Cotton T-Shirt Set', category: 'Kidswear & Toddlers', subCategory: 'Infant Onesies', color: 'White', size: 'S', price: 999.00, stock: 'In Stock', count: 65 },
+      { id: 'SKU-PRD-06', name: 'Handwoven Banarasi Silk Saree', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', color: 'Wine Maroon', size: 'L', price: 6800.00, stock: 'In Stock', count: 12 },
+      { id: 'SKU-PRD-07', name: 'Merino Wool Knitted Cardigan', category: 'Winterwear & Outerwear', subCategory: 'Sweaters & Cardigans', color: 'Grey / Charcoal', size: 'M', price: 2299.00, stock: 'Low Stock', count: 4 },
+      { id: 'SKU-PRD-08', name: 'Pure Linen Button-Down Formal Shirt', category: "Men's Apparel", subCategory: 'Shirts', color: 'White', size: 'L', price: 1899.00, stock: 'In Stock', count: 50 },
+      { id: 'SKU-PRD-09', name: 'Slim-Fit Stretch Denim Jeans', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Black', size: 'XL', price: 2199.00, stock: 'In Stock', count: 28 },
+      { id: 'SKU-PRD-10', name: 'Embroidered Anarkali Kurti Set', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', color: 'Red', size: 'M', price: 3499.00, stock: 'In Stock', count: 18 },
+      { id: 'SKU-PRD-11', name: 'Wool Blend Tailored Winter Coat', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', color: 'Black', size: 'XXL', price: 4999.00, stock: 'Low Stock', count: 8 },
+      { id: 'SKU-PRD-12', name: 'Toddler Denim Overalls & Polo Combo', category: 'Kidswear & Toddlers', subCategory: 'Boys Casuals', color: 'Olive Green', size: 'S', price: 1499.00, stock: 'In Stock', count: 35 }
     ];
   }
 
-  appData.products = sortProductsBySku(appData.products);
+  list = list.map((p, idx) => assignProductColorAndSize(p, idx));
+  appData.products = sortProductsBySku(list);
+  
+  try {
+    localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
+  } catch (e) {}
+
   return appData.products;
 }
+
+
 
 function updateInvoiceProductSelectOptions() {
   const activeProducts = getUnifiedProductsList();
@@ -1229,7 +1278,9 @@ function renderProductsTable(filterCategory = 'all', searchQuery = '') {
     list = list.filter(p =>
       (p.id && p.id.toLowerCase().includes(q)) ||
       (p.name && p.name.toLowerCase().includes(q)) ||
-      (p.category && p.category.toLowerCase().includes(q))
+      (p.category && p.category.toLowerCase().includes(q)) ||
+      (p.color && p.color.toLowerCase().includes(q)) ||
+      (p.size && p.size.toLowerCase().includes(q))
     );
   }
 
@@ -1238,10 +1289,23 @@ function renderProductsTable(filterCategory = 'all', searchQuery = '') {
     return;
   }
 
-  tbody.innerHTML = list.map(prd => `
+  tbody.innerHTML = list.map((prd, idx) => {
+    const colorVal = prd.color || 'Navy Blue';
+    let rawSize = prd.size || 'M';
+    if (!rawSize || rawSize === 'Free Size' || rawSize === 'All Sizes' || rawSize.toLowerCase().includes('free') || rawSize.toLowerCase().includes('universal')) {
+      rawSize = ['M', 'L', 'XL', 'S', 'XXL'][idx % 5];
+      prd.size = rawSize;
+    }
+    const sizeVal = rawSize;
+    const detailsSubtext = `<div style="font-size: 0.82rem; color: #64748b; margin-top: 3px; font-weight: 500;">${colorVal} &bull; Size ${sizeVal}</div>`;
+
+    return `
     <tr>
       <td class="font-mono nowrap-cell"><strong>${prd.id}</strong></td>
-      <td><strong>${prd.name}</strong></td>
+      <td>
+        <strong style="font-size: 0.95rem; color: #1e293b;">${prd.name}</strong>
+        ${detailsSubtext}
+      </td>
       <td>
         <span class="status-tag clickable-badge view-category-related-btn" data-category-name="${prd.category}" style="background: rgba(124, 58, 237, 0.1); color: var(--primary-accent);" title="Click to view category items">
           ${prd.category}
@@ -1264,7 +1328,8 @@ function renderProductsTable(filterCategory = 'all', searchQuery = '') {
         </button>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   // Bind Edit Product Buttons
   tbody.querySelectorAll('.edit-product-btn').forEach(btn => {
@@ -1318,6 +1383,154 @@ document.querySelectorAll('[data-prd-filter]').forEach(btn => {
 let currentInventoryFilter = 'all';
 let currentInventorySearchQuery = '';
 let currentStockAdjustProduct = null;
+
+function getProductSizeStockBreakdown(prd) {
+  if (!prd) return {};
+  if (prd.sizeStock && typeof prd.sizeStock === 'object') {
+    return prd.sizeStock;
+  }
+
+  const group = getCategorySizeGroup(prd.name, prd.subCategory, prd.category);
+  const totalCount = typeof prd.count === 'number' ? prd.count : parseInt(prd.count || '50', 10);
+  const sizeStock = {};
+
+  if (group === 'bottoms') {
+    const sizes = ['26', '28', '30', '32', '34', '36', '38', '40'];
+    const perSize = Math.floor(totalCount / sizes.length);
+    const remainder = totalCount % sizes.length;
+    sizes.forEach((sz, idx) => {
+      sizeStock[sz] = perSize + (idx === 0 ? remainder : 0);
+    });
+  } else if (group === 'footwear') {
+    const sizes = ['UK 6', 'UK 7', 'UK 8', 'UK 9', 'UK 10', 'UK 11'];
+    const perSize = Math.floor(totalCount / sizes.length);
+    const remainder = totalCount % sizes.length;
+    sizes.forEach((sz, idx) => {
+      sizeStock[sz] = perSize + (idx === 0 ? remainder : 0);
+    });
+  } else {
+    const sizes = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
+    const perSize = Math.floor(totalCount / sizes.length);
+    const remainder = totalCount % sizes.length;
+    sizes.forEach((sz, idx) => {
+      sizeStock[sz] = perSize + (idx === 1 ? remainder : 0);
+    });
+  }
+
+  prd.sizeStock = sizeStock;
+  return sizeStock;
+}
+
+function openSizeStockModal(productId) {
+  const modal = document.getElementById('size-stock-modal');
+  if (!modal) return;
+
+  const prds = getUnifiedProductsList();
+  const prd = prds.find(p => p.id === productId);
+  if (!prd) return;
+
+  const skuBadge = document.getElementById('size-stock-sku-badge');
+  const catBadge = document.getElementById('size-stock-category-badge');
+  const nameEl = document.getElementById('size-stock-product-name');
+  const totalUnitsEl = document.getElementById('size-stock-total-units');
+  const gridContainer = document.getElementById('size-stock-grid-container');
+  const quickReloadBtn = document.getElementById('size-stock-quick-reload-btn');
+
+  if (skuBadge) skuBadge.textContent = prd.id;
+  if (catBadge) catBadge.textContent = prd.category || 'General';
+  if (nameEl) nameEl.textContent = prd.name;
+
+  function renderGrid() {
+    const breakdown = getProductSizeStockBreakdown(prd);
+    let currentTotal = 0;
+
+    const cardsHtml = Object.keys(breakdown).map(sizeKey => {
+      const szCount = breakdown[sizeKey] || 0;
+      currentTotal += szCount;
+
+      let pillBg = '#f0fdf4';
+      let pillColor = '#16a34a';
+      let pillText = 'In Stock';
+      if (szCount <= 0) {
+        pillBg = '#fef2f2';
+        pillColor = '#dc2626';
+        pillText = 'Out of Stock';
+      } else if (szCount <= 5) {
+        pillBg = '#fffbeb';
+        pillColor = '#d97706';
+        pillText = 'Low Stock';
+      }
+
+      return `
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 800; font-size: 0.95rem; color: #1e293b;">Size ${sizeKey}</span>
+            <span style="background: ${pillBg}; color: ${pillColor}; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 0.72rem;">${pillText}</span>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+            <div style="font-size: 1.2rem; font-weight: 800; color: #0f172a; font-family: monospace;">${szCount} <span style="font-size: 0.75rem; color: #64748b; font-weight: 500;">units</span></div>
+            
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <button type="button" class="adjust-size-stock-btn" data-sku="${prd.id}" data-size="${sizeKey}" data-change="-1" style="width: 28px; height: 28px; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s ease;">-</button>
+              <button type="button" class="adjust-size-stock-btn" data-sku="${prd.id}" data-size="${sizeKey}" data-change="1" style="width: 28px; height: 28px; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s ease;">+</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    prd.count = currentTotal;
+    prd.stock = currentTotal <= 0 ? 'Out of Stock' : (currentTotal <= 20 ? 'Low Stock' : 'In Stock');
+    if (totalUnitsEl) totalUnitsEl.textContent = `${currentTotal} units`;
+    if (gridContainer) gridContainer.innerHTML = cardsHtml;
+
+    try {
+      localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
+    } catch (e) {}
+  }
+
+  renderGrid();
+
+  if (gridContainer) {
+    gridContainer.onclick = (e) => {
+      const btn = e.target.closest('.adjust-size-stock-btn');
+      if (!btn) return;
+      const sz = btn.getAttribute('data-size');
+      const delta = parseInt(btn.getAttribute('data-change') || '0', 10);
+      const breakdown = getProductSizeStockBreakdown(prd);
+      if (breakdown && sz) {
+        breakdown[sz] = Math.max(0, (breakdown[sz] || 0) + delta);
+        renderGrid();
+      }
+    };
+  }
+
+  if (quickReloadBtn) {
+    quickReloadBtn.onclick = () => {
+      const breakdown = getProductSizeStockBreakdown(prd);
+      Object.keys(breakdown).forEach(sz => {
+        breakdown[sz] = (breakdown[sz] || 0) + 10;
+      });
+      renderGrid();
+      showToast(`Restocked +10 units across all sizes for ${prd.name}!`, 'success');
+    };
+  }
+
+  modal.style.display = 'flex';
+  modal.classList.remove('hidden');
+}
+
+function closeSizeStockModal() {
+  const modal = document.getElementById('size-stock-modal');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.add('hidden');
+  }
+}
+
+window.openSizeStockModal = openSizeStockModal;
+window.closeSizeStockModal = closeSizeStockModal;
 
 function renderInventoryView() {
   const tbody = document.getElementById('inventory-table-tbody');
@@ -1411,28 +1624,19 @@ function renderInventoryView() {
     const showReloadOption = count <= 20;
 
     return `
-      <tr>
+      <tr class="inventory-product-row" data-id="${prd.id}" style="cursor: pointer; transition: background 0.15s ease;" title="Click to view size-wise stock breakdown">
         <td class="nowrap-cell"><span class="sku-badge">${prd.id}</span></td>
         <td>
-          <div style="font-weight: 700; color: var(--text-main); font-size: 0.92rem;">${prd.name}</div>
-          <span class="category-pill">${prd.category || 'General'}</span>
+          <div style="font-weight: 700; color: #1e293b; font-size: 0.94rem;" class="view-size-stock-trigger">${prd.name}</div>
+          <span class="category-pill" style="margin-top: 3px; display: inline-block;">${prd.category || 'General'}</span>
         </td>
         <td class="nowrap-cell text-center">
-          <strong style="font-size: 0.95rem; color: var(--text-main); font-family: monospace;">${count}</strong>
+          <strong style="font-size: 1rem; color: #1e293b; font-family: monospace;">${count}</strong>
         </td>
         <td class="nowrap-cell text-center">
           <span class="status-pill ${statusClass}">${statusLabel}</span>
         </td>
         <td class="nowrap-cell text-right">
-          ${showReloadOption ? `
-            <button type="button" class="reload-stock-btn" data-id="${prd.id}" data-name="${prd.name}" style="background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; padding: 5px 11px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s ease; margin-right: 6px;" title="Reload Stock (+50 units)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-              </svg>
-              <span>Reload</span>
-            </button>
-          ` : ''}
           <button type="button" class="remove-inventory-btn" data-id="${prd.id}" data-name="${prd.name}" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="Remove Item">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"></polyline>
@@ -1443,35 +1647,6 @@ function renderInventoryView() {
       </tr>
     `;
   }).join('');
-
-  tbody.querySelectorAll('.reload-stock-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const prdId = btn.getAttribute('data-id');
-      const prdName = btn.getAttribute('data-name');
-      const allPrds = getUnifiedProductsList();
-      const product = allPrds.find(p => p.id === prdId || p.name === prdName);
-
-      if (product) {
-        product.count = (parseInt(product.count, 10) || 0) + 50;
-        product.stock = product.count <= 0 ? 'Out of Stock' : (product.count <= 20 ? 'Low Stock' : 'In Stock');
-
-        try {
-          localStorage.setItem('nexus_custom_products', JSON.stringify(allPrds));
-        } catch (e) {}
-
-        try {
-          await api.updateProductStock(prdId, { count: product.count, stock: product.stock });
-        } catch (e) {
-          console.warn('api.updateProductStock error:', e);
-        }
-
-        renderProductsTable();
-        renderInventoryView();
-        updateInvoiceProductSelectOptions();
-        showToast(`Stock reloaded for "${prdName}" (+50 units)!`, 'success');
-      }
-    });
-  });
 
   tbody.querySelectorAll('.remove-inventory-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -1493,6 +1668,16 @@ function renderInventoryView() {
       renderInventoryView();
       updateInvoiceProductSelectOptions();
       showToast(`Product "${prdName}" removed from Inventory!`, 'success');
+    });
+  });
+
+  tbody.querySelectorAll('.inventory-product-row').forEach(tr => {
+    tr.addEventListener('click', (e) => {
+      if (e.target.closest('.reload-stock-btn') || e.target.closest('.remove-inventory-btn')) {
+        return;
+      }
+      const prdId = tr.getAttribute('data-id');
+      if (prdId) openSizeStockModal(prdId);
     });
   });
 }
@@ -1827,11 +2012,21 @@ function renderClientsGrid(filterDateStr = null) {
   if (!tbody) return;
 
   const datePicker = document.getElementById('customer-date-picker');
-  const selectedDate = filterDateStr !== null ? filterDateStr : (datePicker ? datePicker.value : '');
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  let selectedDate = '';
+  if (filterDateStr !== null && filterDateStr !== undefined) {
+    selectedDate = filterDateStr;
+  } else if (datePicker && datePicker.value) {
+    selectedDate = datePicker.value;
+  } else {
+    selectedDate = currentCustomerSelectedDate || todayStr;
+  }
+
   currentCustomerSelectedDate = selectedDate;
 
-  if (datePicker && filterDateStr !== null && datePicker.value !== filterDateStr) {
-    datePicker.value = filterDateStr;
+  if (datePicker && datePicker.value !== selectedDate) {
+    datePicker.value = selectedDate;
   }
 
   const downloadPdfBtn = document.getElementById('customer-download-pdf-btn');
@@ -1953,6 +2148,12 @@ function bindCustomerDateFilterEvents() {
   const datePicker = document.getElementById('customer-date-picker');
   const modeFilter = document.getElementById('customer-payment-mode-filter');
   const pdfBtn = document.getElementById('customer-download-pdf-btn');
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  if (datePicker && !datePicker.value) {
+    datePicker.value = currentCustomerSelectedDate || todayStr;
+    currentCustomerSelectedDate = datePicker.value;
+  }
 
   if (datePicker && !datePicker.dataset.bound) {
     datePicker.dataset.bound = 'true';
@@ -2082,44 +2283,10 @@ function downloadCustomerDirectoryPDF(filterDateStr = null) {
   }
 
   try {
-    const doc = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 14;
-    const rightX = pageWidth - margin - 4;
-
-    const purplePrimary = [124, 58, 237];
-    const textDark = [15, 23, 42];
-    const textMuted = [100, 116, 139];
-    const borderLight = [226, 232, 240];
-
-    let y = 18;
-
-    // Header Block
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...purplePrimary);
-    doc.text('NEXUS', margin, y);
-    const nexusWidth = doc.getTextWidth('NEXUS');
-    doc.setTextColor(...textDark);
-    doc.text('SUITE', margin + nexusWidth + 2.5, y);
-
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...textMuted);
-    doc.text('Customers Directory', margin, y + 5);
-
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...purplePrimary);
-    doc.text('CUSTOMER DIRECTORY REPORT', rightX, y + 2, { align: 'right' });
-
-    y += 18;
-    doc.setDrawColor(...borderLight);
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, pageWidth - margin, y);
-
-    y += 10;
-    const targetIso = rawDate ? normalizeDateToIso(rawDate) : '';
+    const paperSize = localStorage.getItem('pdfPaperSize') || 'A4';
+    const isThermal50 = paperSize === 'thermal50';
+    const isThermal88 = paperSize === 'thermal88';
+    const isA3 = paperSize === 'A3';
 
     let customerTransactions = [];
     if (appData.invoices && appData.invoices.length > 0) {
@@ -2140,6 +2307,7 @@ function downloadCustomerDirectoryPDF(filterDateStr = null) {
     // Filter strictly for valid customer amounts
     customerTransactions = customerTransactions.filter(item => item.amount > 0);
 
+    const targetIso = rawDate ? normalizeDateToIso(rawDate) : '';
     if (targetIso) {
       customerTransactions = customerTransactions.filter(item => item.isoDate === targetIso);
     }
@@ -2154,50 +2322,128 @@ function downloadCustomerDirectoryPDF(filterDateStr = null) {
       });
     }
 
-    doc.setFontSize(9.5);
+    let pageHeight = 297;
+    let doc;
+    if (isA3) {
+      doc = new jsPDF('p', 'mm', 'a3');
+      pageHeight = 420;
+    } else if (isThermal50) {
+      const calcH = 100 + (customerTransactions.length * 8.5);
+      pageHeight = Math.max(140, Math.ceil(calcH));
+      doc = new jsPDF('p', 'mm', [50, pageHeight]);
+    } else if (isThermal88) {
+      const calcH = 110 + (customerTransactions.length * 9.5);
+      pageHeight = Math.max(160, Math.ceil(calcH));
+      doc = new jsPDF('p', 'mm', [88, pageHeight]);
+    } else {
+      doc = new jsPDF('p', 'mm', 'a4');
+    }
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = isThermal50 ? 3 : (isThermal88 ? 4 : (isA3 ? 20 : 14));
+    const rightX = pageWidth - margin - (isThermal50 ? 1 : 4);
+
+    const purplePrimary = [124, 58, 237];
+    const textDark = [15, 23, 42];
+    const textMuted = [100, 116, 139];
+    const borderLight = [226, 232, 240];
+
+    let y = isThermal50 ? 6 : (isThermal88 ? 8 : (isA3 ? 24 : 18));
+
+    // Header Block
+    const titleSize = isThermal50 ? 11 : (isThermal88 ? 13 : (isA3 ? 24 : 18));
+    doc.setFontSize(titleSize);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...purplePrimary);
+    doc.text('NEXUS', margin, y);
+    const nexusWidth = doc.getTextWidth('NEXUS');
+    doc.setTextColor(...textDark);
+    doc.text('SUITE', margin + nexusWidth + (isThermal50 ? 1 : 2.5), y);
+
+    const subTitleSize = isThermal50 ? 6 : (isThermal88 ? 7 : (isA3 ? 12 : 8.5));
+    doc.setFontSize(subTitleSize);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...textMuted);
+    doc.text('Customers Directory', margin, y + (isThermal50 ? 3.5 : 5));
+
+    if (!isThermal50) {
+      const reportTitleSize = isThermal88 ? 8.5 : (isA3 ? 16 : 13);
+      doc.setFontSize(reportTitleSize);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...purplePrimary);
+      doc.text('CUSTOMER DIRECTORY REPORT', rightX, y + (isThermal88 ? 1 : 2), { align: 'right' });
+    }
+
+    y += isThermal50 ? 10 : (isThermal88 ? 14 : (isA3 ? 22 : 18));
+    doc.setDrawColor(...borderLight);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageWidth - margin, y);
+
+    y += isThermal50 ? 5 : (isThermal88 ? 7 : 10);
+
+    const infoFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 12 : 9.5));
+    doc.setFontSize(infoFontSize);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...textDark);
     const dateSub = displayDate ? `Filter Date: ${displayDate}` : `Generated: ${new Date().toLocaleDateString('en-IN')}`;
     doc.text(`Total Customers: ${customerTransactions.length} | ${dateSub}`, margin, y);
 
-    y += 10;
+    y += isThermal50 ? 6 : (isThermal88 ? 8 : 10);
 
     // Table Header Helper
     const tableWidth = pageWidth - (margin * 2);
-    const col1X = margin + 4;
-    const col2X = margin + 60;
-    const col3X = margin + 110;
+    let col1X, col2X, col3X;
+    if (isThermal50) {
+      col1X = margin + 1;
+      col2X = margin + 17;
+      col3X = margin + 30;
+    } else if (isThermal88) {
+      col1X = margin + 2;
+      col2X = margin + 28;
+      col3X = margin + 52;
+    } else if (isA3) {
+      col1X = margin + 5;
+      col2X = margin + 85;
+      col3X = margin + 165;
+    } else {
+      col1X = margin + 4;
+      col2X = margin + 60;
+      col3X = margin + 110;
+    }
 
+    const tableHeaderFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 11 : 8.5));
     const drawTableHeader = (currentY) => {
       doc.setFillColor(248, 247, 255);
-      doc.rect(margin, currentY, tableWidth, 9, 'F');
-      doc.setFontSize(8.5);
+      doc.rect(margin, currentY, tableWidth, isThermal50 ? 6 : (isThermal88 ? 7 : 9), 'F');
+      doc.setFontSize(tableHeaderFontSize);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...textDark);
-      doc.text('Customer ID', col1X, currentY + 6);
-      doc.text('Date', col2X, currentY + 6);
-      doc.text('Payment Mode', col3X, currentY + 6);
-      doc.text('Customer Amount', rightX, currentY + 6, { align: 'right' });
+      doc.text('Customer ID', col1X, currentY + (isThermal50 ? 4 : (isThermal88 ? 5 : 6)));
+      doc.text('Date', col2X, currentY + (isThermal50 ? 4 : (isThermal88 ? 5 : 6)));
+      doc.text('Mode', col3X, currentY + (isThermal50 ? 4 : (isThermal88 ? 5 : 6)));
+      doc.text('Amount', rightX, currentY + (isThermal50 ? 4 : (isThermal88 ? 5 : 6)), { align: 'right' });
     };
 
     drawTableHeader(y);
 
-    y += 11;
+    y += isThermal50 ? 7 : (isThermal88 ? 9 : 11);
+    const itemFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 11 : 8.5));
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
+    doc.setFontSize(itemFontSize);
 
     let totalCustomerAmount = 0;
     const dayCountersPdf = {};
+    const maxPageY = isA3 ? 390 : 265;
 
     customerTransactions.forEach((item) => {
-      // Automatic Page Pagination
-      if (y > 265) {
+      // Automatic Page Pagination (for A4/A3 multi-page)
+      if (!isThermal50 && !isThermal88 && y > maxPageY) {
         doc.addPage();
-        y = 18;
+        y = isA3 ? 24 : 18;
         drawTableHeader(y);
         y += 11;
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8.5);
+        doc.setFontSize(itemFontSize);
       }
 
       const isoKey = item.isoDate || normalizeDateToIso(item.invDate);
@@ -2217,13 +2463,13 @@ function downloadCustomerDirectoryPDF(filterDateStr = null) {
       doc.text(item.paymentMode || 'Cash', col3X, y + 4);
       doc.text(formatPdfCurrency(item.amount), rightX, y + 4, { align: 'right' });
 
-      y += 7;
+      y += isThermal50 ? 5.5 : (isThermal88 ? 6.5 : 7);
       doc.setDrawColor(241, 245, 249);
       doc.line(margin, y, pageWidth - margin, y);
-      y += 3;
+      y += isThermal50 ? 2 : 3;
     });
 
-    if (y > 265) {
+    if (!isThermal50 && !isThermal88 && y > maxPageY) {
       doc.addPage();
       y = 20;
     }
@@ -2232,14 +2478,15 @@ function downloadCustomerDirectoryPDF(filterDateStr = null) {
     doc.setDrawColor(...borderLight);
     doc.setLineWidth(0.8);
     doc.line(margin, y, pageWidth - margin, y);
-    y += 8;
+    y += isThermal50 ? 6 : 8;
 
-    doc.setFontSize(10.5);
+    const totalFontSize = isThermal50 ? 8 : (isThermal88 ? 9 : (isA3 ? 14 : 10.5));
+    doc.setFontSize(totalFontSize);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...purplePrimary);
     doc.text(`TOTAL CUSTOMER AMOUNT: ${formatPdfCurrency(totalCustomerAmount)}`, rightX, y, { align: 'right' });
 
-    const fileName = rawDate ? `Customer_Directory_Report_${normalizeDateToIso(rawDate)}.pdf` : `Customer_Directory_Report.pdf`;
+    const fileName = rawDate ? `Customer_Directory_Report_${normalizeDateToIso(rawDate)}_${paperSize}.pdf` : `Customer_Directory_Report_${paperSize}.pdf`;
 
     // Trigger direct native PDF binary file download
     savePdfFile(doc, fileName);
@@ -2332,6 +2579,12 @@ function editProduct(prdId) {
 
   const subCatSelect = document.getElementById('page-prd-subcategory');
   if (subCatSelect) subCatSelect.value = product.subCategory || 'Shirts';
+
+  const colorSelect = document.getElementById('page-prd-color');
+  if (colorSelect) colorSelect.value = product.color || 'Black';
+
+  const sizeSelect = document.getElementById('page-prd-size');
+  if (sizeSelect) sizeSelect.value = product.size || 'M';
 
   const priceInp = document.getElementById('page-prd-price');
   if (priceInp) priceInp.value = product.price || 0;
@@ -2903,6 +3156,135 @@ function calculatePageInvoiceTotal() {
   return subtotal;
 }
 
+const SIZE_SETS = {
+  tops: [
+    { value: 'S', label: 'Small (S)' },
+    { value: 'M', label: 'Medium (M)' },
+    { value: 'L', label: 'Large (L)' },
+    { value: 'XL', label: 'Extra Large (XL)' },
+    { value: 'XXL', label: 'Double XL (XXL)' },
+    { value: '3XL', label: 'Triple XL (3XL)' }
+  ],
+  bottoms: [
+    { value: '26', label: 'Size 26' },
+    { value: '28', label: 'Size 28' },
+    { value: '30', label: 'Size 30' },
+    { value: '32', label: 'Size 32' },
+    { value: '34', label: 'Size 34' },
+    { value: '36', label: 'Size 36' },
+    { value: '38', label: 'Size 38' },
+    { value: '40', label: 'Size 40' }
+  ],
+  footwear: [
+    { value: 'UK 6', label: 'UK 6' },
+    { value: 'UK 7', label: 'UK 7' },
+    { value: 'UK 8', label: 'UK 8' },
+    { value: 'UK 9', label: 'UK 9' },
+    { value: 'UK 10', label: 'UK 10' },
+    { value: 'UK 11', label: 'UK 11' }
+  ]
+};
+
+function getCategorySizeGroup(name = '', subCat = '', cat = '') {
+  const nameLower = (name || '').toLowerCase().trim();
+  const subLower = (subCat || '').toLowerCase().trim();
+  const catLower = (cat || '').toLowerCase().trim();
+  const fullText = `${nameLower} ${subLower} ${catLower}`;
+
+  const isKurtiOrSuit = nameLower.includes('kurti') || nameLower.includes('kurtis') || nameLower.includes('suit') || nameLower.includes('dress') || nameLower.includes('top') || nameLower.includes('gown');
+
+  const isSaree = (
+    fullText.includes('saree') || 
+    fullText.includes('sari') || 
+    fullText.includes('saris') || 
+    fullText.includes('sarees') ||
+    fullText.includes('sharee')
+  ) && !isKurtiOrSuit;
+
+  if (isSaree) {
+    return 'none';
+  }
+
+  if (fullText.includes('trouser') || fullText.includes('pant') || fullText.includes('jean') || fullText.includes('chino') || fullText.includes('lower') || fullText.includes('bottom') || fullText.includes('short') || fullText.includes('pyjama') || fullText.includes('trackpant') || fullText.includes('cargo')) {
+    return 'bottoms';
+  }
+  if (fullText.includes('shoe') || fullText.includes('sneaker') || fullText.includes('footwear') || fullText.includes('boot') || fullText.includes('sandal') || fullText.includes('slipper') || fullText.includes('loafer')) {
+    return 'footwear';
+  }
+  return 'tops';
+}
+
+function updateSizeDropdownOptions(sizeSelect, sizeGroup = 'tops', preferredValue = null) {
+  if (!sizeSelect) return;
+  const parentGroup = sizeSelect.closest('.input-group');
+
+  if (sizeGroup === 'none') {
+    if (sizeSelect.classList.contains('item-size-select')) {
+      sizeSelect.style.visibility = 'hidden';
+      sizeSelect.style.pointerEvents = 'none';
+    } else {
+      if (parentGroup) {
+        parentGroup.style.visibility = 'hidden';
+        parentGroup.style.pointerEvents = 'none';
+      } else {
+        sizeSelect.style.visibility = 'hidden';
+        sizeSelect.style.pointerEvents = 'none';
+      }
+    }
+    sizeSelect.innerHTML = `<option value="Free Size">Free Size</option>`;
+    sizeSelect.value = 'Free Size';
+    return;
+  }
+
+  if (sizeSelect.classList.contains('item-size-select')) {
+    sizeSelect.style.visibility = 'visible';
+    sizeSelect.style.pointerEvents = 'auto';
+  } else {
+    if (parentGroup) {
+      parentGroup.style.visibility = 'visible';
+      parentGroup.style.pointerEvents = 'auto';
+    }
+    sizeSelect.style.visibility = 'visible';
+    sizeSelect.style.pointerEvents = 'auto';
+  }
+
+  const currentVal = preferredValue || sizeSelect.value;
+  const options = SIZE_SETS[sizeGroup] || SIZE_SETS.tops;
+
+  sizeSelect.innerHTML = options.map(opt => 
+    `<option value="${opt.value}">${opt.label}</option>`
+  ).join('');
+
+  if (currentVal && options.some(opt => opt.value === currentVal)) {
+    sizeSelect.value = currentVal;
+  } else {
+    sizeSelect.selectedIndex = 0;
+  }
+}
+
+function bindDynamicSizeListeners(nameInputId, catSelectId, subSelectId, sizeSelectId) {
+  const nameEl = document.getElementById(nameInputId);
+  const catEl = document.getElementById(catSelectId);
+  const subEl = document.getElementById(subSelectId);
+  const sizeEl = document.getElementById(sizeSelectId);
+
+  if (!sizeEl) return;
+
+  const update = () => {
+    const n = nameEl ? nameEl.value : '';
+    const c = catEl ? catEl.value : '';
+    const s = subEl ? subEl.value : '';
+    const group = getCategorySizeGroup(n, s, c);
+    updateSizeDropdownOptions(sizeEl, group);
+  };
+
+  ['input', 'change', 'keyup'].forEach(evt => {
+    if (nameEl) nameEl.addEventListener(evt, update);
+    if (catEl) catEl.addEventListener(evt, update);
+    if (subEl) subEl.addEventListener(evt, update);
+  });
+}
+
 function setupSearchAutocomplete(row) {
   if (!row) return;
 
@@ -3030,6 +3412,16 @@ function setupSearchAutocomplete(row) {
           }
         }
       }
+
+      const colorSelect = row.querySelector('.item-color-select');
+      const sizeSelect = row.querySelector('.item-size-select');
+      if (colorSelect && found.color) colorSelect.value = found.color;
+
+      if (sizeSelect) {
+        const group = getCategorySizeGroup(found.name, found.subCategory || (subCatInput ? subCatInput.value : ''), found.category || (catInput ? catInput.value : ''));
+        updateSizeDropdownOptions(sizeSelect, group, found.size);
+      }
+
       calculatePageInvoiceTotal();
     }
   }
@@ -3207,6 +3599,27 @@ function setupSearchAutocomplete(row) {
     );
   }
 
+  // Bind Dynamic Size Options switching based on product / category / sub-category name
+  function updateRowSize() {
+    const prdName = prdInput ? prdInput.value : '';
+    const subCat = subCatInput ? subCatInput.value : '';
+    const cat = catInput ? catInput.value : '';
+    const group = getCategorySizeGroup(prdName, subCat, cat);
+    const sizeSelect = row.querySelector('.item-size-select');
+    if (sizeSelect) {
+      updateSizeDropdownOptions(sizeSelect, group);
+    }
+  }
+
+  ['input', 'change', 'keyup'].forEach(evt => {
+    if (prdInput) prdInput.addEventListener(evt, updateRowSize);
+    if (subCatInput) subCatInput.addEventListener(evt, updateRowSize);
+    if (catInput) catInput.addEventListener(evt, updateRowSize);
+  });
+
+  // Initial check for size options
+  updateRowSize();
+
   // Bind Qty & Price input events for instant manual calculation
   const qtyInput = row.querySelector('.item-qty-input');
   const priceInput = row.querySelector('.item-price-input');
@@ -3245,11 +3658,36 @@ function createPageInvoiceRow() {
       <div class="autocomplete-suggestions-panel" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 1000; background: #ffffff; border: 1px solid var(--border-light); border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.12); max-height: 200px; overflow-y: auto; box-sizing: border-box; padding: 4px;"></div>
     </div>
 
-    <input type="number" class="item-qty-input" placeholder="1" min="1" value="1" style="padding: 0 8px; height: 38px; text-align: center; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.85rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" required />
-    
-    <input type="number" step="0.01" class="item-price-input" placeholder="0.00" style="padding: 0 10px; height: 38px; text-align: right; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.85rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" required />
+    <select class="item-color-select" style="padding: 0 6px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;">
+      <option value="Black">Black</option>
+      <option value="White">White</option>
+      <option value="Navy Blue">Navy Blue</option>
+      <option value="Royal Blue">Royal Blue</option>
+      <option value="Red">Red</option>
+      <option value="Wine Maroon">Wine Maroon</option>
+      <option value="Olive Green">Olive Green</option>
+      <option value="Grey / Charcoal">Grey / Charcoal</option>
+      <option value="Beige / Cream">Beige / Cream</option>
+      <option value="Pink">Pink</option>
+      <option value="Sky Blue">Sky Blue</option>
+      <option value="Yellow / Mustard">Yellow / Mustard</option>
+      <option value="Multicolor">Multicolor</option>
+    </select>
 
-    <div class="item-subtotal-display" style="height: 38px; display: flex; align-items: center; justify-content: flex-end; padding: 0 8px; text-align: right; font-weight: 700; font-size: 0.88rem; color: var(--text-main); font-family: 'JetBrains Mono', 'Fira Code', monospace; box-sizing: border-box;">₹0.00</div>
+    <select class="item-size-select" style="padding: 0 6px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;">
+      <option value="S">Small (S)</option>
+      <option value="M">Medium (M)</option>
+      <option value="L">Large (L)</option>
+      <option value="XL">Extra Large (XL)</option>
+      <option value="XXL">Double XL (XXL)</option>
+      <option value="3XL">Triple XL (3XL)</option>
+    </select>
+
+    <input type="number" class="item-qty-input" placeholder="1" min="1" value="1" style="padding: 0 6px; height: 38px; text-align: center; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.85rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" required />
+    
+    <input type="number" step="0.01" class="item-price-input" placeholder="0.00" style="padding: 0 8px; height: 38px; text-align: right; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.85rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" required />
+
+    <div class="item-subtotal-display" style="height: 38px; display: flex; align-items: center; justify-content: flex-end; padding: 0 6px; text-align: right; font-weight: 700; font-size: 0.88rem; color: var(--text-main); font-family: 'JetBrains Mono', 'Fira Code', monospace; box-sizing: border-box;">₹0.00</div>
     
     <button type="button" class="remove-item-btn" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; width: 38px; height: 38px; border-radius: 10px; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; transition: all 0.2s ease;" title="Remove Item">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="pointer-events: none;">
@@ -3396,29 +3834,51 @@ function bindPreviewFormatButtons() {
   formatBtns.forEach(btn => {
     const size = btn.getAttribute('data-size');
     if (size === currentSize) {
-      btn.style.background = 'var(--primary-accent)';
+      btn.style.background = 'linear-gradient(135deg, #9333ea 0%, #a855f7 100%)';
       btn.style.color = '#ffffff';
-      btn.style.borderColor = 'var(--primary-accent)';
+      btn.style.borderColor = 'transparent';
+      btn.style.boxShadow = '0 4px 14px rgba(147, 51, 234, 0.35)';
       btn.classList.add('active');
     } else {
-      btn.style.background = '#f8fafc';
-      btn.style.color = 'var(--text-main)';
-      btn.style.borderColor = 'var(--border-light)';
+      btn.style.background = '#ffffff';
+      btn.style.color = '#1a1a1a';
+      btn.style.borderColor = '#e2e8f0';
+      btn.style.boxShadow = 'none';
       btn.classList.remove('active');
     }
 
     if (!btn.dataset.bound) {
       btn.dataset.bound = 'true';
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const selectedSize = btn.getAttribute('data-size');
         localStorage.setItem('pdfPaperSize', selectedSize);
 
-        bindPreviewFormatButtons();
+        if (typeof pendingInvoiceDraft !== 'undefined' && pendingInvoiceDraft) {
+          pendingInvoiceDraft.paperSize = selectedSize;
+        }
 
         const pageContainer = document.getElementById('page-invoice-preview-container');
         if (pageContainer && typeof pendingInvoiceDraft !== 'undefined' && pendingInvoiceDraft) {
           pageContainer.innerHTML = renderInvoicePreviewHTML(pendingInvoiceDraft);
         }
+        const modalContent = document.getElementById('invoice-preview-content');
+        if (modalContent && typeof pendingInvoiceDraft !== 'undefined' && pendingInvoiceDraft) {
+          modalContent.innerHTML = renderInvoicePreviewHTML(pendingInvoiceDraft);
+        }
+
+        initPaperSizeCards();
+        bindPreviewFormatButtons();
+
+        const labelMap = {
+          'A4': 'A4 Standard (210 x 297 mm)',
+          'A3': 'A3 Large Sheet (297 x 420 mm)',
+          'thermal50': 'Thermal 50 (50mm POS Receipt)',
+          'thermal88': 'Thermal 88 (88mm Wide Receipt)'
+        };
+
+        showToast(`PDF Paper Size set to ${labelMap[selectedSize] || selectedSize}. PDF files will export in this size.`, 'success');
       });
     }
   });
@@ -3465,11 +3925,15 @@ function renderInvoicePreviewHTML(draft) {
     const price = Number(item.price) || 0;
     const subtotalVal = q * price;
     const subtotalText = subtotalVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const colorStr = item.color || '';
+    const sizeStr = item.size || '';
+    const variantSub = (colorStr || sizeStr) ? `<div style="font-size: ${isThermal50 ? '0.75rem' : '0.82rem'}; color: #64748b; font-weight: 500; margin-top: 2px;">Color: ${colorStr}${colorStr && sizeStr ? ' | ' : ''}${sizeStr ? `Size: ${sizeStr}` : ''}</div>` : '';
 
     return `
       <div style="padding: ${isThermal50 ? '8px' : '12px'} 0; border-bottom: 1px dashed #e9d5ff; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; font-size: ${isThermal50 ? '0.85rem' : '0.95rem'}; color: #1a1a1a; font-family: sans-serif;">
         <div style="flex: 1; min-width: 0; font-weight: 600; line-height: 1.4; word-break: break-word;">
           ${idx + 1}. ${item.name}
+          ${variantSub}
         </div>
         <div style="width: ${qtyWidth}; text-align: center; font-weight: 600; color: #1a1a1a; flex-shrink: 0;">
           ${q}
@@ -3644,13 +4108,17 @@ function openInvoicePreviewModal() {
       const nameInput = row.querySelector('.item-name-input');
       const catInput = row.querySelector('.item-category-input');
       const subCatInput = row.querySelector('.item-subcategory-input');
+      const colorSelect = row.querySelector('.item-color-select');
+      const sizeSelect = row.querySelector('.item-size-select');
 
       const name = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : 'Product Item';
       const category = (catInput && catInput.value.trim()) ? catInput.value.trim() : "Men's Apparel";
       const subCategory = (subCatInput && subCatInput.value.trim()) ? subCatInput.value.trim() : 'Shirts';
+      const color = colorSelect ? colorSelect.value : 'Black';
+      const size = sizeSelect ? sizeSelect.value : 'M';
       const qty = parseFloat(row.querySelector('.item-qty-input')?.value || 1);
       const price = parseFloat(row.querySelector('.item-price-input')?.value || 0);
-      items.push({ name, category, subCategory, qty, price });
+      items.push({ name, category, subCategory, color, size, qty, price });
     });
   }
 
@@ -4197,8 +4665,8 @@ if (createInvoicePageForm) {
   });
 }
 
-function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal, gstRate, gstAmount, invoiceId, date, paymentMode = 'Cash' }) {
-  const paperSize = localStorage.getItem('pdfPaperSize') || 'A4';
+function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal, gstRate, gstAmount, invoiceId, date, paymentMode = 'Cash', paperSize: passedPaperSize }) {
+  const paperSize = passedPaperSize || localStorage.getItem('pdfPaperSize') || 'A4';
   const cleanGstRate = typeof gstRate === 'number' ? gstRate : parseFloat(localStorage.getItem('storeGstRate') || '18');
   const cleanSubtotal = typeof subtotal === 'number' ? subtotal : (totalAmount / (1 + (cleanGstRate / 100)));
   const cleanGstAmount = typeof gstAmount === 'number' ? gstAmount : (totalAmount - cleanSubtotal);
@@ -4206,10 +4674,11 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
 
   const isThermal50 = paperSize === 'thermal50';
   const isThermal88 = paperSize === 'thermal88';
+  const isA3 = paperSize === 'A3';
 
   // Compute precise height for thermal receipt rolls to eliminate white bottom space and prevent truncation
   let pageHeight = 297;
-  if (paperSize === 'A3') {
+  if (isA3) {
     pageHeight = 420;
   } else if (isThermal50) {
     const itemExtraLines = (items || []).reduce((acc, item) => {
@@ -4226,7 +4695,7 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
   }
 
   let doc;
-  if (paperSize === 'A3') {
+  if (isA3) {
     doc = new jsPDF('p', 'mm', 'a3');
   } else if (isThermal50) {
     doc = new jsPDF('p', 'mm', [50, pageHeight]);
@@ -4237,7 +4706,7 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
   }
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = isThermal50 ? 3 : (isThermal88 ? 4 : 14);
+  const margin = isThermal50 ? 3 : (isThermal88 ? 4 : (isA3 ? 20 : 14));
   const rightX = pageWidth - margin;
   const printableW = pageWidth - (margin * 2);
   const centerX = pageWidth / 2;
@@ -4266,7 +4735,7 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
   const purplePillBg = [243, 232, 255]; // #f3e8ff
   const purplePillText = [126, 34, 206];// #7e22ce
 
-  let y = isThermal50 ? 4 : (isThermal88 ? 5 : 7);
+  let y = isThermal50 ? 4 : (isThermal88 ? 5 : (isA3 ? 12 : 7));
 
   // 1. Header Logo & Title
   if (isThermal50) {
@@ -4337,6 +4806,40 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
     doc.text(cleanInvId, centerX, y + 3.9, { align: 'center' });
 
     y += 9.5;
+  } else if (isA3) {
+    try {
+      doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 16, y, 32, 32);
+    } catch (e) {
+      console.warn('Failed to render logo image in PDF:', e);
+    }
+
+    y += 36;
+    doc.setFontSize(22);
+    doc.setFont('times', 'bold');
+    doc.setTextColor(...purpleDark);
+    doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
+
+    y += 7;
+    doc.setFontSize(12);
+    doc.setFont('times', 'normal');
+    doc.setTextColor(...textDark);
+    doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
+
+    y += 9;
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...textDark);
+    doc.text('I N V O I C E', centerX, y, { align: 'center' });
+
+    y += 7.5;
+    doc.setFillColor(...purplePillBg);
+    doc.roundedRect(centerX - 30, y, 60, 8.5, 4, 4, 'F');
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...purplePillText);
+    doc.text(cleanInvId, centerX, y + 6, { align: 'center' });
+
+    y += 14;
   } else {
     try {
       doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 12, y, 24, 24);
@@ -4379,9 +4882,9 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
   doc.line(margin, y, rightX, y);
 
   // 3. Customer & Info Metadata Section
-  y += isThermal50 ? 4.5 : (isThermal88 ? 5.5 : 6.5);
+  y += isThermal50 ? 4.5 : (isThermal88 ? 5.5 : (isA3 ? 9 : 6.5));
 
-  const metaFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : 8.5);
+  const metaFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 12 : 8.5));
   doc.setFontSize(metaFontSize);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...textDark);
@@ -4390,7 +4893,7 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
   const customerLines = doc.splitTextToSize(customerText, printableW);
   doc.text(customerLines, margin, y);
 
-  y += (customerLines.length * 3.4) + 2.2;
+  y += (customerLines.length * (isA3 ? 5 : 3.4)) + (isA3 ? 4 : 2.2);
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...textDark);
@@ -4402,6 +4905,13 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
     doc.text(`Mode: ${paymentMode}`, margin, y);
     doc.text(`Status: Paid`, rightX, y, { align: 'right' });
     y += 4.2;
+  } else if (isA3) {
+    doc.text(`Date: ${displayDate}`, margin, y);
+    doc.text(`Time: ${timeStr}`, rightX, y, { align: 'right' });
+    y += 6.5;
+    doc.text(`Mode: ${paymentMode}`, margin, y);
+    doc.text(`Status: Paid`, rightX, y, { align: 'right' });
+    y += 7.5;
   } else {
     doc.text(`Date: ${displayDate}`, margin, y);
     doc.text(`Time: ${timeStr}`, rightX, y, { align: 'right' });
@@ -4415,7 +4925,7 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
   doc.setLineWidth(0.4);
   doc.line(margin, y, rightX, y);
 
-  y += isThermal50 ? 4.5 : (isThermal88 ? 5.5 : 6.5);
+  y += isThermal50 ? 4.5 : (isThermal88 ? 5.5 : (isA3 ? 9 : 6.5));
 
   // 4. Table Header & Column Positions
   let qtyX, nameWidth;
@@ -4425,12 +4935,15 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
   } else if (isThermal88) {
     qtyX = 52;
     nameWidth = 45;
+  } else if (isA3) {
+    qtyX = centerX + 15;
+    nameWidth = printableW - 65;
   } else {
     qtyX = centerX + 10;
     nameWidth = printableW - 45;
   }
 
-  const tableHeaderFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : 8.5);
+  const tableHeaderFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 12 : 8.5));
   doc.setFontSize(tableHeaderFontSize);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...purpleDark);
@@ -4439,16 +4952,16 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
   doc.text('Qty', qtyX, y, { align: 'center' });
   doc.text('Amount', rightX, y, { align: 'right' });
 
-  y += isThermal50 ? 2.2 : 2.8;
+  y += isThermal50 ? 2.2 : (isA3 ? 4 : 2.8);
   doc.setDrawColor(...borderLight);
   doc.setLineWidth(0.3);
   doc.line(margin, y, rightX, y);
 
-  y += isThermal50 ? 4 : (isThermal88 ? 4.5 : 5.5);
+  y += isThermal50 ? 4 : (isThermal88 ? 4.5 : (isA3 ? 8 : 5.5));
 
   // 5. Table Items Loop
   let itemIdx = 1;
-  const itemFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : 8.5);
+  const itemFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 12 : 8.5));
 
   items.forEach((item) => {
     const qty = Number(item.qty || 1);
@@ -4459,7 +4972,14 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...textDark);
 
-    const itemName = `${itemIdx}. ${item.name}`;
+    let itemName = `${itemIdx}. ${item.name}`;
+    const variantParts = [];
+    if (item.color) variantParts.push(`Color: ${item.color}`);
+    if (item.size) variantParts.push(`Size: ${item.size}`);
+    if (variantParts.length > 0) {
+      itemName += ` (${variantParts.join(', ')})`;
+    }
+
     const nameLines = doc.splitTextToSize(itemName, nameWidth);
     doc.text(nameLines, margin, y);
 
@@ -4470,8 +4990,8 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
     doc.setTextColor(...purpleDark);
     doc.text(formatPdfCurrency(itemSubtotal), rightX, y, { align: 'right' });
 
-    const nameExtraH = (nameLines.length - 1) * (itemFontSize * 0.45);
-    y += nameExtraH + (isThermal50 ? 4.5 : 5.5);
+    const nameExtraH = (nameLines.length - 1) * (itemFontSize * (isA3 ? 0.55 : 0.45));
+    y += nameExtraH + (isThermal50 ? 4.5 : (isA3 ? 8.5 : 5.5));
 
     doc.setDrawColor(...borderLight);
     doc.setLineWidth(0.2);
@@ -4479,57 +4999,57 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
     itemIdx++;
   });
 
-  y += isThermal50 ? 2 : 2.5;
+  y += isThermal50 ? 2 : (isA3 ? 4 : 2.5);
 
   // 6. Subtotal & GST Summary
-  const summaryFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : 8.5);
+  const summaryFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 12 : 8.5));
   doc.setFontSize(summaryFontSize);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...textDark);
   doc.text('Subtotal', margin, y);
   doc.text(formatPdfCurrency(cleanSubtotal), rightX, y, { align: 'right' });
 
-  y += isThermal50 ? 3.8 : (isThermal88 ? 4.2 : 5);
+  y += isThermal50 ? 3.8 : (isThermal88 ? 4.2 : (isA3 ? 7 : 5));
   doc.text(`GST (${cleanGstRate}%)`, margin, y);
   doc.setTextColor(...purpleDark);
   doc.text(formatPdfCurrency(cleanGstAmount), rightX, y, { align: 'right' });
 
-  y += isThermal50 ? 5 : (isThermal88 ? 6 : 7);
+  y += isThermal50 ? 5 : (isThermal88 ? 6 : (isA3 ? 10 : 7));
   doc.setDrawColor(...purplePrimary);
   doc.setLineWidth(0.4);
   doc.line(margin, y, rightX, y);
 
-  y += isThermal50 ? 5 : (isThermal88 ? 6 : 7);
+  y += isThermal50 ? 5 : (isThermal88 ? 6 : (isA3 ? 10 : 7));
 
   // 7. TOTAL AMOUNT Callout
-  const totalLabelFontSize = isThermal50 ? 7.5 : (isThermal88 ? 8.5 : 9);
-  const totalAmountFontSize = isThermal50 ? 12 : (isThermal88 ? 14 : 18);
+  const totalLabelFontSize = isThermal50 ? 7.5 : (isThermal88 ? 8.5 : (isA3 ? 13 : 9));
+  const totalAmountFontSize = isThermal50 ? 12 : (isThermal88 ? 14 : (isA3 ? 24 : 18));
 
   doc.setFontSize(totalLabelFontSize);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...textDark);
   doc.text('TOTAL AMOUNT', centerX, y, { align: 'center' });
 
-  y += isThermal50 ? 5 : (isThermal88 ? 6 : 7);
+  y += isThermal50 ? 5 : (isThermal88 ? 6 : (isA3 ? 10 : 7));
   doc.setFontSize(totalAmountFontSize);
   doc.setFont('times', 'bold');
   doc.setTextColor(...purpleDark);
   doc.text(formatPdfCurrency(cleanTotal), centerX, y, { align: 'center' });
 
-  y += isThermal50 ? 6.5 : (isThermal88 ? 8 : 9.5);
+  y += isThermal50 ? 6.5 : (isThermal88 ? 8 : (isA3 ? 13 : 9.5));
   doc.setDrawColor(...purplePrimary);
   doc.setLineWidth(0.4);
   doc.line(margin, y, rightX, y);
 
-  y += isThermal50 ? 5 : (isThermal88 ? 6 : 7);
-  const footerFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : 8);
+  y += isThermal50 ? 5 : (isThermal88 ? 6 : (isA3 ? 10 : 7));
+  const footerFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 11 : 8));
   doc.setFontSize(footerFontSize);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...textDark);
   doc.text('Thank you for choosing Nexus Suite!', centerX, y, { align: 'center' });
 
   const cleanShopFilename = formattedShopName.replace(/[^a-zA-Z0-9]/g, '_');
-  const pdfFilename = `Invoice_${cleanInvId}_${cleanShopFilename}.pdf`;
+  const pdfFilename = `Invoice_${cleanInvId}_${cleanShopFilename}_${paperSize}.pdf`;
 
   return { doc, pdfFilename, cleanInvId, cleanTotal };
 }
@@ -4550,9 +5070,11 @@ createInvoiceForm.addEventListener('submit', async (e) => {
     const name = row.querySelector('.item-name-input')?.value.trim() || 'Product';
     const category = row.querySelector('.item-category-select')?.value || "Men's Apparel";
     const subCategory = row.querySelector('.item-subcategory-select')?.value || 'Shirts';
+    const color = row.querySelector('.item-color-select')?.value || 'Black';
+    const size = row.querySelector('.item-size-select')?.value || 'M';
     const qty = parseFloat(row.querySelector('.item-qty-input')?.value || 1);
     const price = parseFloat(row.querySelector('.item-price-input')?.value || 0);
-    items.push({ name, category, subCategory, qty, price });
+    items.push({ name, category, subCategory, color, size, qty, price });
   });
 
   const totalAmount = parseFloat(document.getElementById('inv-amount').value || 0);
@@ -4607,10 +5129,12 @@ createProductForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const name = document.getElementById('prd-name').value.trim();
   const category = document.getElementById('prd-category').value;
+  const color = document.getElementById('prd-color')?.value || 'Black';
+  const size = document.getElementById('prd-size')?.value || 'M';
   const price = document.getElementById('prd-price').value;
   const count = document.getElementById('prd-stock').value;
 
-  const createdPrd = addNewProductToSystem({ name, category, price, count });
+  const createdPrd = addNewProductToSystem({ name, category, color, size, price, count });
 
   try {
     const res = await api.createProduct({ name, category, price, count });
@@ -4702,6 +5226,9 @@ function populatePageProductCategoryOptions() {
 
   updateSubs();
   catSelect.onchange = updateSubs;
+
+  bindDynamicSizeListeners('page-prd-name', 'page-prd-category', 'page-prd-subcategory', 'page-prd-size');
+  bindDynamicSizeListeners('prd-name', 'prd-category', 'prd-subcategory', 'prd-size');
 }
 
 const BILL_EXPENSE_SUB_CATEGORIES = {
@@ -4791,6 +5318,8 @@ if (createProductPageForm) {
     const name = document.getElementById('page-prd-name').value.trim();
     const category = document.getElementById('page-prd-category').value;
     const subCategory = document.getElementById('page-prd-subcategory')?.value || '';
+    const color = document.getElementById('page-prd-color')?.value || 'Black';
+    const size = document.getElementById('page-prd-size')?.value || 'M';
     const price = parseFloat(document.getElementById('page-prd-price').value) || 0;
     const count = parseInt(document.getElementById('page-prd-stock').value || 50, 10);
     const stock = count > 10 ? 'In Stock' : (count > 0 ? 'Low Stock' : 'Out of Stock');
@@ -4801,6 +5330,8 @@ if (createProductPageForm) {
         prd.name = name;
         prd.category = category;
         prd.subCategory = subCategory;
+        prd.color = color;
+        prd.size = size;
         prd.price = price;
         prd.count = count;
         prd.stock = stock;
@@ -4810,16 +5341,16 @@ if (createProductPageForm) {
       } catch (err) {}
 
       try {
-        await api.updateProduct(editId, { name, category, subCategory, price, count, stock });
+        await api.updateProduct(editId, { name, category, subCategory, color, size, price, count, stock });
       } catch (err) {
         console.warn('api.updateProduct error:', err);
       }
 
       showToast(`Product "${name}" updated successfully!`, 'success');
     } else {
-      const createdPrd = addNewProductToSystem({ name, category, subCategory, price, count });
+      const createdPrd = addNewProductToSystem({ name, category, subCategory, color, size, price, count });
       try {
-        const res = await api.createProduct({ name, category, subCategory, price, count });
+        const res = await api.createProduct({ name, category, subCategory, color, size, price, count });
         if (res && res.product && res.product.id) {
           createdPrd.id = res.product.id;
           localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
@@ -5023,6 +5554,13 @@ async function initSession() {
 function initAllInvoiceRowAutocompletes() {
   document.querySelectorAll('#page-invoice-items-list .page-invoice-item-row').forEach(row => setupSearchAutocomplete(row));
 }
+
+document.addEventListener('click', (e) => {
+  const closeBtn = e.target.closest('#close-size-stock-modal-btn, #close-size-stock-done-btn');
+  if (closeBtn || e.target.id === 'size-stock-modal') {
+    closeSizeStockModal();
+  }
+});
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initAllInvoiceRowAutocompletes);
