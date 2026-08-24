@@ -156,11 +156,11 @@ const businessController = {
 
   createProduct: async (req, res) => {
     try {
-      const { name, category, price, count } = req.body;
-      if (!name || !price) {
+      const { id, name, category, subCategory, color, size, price, count } = req.body;
+      if (!name || price === undefined || price === null) {
         return res.status(400).json({ success: false, message: 'Product name and price are required' });
       }
-      const product = await dataStore.createProduct({ name, category, price, count });
+      const product = await dataStore.createProduct({ id, name, category, subCategory, color, size, price, count });
       res.status(201).json({ success: true, product, message: 'Product created successfully' });
     } catch (error) {
       console.error('createProduct error:', error);
@@ -182,8 +182,8 @@ const businessController = {
   updateProduct: async (req, res) => {
     try {
       const { id } = req.params;
-      const { name, category, price, count, stock } = req.body;
-      const updated = await dataStore.updateProduct(id, { name, category, price, count, stock });
+      const { name, category, subCategory, color, size, price, count, stock } = req.body;
+      const updated = await dataStore.updateProduct(id, { name, category, subCategory, color, size, price, count, stock });
       if (!updated) {
         return res.status(404).json({ success: false, message: 'Product not found' });
       }

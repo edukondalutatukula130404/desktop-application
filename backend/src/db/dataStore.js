@@ -138,18 +138,21 @@ const initialData = {
     { id: 'CUST-20260811006', name: 'Metro Shoes & Accessories', contact: 'accounts@metrofashion.in', status: 'Active', totalBilled: 11250.00 }
   ],
   products: [
-    { id: 'SKU-PRD-01', name: 'Classic Cotton Slim-Fit Shirt', category: "Men's Apparel", price: 1299.00, stock: 'In Stock', count: 85 },
-    { id: 'SKU-PRD-02', name: 'Floral Print Summer Chiffon Dress', category: "Women's Fashion", price: 2499.00, stock: 'In Stock', count: 42 },
-    { id: 'SKU-PRD-03', name: 'Denim Jacket with Fleece Lining', category: 'Winterwear & Outerwear', price: 2799.00, stock: 'Low Stock', count: 6 },
-    { id: 'SKU-PRD-04', name: 'Casual Cotton Chino Trousers', category: "Men's Apparel", price: 1999.00, stock: 'In Stock', count: 30 },
-    { id: 'SKU-PRD-05', name: 'Kids Organic Cotton T-Shirt Set', category: 'Kidswear & Toddlers', price: 999.00, stock: 'In Stock', count: 65 },
-    { id: 'SKU-PRD-06', name: 'Handwoven Banarasi Silk Saree', category: "Women's Fashion", price: 6800.00, stock: 'In Stock', count: 12 },
-    { id: 'SKU-PRD-07', name: 'Merino Wool Knitted Cardigan', category: 'Winterwear & Outerwear', price: 2299.00, stock: 'Low Stock', count: 4 },
-    { id: 'SKU-PRD-08', name: 'Pure Linen Button-Down Formal Shirt', category: "Men's Apparel", price: 1899.00, stock: 'In Stock', count: 50 },
-    { id: 'SKU-PRD-09', name: 'Slim-Fit Stretch Denim Jeans', category: "Men's Apparel", price: 2199.00, stock: 'In Stock', count: 28 },
-    { id: 'SKU-PRD-10', name: 'Embroidered Anarkali Kurti Set', category: "Women's Fashion", price: 3499.00, stock: 'In Stock', count: 18 },
-    { id: 'SKU-PRD-11', name: 'Wool Blend Tailored Winter Coat', category: 'Winterwear & Outerwear', price: 4999.00, stock: 'Low Stock', count: 8 },
-    { id: 'SKU-PRD-12', name: 'Toddler Denim Overalls & Polo Combo', category: 'Kidswear & Toddlers', price: 1499.00, stock: 'In Stock', count: 35 }
+    { id: 'SKU-PRD-01', name: 'Classic Cotton Slim-Fit Shirt', category: "Men's Apparel", subCategory: 'Shirts', color: 'Navy Blue', size: 'M', price: 1299.00, stock: 'In Stock', count: 85 },
+    { id: 'SKU-PRD-02', name: 'Floral Print Summer Chiffon Dress', category: "Women's Fashion", subCategory: 'Dresses & Maxis', color: 'Pink', size: 'S', price: 2499.00, stock: 'In Stock', count: 42 },
+    { id: 'SKU-PRD-03', name: 'Denim Jacket with Fleece Lining', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', color: 'Royal Blue', size: 'L', price: 2799.00, stock: 'Low Stock', count: 6 },
+    { id: 'SKU-PRD-04', name: 'Casual Cotton Chino Trousers', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Beige / Cream', size: 'XL', price: 1999.00, stock: 'In Stock', count: 30 },
+    { id: 'SKU-PRD-05', name: 'Kids Organic Cotton T-Shirt Set', category: 'Kidswear & Toddlers', subCategory: 'Infant Onesies', color: 'White', size: 'S', price: 999.00, stock: 'In Stock', count: 65 },
+    { id: 'SKU-PRD-06', name: 'Handwoven Banarasi Silk Saree', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', color: 'Wine Maroon', size: 'Free Size', price: 6800.00, stock: 'In Stock', count: 12 },
+    { id: 'SKU-PRD-07', name: 'Merino Wool Knitted Cardigan', category: 'Winterwear & Outerwear', subCategory: 'Sweaters & Cardigans', color: 'Grey / Charcoal', size: 'M', price: 2299.00, stock: 'Low Stock', count: 4 },
+    { id: 'SKU-PRD-08', name: 'Pure Linen Button-Down Formal Shirt', category: "Men's Apparel", subCategory: 'Shirts', color: 'White', size: 'L', price: 1899.00, stock: 'In Stock', count: 50 },
+    { id: 'SKU-PRD-09', name: 'Slim-Fit Stretch Denim Jeans', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Black', size: 'XL', price: 2199.00, stock: 'In Stock', count: 28 },
+    { id: 'SKU-PRD-10', name: 'Embroidered Anarkali Kurti Set', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', color: 'Red', size: 'M', price: 3499.00, stock: 'In Stock', count: 18 },
+    { id: 'SKU-PRD-11', name: 'Wool Blend Tailored Winter Coat', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', color: 'Black', size: 'XXL', price: 4999.00, stock: 'Low Stock', count: 8 },
+    { id: 'SKU-PRD-12', name: 'Toddler Denim Overalls & Polo Combo', category: 'Kidswear & Toddlers', subCategory: 'Boys Casuals', color: 'Olive Green', size: 'S', price: 1499.00, stock: 'In Stock', count: 35 },
+    { id: 'SKU-PRD-13', name: 'Shorts', category: "Men's Apparel", subCategory: 'Shorts', color: 'Sky Blue', size: 'XL', price: 599.00, stock: 'In Stock', count: 50 },
+    { id: 'SKU-PRD-14', name: 'trouser', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Yellow / Mustard', size: 'L', price: 2999.00, stock: 'In Stock', count: 50 },
+    { id: 'SKU-PRD-15', name: 'Classic premium Lenin Black Shirt', category: "Men's Apparel", subCategory: 'Shirts', color: 'Multicolor', size: 'M', price: 2999.00, stock: 'In Stock', count: 50 }
   ],
   categories: [
     {
@@ -224,11 +227,126 @@ const initialData = {
 let isSeedingPromise = null;
 
 // Seed initial data if MongoDB collections are empty
+async function removeDuplicateDatabaseDocuments() {
+  try {
+    // 1. Deduplicate Categories in MongoDB
+    const allCats = await Category.find().exec();
+    if (allCats.length > 0) {
+      const catMap = new Map();
+      const catIdsToDelete = [];
+
+      for (const doc of allCats) {
+        const key = (doc.name || '').trim().toLowerCase();
+        if (!key) {
+          catIdsToDelete.push(doc._id);
+          continue;
+        }
+        if (!catMap.has(key)) {
+          catMap.set(key, doc);
+        } else {
+          const keeper = catMap.get(key);
+          const existingSubs = Array.isArray(keeper.subCategories) ? keeper.subCategories : [];
+          const newSubs = Array.isArray(doc.subCategories) ? doc.subCategories : [];
+          keeper.subCategories = Array.from(new Set([...existingSubs, ...newSubs]));
+          await Category.updateOne({ _id: keeper._id }, { $set: { subCategories: keeper.subCategories } });
+          catIdsToDelete.push(doc._id);
+        }
+      }
+
+      if (catIdsToDelete.length > 0) {
+        console.log(`[Database Cleanup] Removing ${catIdsToDelete.length} duplicate category documents from MongoDB...`);
+        await Category.deleteMany({ _id: { $in: catIdsToDelete } });
+      }
+
+      // Ensure all remaining categories have 100% unique CAT-xx IDs
+      const remainingCats = await Category.find().exec();
+      const seenIds = new Set();
+      let maxCatNum = 0;
+      remainingCats.forEach(c => {
+        const m = (c.id || '').match(/CAT-(\d+)/i);
+        if (m) {
+          const n = parseInt(m[1], 10);
+          if (n > maxCatNum) maxCatNum = n;
+        }
+      });
+
+      for (const catDoc of remainingCats) {
+        if (!catDoc.id || seenIds.has(catDoc.id)) {
+          maxCatNum++;
+          catDoc.id = 'CAT-' + maxCatNum.toString().padStart(2, '0');
+          await catDoc.save();
+        } else {
+          seenIds.add(catDoc.id);
+        }
+      }
+    }
+
+    // 2. Deduplicate Products in MongoDB
+    const allPrds = await Product.find().exec();
+    if (allPrds.length > 0) {
+      const prdMap = new Map();
+      const prdIdsToDelete = [];
+
+      for (const doc of allPrds) {
+        const key = (doc.name || '').trim().toLowerCase();
+        if (!key) {
+          prdIdsToDelete.push(doc._id);
+          continue;
+        }
+        if (!prdMap.has(key)) {
+          prdMap.set(key, doc);
+        } else {
+          prdIdsToDelete.push(doc._id);
+        }
+      }
+
+      if (prdIdsToDelete.length > 0) {
+        console.log(`[Database Cleanup] Removing ${prdIdsToDelete.length} duplicate product documents from MongoDB...`);
+        await Product.deleteMany({ _id: { $in: prdIdsToDelete } });
+      }
+    }
+
+    // 3. Deduplicate Clients in MongoDB
+    const allClients = await Client.find().exec();
+    if (allClients.length > 0) {
+      const clientMap = new Map();
+      const clientIdsToDelete = [];
+
+      for (const doc of allClients) {
+        const key = (doc.name || doc.id || '').trim().toLowerCase();
+        if (!key) {
+          clientIdsToDelete.push(doc._id);
+          continue;
+        }
+        if (!clientMap.has(key)) {
+          clientMap.set(key, doc);
+        } else {
+          clientIdsToDelete.push(doc._id);
+        }
+      }
+
+      if (clientIdsToDelete.length > 0) {
+        console.log(`[Database Cleanup] Removing ${clientIdsToDelete.length} duplicate client documents from MongoDB...`);
+        await Client.deleteMany({ _id: { $in: clientIdsToDelete } });
+      }
+    }
+  } catch (err) {
+    console.warn('removeDuplicateDatabaseDocuments error:', err.message);
+  }
+}
+
 async function seedInitialDataIfNeeded() {
   if (isSeedingPromise) return isSeedingPromise;
 
   isSeedingPromise = (async () => {
     try {
+      // 1. Purge bloated category collection if duplicates exist (> 10 documents)
+      const currentCatCount = await Category.countDocuments();
+      if (currentCatCount > 10) {
+        console.log(`[Database Purge] Wiping ${currentCatCount} duplicate categories from MongoDB...`);
+        await Category.deleteMany({});
+      }
+
       const invoiceCount = await Invoice.countDocuments();
       if (invoiceCount === 0) {
         await Invoice.insertMany(initialData.invoices);
@@ -239,9 +357,12 @@ async function seedInitialDataIfNeeded() {
         await Bill.insertMany(initialData.bills);
       }
 
-      const clientCount = await Client.countDocuments();
-      if (clientCount === 0) {
-        await Client.insertMany(initialData.clients);
+      for (const client of initialData.clients) {
+        await Client.updateOne(
+          { id: client.id },
+          { $setOnInsert: client },
+          { upsert: true }
+        );
       }
 
       const categoryCount = await Category.countDocuments();
@@ -249,10 +370,15 @@ async function seedInitialDataIfNeeded() {
         await Category.insertMany(initialData.categories);
       }
 
-      const productCount = await Product.countDocuments();
-      if (productCount === 0) {
-        await Product.insertMany(initialData.products);
+      for (const prd of initialData.products) {
+        await Product.updateOne(
+          { id: prd.id },
+          { $setOnInsert: prd },
+          { upsert: true }
+        );
       }
+
+      await removeDuplicateDatabaseDocuments();
     } catch (error) {
       console.error('Error seeding initial MongoDB data:', error.message);
     } finally {
@@ -466,31 +592,74 @@ const dataStore = {
   getProducts: async () => {
     await seedInitialDataIfNeeded();
     let products = await Product.find().lean().exec();
-    if (!products.length || products.length < 12) {
+    if (!products || !products.length) {
       try {
-        await Product.deleteMany({});
         await Product.insertMany(initialData.products);
         products = await Product.find().lean().exec();
       } catch (err) {
         products = initialData.products;
       }
     }
-    return products;
+    const sorted = [...(products || [])].sort((a, b) => {
+      const numA = parseInt((a.id || '').replace(/\D/g, ''), 10) || 99999;
+      const numB = parseInt((b.id || '').replace(/\D/g, ''), 10) || 99999;
+      return numA - numB;
+    });
+
+    return sorted.map((p, idx) => ({
+      ...p,
+      id: `SKU-PRD-${(idx + 1).toString().padStart(2, '0')}`
+    }));
   },
 
   createProduct: async (productData) => {
-    const count = await Product.countDocuments();
+    await seedInitialDataIfNeeded();
+    const cleanName = (productData.name || '').trim();
+    if (!cleanName) return null;
+
     const countNum = parseInt(productData.count, 10) || 50;
-    const formattedId = `SKU-PRD-${(count + 1).toString().padStart(2, '0')}`;
-    const newProduct = new Product({
-      id: formattedId,
-      name: productData.name,
-      category: productData.category || "Men's Apparel",
-      price: parseFloat(productData.price) || 0,
-      stock: countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock'),
-      count: countNum
-    });
-    return await newProduct.save();
+    const priceNum = parseFloat(productData.price) || 0;
+    const stockStatus = productData.stock || (countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock'));
+
+    const safeRegex = new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+    let existingPrd = await Product.findOne({ name: safeRegex }).exec();
+
+    if (existingPrd) {
+      existingPrd.name = cleanName;
+      existingPrd.category = productData.category || existingPrd.category || "Men's Apparel";
+      existingPrd.subCategory = productData.subCategory || existingPrd.subCategory || '';
+      existingPrd.color = productData.color || existingPrd.color || '';
+      existingPrd.size = productData.size || existingPrd.size || '';
+      existingPrd.price = priceNum;
+      existingPrd.count = countNum;
+      existingPrd.stock = stockStatus;
+      return await existingPrd.save();
+    } else {
+      const allProducts = await Product.find().lean().exec();
+      let maxNum = 0;
+      allProducts.forEach(p => {
+        const match = (p.id || '').match(/SKU-PRD-(\d+)/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      });
+      const newSkuId = `SKU-PRD-${(maxNum + 1).toString().padStart(2, '0')}`;
+
+      const newPrd = new Product({
+        id: newSkuId,
+        name: cleanName,
+        category: productData.category || "Men's Apparel",
+        subCategory: productData.subCategory || '',
+        color: productData.color || '',
+        size: productData.size || '',
+        price: priceNum,
+        count: countNum,
+        stock: stockStatus
+      });
+
+      return await newPrd.save();
+    }
   },
 
   deleteProduct: async (id) => {
@@ -513,6 +682,9 @@ const dataStore = {
         $set: {
           name: productData.name,
           category: productData.category,
+          subCategory: productData.subCategory || '',
+          color: productData.color || '',
+          size: productData.size || '',
           price: priceNum,
           count: countNum,
           stock: stockStatus
@@ -528,6 +700,9 @@ const dataStore = {
           $set: {
             name: productData.name,
             category: productData.category,
+            subCategory: productData.subCategory || '',
+            color: productData.color || '',
+            size: productData.size || '',
             price: priceNum,
             count: countNum,
             stock: stockStatus
@@ -562,7 +737,7 @@ const dataStore = {
   getCategories: async () => {
     await seedInitialDataIfNeeded();
     let categories = await Category.find().lean().exec();
-    if (!categories.length) {
+    if (!categories || !categories.length) {
       try {
         await Category.insertMany(initialData.categories);
         categories = await Category.find().lean().exec();
@@ -570,11 +745,39 @@ const dataStore = {
         categories = initialData.categories;
       }
     }
-    return categories;
+
+    // Auto-cleanup duplicates from MongoDB
+    const uniqueMap = new Map();
+    const duplicateIds = [];
+
+    categories.forEach(c => {
+      if (c && c.name) {
+        const key = c.name.trim().toLowerCase();
+        if (!uniqueMap.has(key)) {
+          uniqueMap.set(key, c);
+        } else {
+          duplicateIds.push(c._id || c.id);
+          const existing = uniqueMap.get(key);
+          const existingSubs = Array.isArray(existing.subCategories) ? existing.subCategories : [];
+          const newSubs = Array.isArray(c.subCategories) ? c.subCategories : [];
+          existing.subCategories = Array.from(new Set([...existingSubs, ...newSubs]));
+        }
+      }
+    });
+
+    if (duplicateIds.length > 0) {
+      try {
+        await Category.deleteMany({ _id: { $in: duplicateIds } });
+      } catch (e) {}
+    }
+
+    return Array.from(uniqueMap.values());
   },
 
   createCategory: async (catData) => {
-    const count = await Category.countDocuments();
+    const nameClean = (catData.name || '').trim();
+    if (!nameClean) return null;
+
     let subs = [];
     if (Array.isArray(catData.subCategories)) {
       subs = catData.subCategories;
@@ -582,9 +785,35 @@ const dataStore = {
       subs = catData.subCategories.split(',').map(s => s.trim()).filter(Boolean);
     }
 
+    let existing = await Category.findOne({
+      name: { $regex: new RegExp(`^${nameClean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+    }).exec();
+
+    if (existing) {
+      const existingSubs = Array.isArray(existing.subCategories) ? existing.subCategories : [];
+      existing.subCategories = Array.from(new Set([...existingSubs, ...subs]));
+      if (catData.description) existing.description = catData.description;
+      if (catData.genderType) existing.genderType = catData.genderType;
+      if (catData.seasonTag) existing.seasonTag = catData.seasonTag;
+      if (catData.status) existing.status = catData.status;
+      return await existing.save();
+    }
+
+    const allCats = await Category.find().lean().exec();
+    let maxNum = 0;
+    allCats.forEach(c => {
+      const match = (c.id || '').match(/CAT-(\d+)/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    });
+
+    const newId = 'CAT-' + (maxNum + 1).toString().padStart(2, '0');
+
     const newCat = new Category({
-      id: 'CAT-0' + (count + 1),
-      name: catData.name,
+      id: newId,
+      name: nameClean,
       description: catData.description || '',
       subCategories: subs,
       genderType: catData.genderType || 'Unisex',

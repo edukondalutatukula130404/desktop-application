@@ -496,10 +496,99 @@ async function enterWorkspace() {
 
     // Load Business Data
     await loadBusinessData();
+    processOfflineSyncQueue();
   } catch (err) {
     console.error('Error entering workspace:', err);
   }
 }
+
+// --- Offline Synchronization Queue Engine ---
+function getOfflineSyncQueue() {
+  try {
+    const raw = localStorage.getItem('nexus_offline_sync_queue');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveOfflineSyncQueue(queue) {
+  try {
+    localStorage.setItem('nexus_offline_sync_queue', JSON.stringify(queue));
+  } catch (e) {
+    console.warn('Error saving offline sync queue:', e);
+  }
+}
+
+function enqueueOfflineSync(type, payload) {
+  const queue = getOfflineSyncQueue();
+  const isDup = queue.some(q => q.type === type && JSON.stringify(q.payload) === JSON.stringify(payload));
+  if (!isDup) {
+    queue.push({
+      id: `sync_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      type,
+      payload,
+      timestamp: Date.now()
+    });
+    saveOfflineSyncQueue(queue);
+    console.log(`[Offline Sync] Enqueued ${type}:`, payload);
+  }
+}
+
+let isProcessingSyncQueue = false;
+
+async function processOfflineSyncQueue() {
+  if (isProcessingSyncQueue) return;
+  const queue = getOfflineSyncQueue();
+  if (!queue || queue.length === 0) return;
+
+  const isHealthy = await api.checkHealth();
+  if (!isHealthy) return;
+
+  isProcessingSyncQueue = true;
+  console.log(`[Offline Sync] Backend online! Processing ${queue.length} pending offline items...`);
+
+  const priorityOrder = { CATEGORY: 1, PRODUCT: 2, CLIENT: 3, INVOICE: 4 };
+  queue.sort((a, b) => (priorityOrder[a.type] || 5) - (priorityOrder[b.type] || 5));
+
+  const remainingQueue = [];
+  let syncedCount = 0;
+
+  for (const item of queue) {
+    try {
+      if (item.type === 'CATEGORY') {
+        await api.createCategory(item.payload);
+        syncedCount++;
+      } else if (item.type === 'PRODUCT') {
+        await api.createProduct(item.payload);
+        syncedCount++;
+      } else if (item.type === 'CLIENT') {
+        await api.createClient(item.payload);
+        syncedCount++;
+      } else if (item.type === 'INVOICE') {
+        await api.createInvoice(item.payload);
+        syncedCount++;
+      }
+    } catch (err) {
+      console.warn(`[Offline Sync] Failed to sync item (${item.type}):`, err.message);
+      remainingQueue.push(item);
+    }
+  }
+
+  saveOfflineSyncQueue(remainingQueue);
+  isProcessingSyncQueue = false;
+
+  if (syncedCount > 0) {
+    showToast(`⚡ Network connected! ${syncedCount} offline item(s) automatically synced to MongoDB database.`, 'success');
+    await loadBusinessData();
+  }
+}
+
+window.addEventListener('online', () => {
+  console.log('[Offline Sync] Browser online event detected!');
+  processOfflineSyncQueue();
+});
+setInterval(processOfflineSyncQueue, 8000);
 
 async function loadBusinessData() {
   let invRes = {}, billRes = {}, clientRes = {}, prdRes = {}, catRes = {};
@@ -522,145 +611,80 @@ async function loadBusinessData() {
     console.warn('Error loading business data:', error);
   }
 
+  // 1. Invoices from Backend API
   const fetchedInvoices = invRes.invoices || [];
-  const cleanInvoices = fetchedInvoices.filter(i => 
-    i && i.clientName && 
-    !i.clientName.toLowerCase().includes('husle') && 
-    !i.clientName.toLowerCase().includes('nexus shop') && 
-    !i.clientName.toLowerCase().includes('apex') && 
-    !i.clientName.toLowerCase().includes('acme') &&
-    !i.clientName.toLowerCase().includes('starlight media') &&
-    !i.clientName.toLowerCase().includes('nexus global') &&
-    !(i.clientEmail && i.clientEmail.toLowerCase().includes('client.com')) &&
-    !(i.category && i.category.toLowerCase().includes('mobiles')) &&
-    !(i.category && i.category.toLowerCase().includes('software')) &&
-    !(i.category && i.category.toLowerCase().includes('api')) &&
-    !(i.category && i.category.toLowerCase().includes('redesign')) &&
-    !(i.category && i.category.toLowerCase() === 'clothing') &&
-    !(i.amount && i.amount >= 100000)
-  );
-  if (cleanInvoices.length > 0) {
-    appData.invoices = cleanInvoices.map(inv => ({
-      ...inv,
-      id: normalizeInvoiceId(inv)
-    }));
-  } else if (!appData.invoices || appData.invoices.length === 0) {
-    appData.invoices = [
-      { id: 'INV-20260801001', clientName: 'Royal Heritage Boutique', clientEmail: 'orders@royalheritage.com', issueDate: '2026-08-01', dueDate: '2026-08-15', amount: 12490.00, status: 'Paid', category: 'Ethnic & Festive Wear', subCategory: 'Ethnic Wear' },
-      { id: 'INV-20260805002', clientName: 'Starlight Apparel Store', clientEmail: 'accounts@starlightapparel.in', issueDate: '2026-08-05', dueDate: '2026-08-20', amount: 8950.00, status: 'Paid', category: "Men's Apparel", subCategory: 'Shirts' },
-      { id: 'INV-20260808003', clientName: 'Velvet Trendz Fashion', clientEmail: 'finance@velvettrendz.com', issueDate: '2026-08-08', dueDate: '2026-08-22', amount: 15800.00, status: 'Pending', category: "Women's Fashion", subCategory: 'Dresses' },
-      { id: 'INV-20260810004', clientName: 'Urban Fit Clothing Hub', clientEmail: 'billing@urbanfit.co', issueDate: '2026-08-10', dueDate: '2026-08-24', amount: 6750.00, status: 'Pending', category: 'Casuals & Denim', subCategory: 'Trousers' },
-      { id: 'INV-20260725005', clientName: 'Little Wonders Kidswear', clientEmail: 'contact@littlewonders.in', issueDate: '2026-07-25', dueDate: '2026-08-08', amount: 4200.00, status: 'Overdue', category: 'Kidswear & Toddlers', subCategory: 'Infant Onesies' },
-      { id: 'INV-20260811006', clientName: 'Metro Shoes & Accessories', clientEmail: 'accounts@metrofashion.in', issueDate: '2026-08-11', dueDate: '2026-08-25', amount: 11250.00, status: 'Pending', category: 'Footwear & Accessories', subCategory: 'Sneakers' }
-    ];
-  }
+  appData.invoices = fetchedInvoices.map(inv => ({
+    ...inv,
+    id: normalizeInvoiceId(inv)
+  }));
 
-  const fetchedBills = billRes.bills || [];
-  const cleanBills = fetchedBills.filter(b => b && b.vendor && !b.vendor.toLowerCase().includes('openai') && !b.vendor.toLowerCase().includes('mongodb') && !b.vendor.toLowerCase().includes('datadog') && !b.vendor.toLowerCase().includes('google') && !b.vendor.toLowerCase().includes('slack') && !b.vendor.toLowerCase().includes('vercel') && !b.vendor.toLowerCase().includes('figma') && !b.vendor.toLowerCase().includes('github') && !b.vendor.toLowerCase().includes('aws') && !b.vendor.toLowerCase().includes('twilio'));
-  if (cleanBills.length > 0) {
-    appData.bills = cleanBills;
-  } else if (!appData.bills || appData.bills.length === 0) {
-    appData.bills = [
-      { id: 'BILL-101', vendor: 'Surat Silk & Cotton Mills', category: 'Raw Materials & Fabrics', dueDate: '2026-08-25', amount: 18500.00, status: 'Unpaid', autoPay: true },
-      { id: 'BILL-102', vendor: 'Ludhiana Woolens & Knitwear Supplier', category: 'Winterwear & Outerwear', dueDate: '2026-08-28', amount: 14200.00, status: 'Unpaid', autoPay: false },
-      { id: 'BILL-103', vendor: 'Vardhman Textiles Ltd.', category: 'Denim & Fabrics', dueDate: '2026-08-30', amount: 22800.00, status: 'Paid', autoPay: true },
-      { id: 'BILL-104', vendor: 'Blue Dart Apparel Logistics', category: 'Logistics & Shipping', dueDate: '2026-09-02', amount: 4350.00, status: 'Paid', autoPay: true },
-      { id: 'BILL-105', vendor: 'Jaipur Print & Embroidery Crafts', category: 'Ethnic & Festive Wear Stock', dueDate: '2026-09-05', amount: 12600.00, status: 'Unpaid', autoPay: false },
-      { id: 'BILL-106', vendor: 'Prime Retail Mall Lease & Energy', category: 'Store Rent & Operations', dueDate: '2026-09-10', amount: 35000.00, status: 'Unpaid', autoPay: true }
-    ];
-  }
+  // 2. Bills from Backend API
+  appData.bills = billRes.bills || [];
 
-  const nonClothing = ['shoes', 'sneakers', 'belt', 'wallet', 'footwear', 'accessory', 'accessories', 'bag', 'watch', 'enterprise', 'ui/ux', 'cloud node', 'fido2', 'audit service'];
+  // 3. Clients from Backend API
+  appData.clients = clientRes.clients || [];
+
+  // 4. Products from Backend API + local custom products
+  const fetchedPrds = prdRes.products || [];
+  const prdMap = new Map();
+  fetchedPrds.forEach(p => {
+    if (p && p.name) prdMap.set(p.name.trim().toLowerCase(), { ...p });
+  });
+
   const savedPrds = localStorage.getItem('nexus_custom_products');
   if (savedPrds) {
     try {
       const parsedPrds = JSON.parse(savedPrds);
-      if (Array.isArray(parsedPrds) && parsedPrds.length > 0) {
-        appData.products = parsedPrds;
+      if (Array.isArray(parsedPrds)) {
+        parsedPrds.forEach(p => {
+          if (p && p.name) {
+            const key = p.name.trim().toLowerCase();
+            if (!prdMap.has(key)) {
+              prdMap.set(key, { ...p });
+            }
+          }
+        });
       }
-    } catch (e) {
-      console.warn('Error reading nexus_custom_products:', e);
-    }
+    } catch (e) {}
   }
 
-  if (!appData.products || appData.products.length === 0) {
-    const fetchedPrds = prdRes.products || [];
-    const cleanPrds = fetchedPrds.filter(p => p && p.name && !nonClothing.some(k => p.name.toLowerCase().includes(k) || (p.category && p.category.toLowerCase().includes(k))));
-    
-    if (cleanPrds.length > 0) {
-      appData.products = cleanPrds;
-    } else {
-      appData.products = [
-        { id: 'SKU-PRD-01', name: 'Classic Cotton Slim-Fit Shirt', category: "Men's Apparel", subCategory: 'Shirts', color: 'Navy Blue', size: 'M', price: 1299.00, stock: 'In Stock', count: 85 },
-        { id: 'SKU-PRD-02', name: 'Floral Print Summer Chiffon Dress', category: "Women's Fashion", subCategory: 'Dresses & Maxis', color: 'Pink', size: 'S', price: 2499.00, stock: 'In Stock', count: 42 },
-        { id: 'SKU-PRD-03', name: 'Denim Jacket with Fleece Lining', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', color: 'Royal Blue', size: 'L', price: 2799.00, stock: 'Low Stock', count: 6 },
-        { id: 'SKU-PRD-04', name: 'Casual Cotton Chino Trousers', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Beige / Cream', size: 'XL', price: 1999.00, stock: 'In Stock', count: 30 },
-        { id: 'SKU-PRD-05', name: 'Kids Organic Cotton T-Shirt Set', category: 'Kidswear & Toddlers', subCategory: 'Infant Onesies', color: 'White', size: 'S', price: 999.00, stock: 'In Stock', count: 65 },
-        { id: 'SKU-PRD-06', name: 'Handwoven Banarasi Silk Saree', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', color: 'Wine Maroon', size: 'Free Size', price: 6800.00, stock: 'In Stock', count: 12 },
-        { id: 'SKU-PRD-07', name: 'Merino Wool Knitted Cardigan', category: 'Winterwear & Outerwear', subCategory: 'Sweaters & Cardigans', color: 'Grey / Charcoal', size: 'M', price: 2299.00, stock: 'Low Stock', count: 4 },
-        { id: 'SKU-PRD-08', name: 'Pure Linen Button-Down Formal Shirt', category: "Men's Apparel", subCategory: 'Shirts', color: 'White', size: 'L', price: 1899.00, stock: 'In Stock', count: 50 },
-        { id: 'SKU-PRD-09', name: 'Slim-Fit Stretch Denim Jeans', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Black', size: 'XL', price: 2199.00, stock: 'In Stock', count: 28 },
-        { id: 'SKU-PRD-10', name: 'Embroidered Anarkali Kurti Set', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', color: 'Red', size: 'M', price: 3499.00, stock: 'In Stock', count: 18 },
-        { id: 'SKU-PRD-11', name: 'Wool Blend Tailored Winter Coat', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', color: 'Black', size: 'XXL', price: 4999.00, stock: 'Low Stock', count: 8 },
-        { id: 'SKU-PRD-12', name: 'Toddler Denim Overalls & Polo Combo', category: 'Kidswear & Toddlers', subCategory: 'Boys Casuals', color: 'Olive Green', size: 'S', price: 1499.00, stock: 'In Stock', count: 35 }
-      ];
-    }
-  }
-  
-  if (appData.products && appData.products.length > 0) {
-    appData.products = appData.products.filter(p => p && p.name && !nonClothing.some(k => p.name.toLowerCase().includes(k) || (p.category && p.category.toLowerCase().includes(k))));
-  }
-  
-  // Ensure categories display clothing categories
+  appData.products = sortProductsBySku(Array.from(prdMap.values()));
+
+  // 5. Categories from Backend API (deduplicated by normalized name)
   const fetchedCats = catRes.categories || [];
-  if (fetchedCats.length > 0 && !fetchedCats.some(c => c.name.includes('Software') || c.name.includes('Hardware') || c.name.includes('Cloud'))) {
-    appData.categories = fetchedCats;
-  } else if (!appData.categories || appData.categories.length === 0) {
-    appData.categories = [
-      { id: 'CAT-01', name: "Men's Apparel", description: 'Shirts, T-shirts, Trousers, Suits, and Ethnic Wear.', itemCounts: 14, status: 'Active' },
-      { id: 'CAT-02', name: "Women's Fashion", description: 'Dresses, Tops, Sarees, Kurtis, and Activewear.', itemCounts: 18, status: 'Active' },
-      { id: 'CAT-03', name: 'Kidswear & Toddlers', description: 'Infant Wear, Boys & Girls Outfits, and Playwear.', itemCounts: 12, status: 'Active' },
-      { id: 'CAT-04', name: 'Footwear & Shoes', description: 'Casual Sneakers, Formal Shoes, Sandals, and Boots.', itemCounts: 10, status: 'Active' },
-      { id: 'CAT-05', name: 'Fashion Accessories', description: 'Belts, Caps, Scarves, Watches, and Handbags.', itemCounts: 15, status: 'Active' },
-      { id: 'CAT-06', name: 'Winterwear & Outerwear', description: 'Jackets, Sweaters, Hoodies, and Overcoats.', itemCounts: 8, status: 'Active' }
-    ];
-  }
-
-  const fetchedClients = clientRes.clients || [];
-  if (fetchedClients.length > 0) {
-    const clientMap = new Map((appData.clients || []).map(c => [c.id || c.name, c]));
-    fetchedClients.forEach(fc => clientMap.set(fc.id || fc.name, fc));
-    appData.clients = Array.from(clientMap.values());
-  } else if (!appData.clients || appData.clients.length === 0) {
-    appData.clients = [
-      { id: 'CUST-01', name: 'Royal Heritage Boutique', email: 'orders@royalheritage.com', phone: '+91 98765 43210', totalBilled: 12490.00, status: 'Active' },
-      { id: 'CUST-02', name: 'Starlight Apparel Store', email: 'accounts@starlightapparel.in', phone: '+91 98123 45678', totalBilled: 8950.00, status: 'Active' },
-      { id: 'CUST-03', name: 'Velvet Trendz Fashion', email: 'finance@velvettrendz.com', phone: '+91 97654 32109', totalBilled: 15800.00, status: 'Active' },
-      { id: 'CUST-04', name: 'Urban Fit Clothing Hub', email: 'billing@urbanfit.co', phone: '+91 96543 21098', totalBilled: 6750.00, status: 'Active' },
-      { id: 'CUST-05', name: 'Little Wonders Kidswear', email: 'contact@littlewonders.in', phone: '+91 95432 10987', totalBilled: 4200.00, status: 'Notice' },
-      { id: 'CUST-06', name: 'Metro Shoes & Accessories', email: 'accounts@metrofashion.in', phone: '+91 94321 09876', totalBilled: 11250.00, status: 'Active' }
-    ];
-  }
-
-  // Load permanently saved invoices and clients from localStorage
-  try {
-    const savedInvoices = JSON.parse(localStorage.getItem('nexus_custom_invoices') || '[]');
-    const savedClients = JSON.parse(localStorage.getItem('nexus_custom_clients') || '[]');
-
-    if (savedInvoices.length > 0) {
-      const invMap = new Map((appData.invoices || []).map(i => [i.id, i]));
-      savedInvoices.forEach(si => invMap.set(si.id, si));
-      appData.invoices = Array.from(invMap.values());
+  const catMap = new Map();
+  fetchedCats.forEach(cat => {
+    if (cat && cat.name) {
+      const key = cat.name.trim().toLowerCase();
+      if (!catMap.has(key)) {
+        catMap.set(key, { ...cat });
+      } else {
+        const existing = catMap.get(key);
+        const existingSubs = Array.isArray(existing.subCategories) ? existing.subCategories : [];
+        const newSubs = Array.isArray(cat.subCategories) ? cat.subCategories : [];
+        existing.subCategories = Array.from(new Set([...existingSubs, ...newSubs]));
+      }
     }
+  });
 
-    if (savedClients.length > 0) {
-      const clientMap = new Map((appData.clients || []).map(c => [c.id || c.name, c]));
-      savedClients.forEach(sc => clientMap.set(sc.id || sc.name, sc));
-      appData.clients = Array.from(clientMap.values());
-    }
-  } catch (err) {
-    console.warn('localStorage load error:', err);
+  const savedCats = localStorage.getItem('nexus_custom_categories');
+  if (savedCats) {
+    try {
+      const parsedCats = JSON.parse(savedCats);
+      if (Array.isArray(parsedCats)) {
+        parsedCats.forEach(cat => {
+          if (cat && cat.name) {
+            const key = cat.name.trim().toLowerCase();
+            if (!catMap.has(key)) {
+              catMap.set(key, { ...cat });
+            }
+          }
+        });
+      }
+    } catch (e) {}
   }
+
+  appData.categories = Array.from(catMap.values());
 
   renderOverview();
   renderInvoicesTable();
@@ -681,11 +705,16 @@ async function loadBusinessData() {
 
 function sortProductsBySku(prds) {
   if (!Array.isArray(prds)) return [];
-  return [...prds].sort((a, b) => {
+  const sorted = [...prds].sort((a, b) => {
     const numA = parseInt((a.id || '').replace(/\D/g, ''), 10) || 99999;
     const numB = parseInt((b.id || '').replace(/\D/g, ''), 10) || 99999;
     return numA - numB;
   });
+
+  return sorted.map((prd, idx) => ({
+    ...prd,
+    id: `SKU-PRD-${(idx + 1).toString().padStart(2, '0')}`
+  }));
 }
 
 function addNewProductToSystem(productData) {
@@ -1348,7 +1377,7 @@ function renderProductsTable(filterCategory = 'all', searchQuery = '') {
       const prdName = btn.getAttribute('data-name');
 
       if (confirm(`Are you sure you want to delete product "${prdName}"?`)) {
-        appData.products = (appData.products || []).filter(p => p.id !== prdId && p.name !== prdName);
+        appData.products = sortProductsBySku((appData.products || []).filter(p => p.id !== prdId && p.name !== prdName));
 
         try {
           localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
@@ -1872,6 +1901,24 @@ function renderCategoriesGrid() {
   const tbody = document.getElementById('categories-table-tbody');
   if (!tbody) return;
 
+  if (Array.isArray(appData.categories) && appData.categories.length > 0) {
+    const uniqueMap = new Map();
+    appData.categories.forEach(cat => {
+      if (cat && cat.name) {
+        const key = cat.name.trim().toLowerCase();
+        if (!uniqueMap.has(key)) {
+          uniqueMap.set(key, { ...cat });
+        } else {
+          const existing = uniqueMap.get(key);
+          const existingSubs = Array.isArray(existing.subCategories) ? existing.subCategories : [];
+          const newSubs = Array.isArray(cat.subCategories) ? cat.subCategories : [];
+          existing.subCategories = Array.from(new Set([...existingSubs, ...newSubs]));
+        }
+      }
+    });
+    appData.categories = Array.from(uniqueMap.values());
+  }
+
   if (!appData.categories || appData.categories.length === 0) {
     tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-subtle); padding: 32px;">No categories configured.</td></tr>`;
     return;
@@ -1950,6 +1997,8 @@ function renderCategoriesGrid() {
     });
   });
 }
+
+
 
 // Global Category Click Handler to navigate directly to Category Detail View
 document.addEventListener('click', (e) => {
@@ -2341,93 +2390,142 @@ function downloadCustomerDirectoryPDF(filterDateStr = null) {
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = isThermal50 ? 3 : (isThermal88 ? 4 : (isA3 ? 20 : 14));
-    const rightX = pageWidth - margin - (isThermal50 ? 1 : 4);
+    const rightX = pageWidth - margin;
+    const tableWidth = pageWidth - (margin * 2);
 
     const purplePrimary = [124, 58, 237];
     const textDark = [15, 23, 42];
     const textMuted = [100, 116, 139];
     const borderLight = [226, 232, 240];
 
-    let y = isThermal50 ? 6 : (isThermal88 ? 8 : (isA3 ? 24 : 18));
+    let y = isThermal50 ? 5 : (isThermal88 ? 6 : (isA3 ? 20 : 15));
 
     // Header Block
-    const titleSize = isThermal50 ? 11 : (isThermal88 ? 13 : (isA3 ? 24 : 18));
-    doc.setFontSize(titleSize);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...purplePrimary);
-    doc.text('NEXUS', margin, y);
-    const nexusWidth = doc.getTextWidth('NEXUS');
-    doc.setTextColor(...textDark);
-    doc.text('SUITE', margin + nexusWidth + (isThermal50 ? 1 : 2.5), y);
+    if (isThermal50) {
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...purplePrimary);
+      doc.text('NEXUS', margin, y);
+      const nexusWidth = doc.getTextWidth('NEXUS');
+      doc.setTextColor(...textDark);
+      doc.text('SUITE', margin + nexusWidth + 1.2, y);
 
-    const subTitleSize = isThermal50 ? 6 : (isThermal88 ? 7 : (isA3 ? 12 : 8.5));
-    doc.setFontSize(subTitleSize);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...textMuted);
-    doc.text('Customers Directory', margin, y + (isThermal50 ? 3.5 : 5));
+      y += 4.0;
+      doc.setFontSize(7.0);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...purplePrimary);
+      doc.text('CUSTOMER DIRECTORY REPORT', margin, y);
 
-    if (!isThermal50) {
-      const reportTitleSize = isThermal88 ? 8.5 : (isA3 ? 16 : 13);
+      y += 3.5;
+      doc.setFontSize(6.0);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...textMuted);
+      doc.text('Customer Directory & Billing Summary', margin, y);
+      y += 4.5;
+    } else if (isThermal88) {
+      doc.setFontSize(11.0);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...purplePrimary);
+      doc.text('NEXUS', margin, y);
+      const nexusWidth = doc.getTextWidth('NEXUS');
+      doc.setTextColor(...textDark);
+      doc.text('SUITE', margin + nexusWidth + 1.8, y);
+
+      y += 4.8;
+      doc.setFontSize(8.0);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...purplePrimary);
+      doc.text('CUSTOMER DIRECTORY REPORT', margin, y);
+
+      y += 3.8;
+      doc.setFontSize(7.0);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...textMuted);
+      doc.text('Customer Directory & Billing Summary', margin, y);
+      y += 5.5;
+    } else {
+      const titleSize = isA3 ? 22 : 16;
+      doc.setFontSize(titleSize);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...purplePrimary);
+      doc.text('NEXUS', margin, y);
+      const nexusWidth = doc.getTextWidth('NEXUS');
+      doc.setTextColor(...textDark);
+      doc.text('SUITE', margin + nexusWidth + (isA3 ? 3 : 2), y);
+
+      const reportTitleSize = isA3 ? 14 : 11;
       doc.setFontSize(reportTitleSize);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...purplePrimary);
-      doc.text('CUSTOMER DIRECTORY REPORT', rightX, y + (isThermal88 ? 1 : 2), { align: 'right' });
+      doc.text('CUSTOMER DIRECTORY REPORT', rightX, y, { align: 'right' });
+
+      y += isA3 ? 6.5 : 5.5;
+      const subTitleSize = isA3 ? 11 : 8.5;
+      doc.setFontSize(subTitleSize);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...textMuted);
+      doc.text('Customer Directory & Billing Summary', margin, y);
+      y += isA3 ? 10 : 8;
     }
 
-    y += isThermal50 ? 10 : (isThermal88 ? 14 : (isA3 ? 22 : 18));
     doc.setDrawColor(...borderLight);
     doc.setLineWidth(0.5);
     doc.line(margin, y, pageWidth - margin, y);
 
-    y += isThermal50 ? 5 : (isThermal88 ? 7 : 10);
+    y += isThermal50 ? 4 : (isThermal88 ? 5 : (isA3 ? 8 : 6));
 
-    const infoFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 12 : 9.5));
+    const infoFontSize = isThermal50 ? 5.8 : (isThermal88 ? 7.0 : (isA3 ? 11 : 8.5));
     doc.setFontSize(infoFontSize);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...textDark);
     const dateSub = displayDate ? `Filter Date: ${displayDate}` : `Generated: ${new Date().toLocaleDateString('en-IN')}`;
     doc.text(`Total Customers: ${customerTransactions.length} | ${dateSub}`, margin, y);
 
-    y += isThermal50 ? 6 : (isThermal88 ? 8 : 10);
+    y += isThermal50 ? 5 : (isThermal88 ? 6 : (isA3 ? 9 : 7));
 
     // Table Header Helper
-    const tableWidth = pageWidth - (margin * 2);
     let col1X, col2X, col3X;
     if (isThermal50) {
-      col1X = margin + 1;
-      col2X = margin + 17;
-      col3X = margin + 30;
+      col1X = margin + 0.5;   // 3.5mm
+      col2X = margin + 16.5;  // 19.5mm
+      col3X = margin + 27.5;  // 30.5mm
     } else if (isThermal88) {
-      col1X = margin + 2;
-      col2X = margin + 28;
-      col3X = margin + 52;
+      col1X = margin + 0.5;   // 4.5mm
+      col2X = margin + 27.5;  // 31.5mm
+      col3X = margin + 44.0;  // 48.0mm
     } else if (isA3) {
-      col1X = margin + 5;
-      col2X = margin + 85;
-      col3X = margin + 165;
+      col1X = margin + 5;     // 25mm
+      col2X = margin + 80;    // 100mm
+      col3X = margin + 155;   // 175mm
     } else {
-      col1X = margin + 4;
-      col2X = margin + 60;
-      col3X = margin + 110;
+      col1X = margin + 4;     // 18mm
+      col2X = margin + 54;    // 68mm
+      col3X = margin + 104;   // 118mm
     }
 
-    const tableHeaderFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 11 : 8.5));
+    const tableHeaderFontSize = isThermal50 ? 5.5 : (isThermal88 ? 7.0 : (isA3 ? 11.0 : 8.5));
+    const headerHeight = isThermal50 ? 5.5 : (isThermal88 ? 6.5 : (isA3 ? 9.0 : 7.5));
+    const headerTextYOffset = isThermal50 ? 3.8 : (isThermal88 ? 4.5 : (isA3 ? 6.0 : 5.2));
+
     const drawTableHeader = (currentY) => {
       doc.setFillColor(248, 247, 255);
-      doc.rect(margin, currentY, tableWidth, isThermal50 ? 6 : (isThermal88 ? 7 : 9), 'F');
+      doc.rect(margin, currentY, tableWidth, headerHeight, 'F');
       doc.setFontSize(tableHeaderFontSize);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...textDark);
-      doc.text('Customer ID', col1X, currentY + (isThermal50 ? 4 : (isThermal88 ? 5 : 6)));
-      doc.text('Date', col2X, currentY + (isThermal50 ? 4 : (isThermal88 ? 5 : 6)));
-      doc.text('Mode', col3X, currentY + (isThermal50 ? 4 : (isThermal88 ? 5 : 6)));
-      doc.text('Amount', rightX, currentY + (isThermal50 ? 4 : (isThermal88 ? 5 : 6)), { align: 'right' });
+      doc.text('Customer ID', col1X, currentY + headerTextYOffset);
+      doc.text('Date', col2X, currentY + headerTextYOffset);
+      doc.text('Mode', col3X, currentY + headerTextYOffset);
+      doc.text('Amount', rightX, currentY + headerTextYOffset, { align: 'right' });
     };
 
     drawTableHeader(y);
 
-    y += isThermal50 ? 7 : (isThermal88 ? 9 : 11);
-    const itemFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 11 : 8.5));
+    y += headerHeight + (isThermal50 ? 1 : (isThermal88 ? 1.5 : 2));
+    const itemFontSize = isThermal50 ? 4.8 : (isThermal88 ? 6.8 : (isA3 ? 10.5 : 8.5));
+    const rowHeight = isThermal50 ? 5.5 : (isThermal88 ? 6.5 : (isA3 ? 8.5 : 7.5));
+    const textYOffset = isThermal50 ? 3.8 : (isThermal88 ? 4.5 : (isA3 ? 5.8 : 5.0));
+
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(itemFontSize);
 
@@ -2435,13 +2533,13 @@ function downloadCustomerDirectoryPDF(filterDateStr = null) {
     const dayCountersPdf = {};
     const maxPageY = isA3 ? 390 : 265;
 
-    customerTransactions.forEach((item) => {
+    customerTransactions.forEach((item, index) => {
       // Automatic Page Pagination (for A4/A3 multi-page)
       if (!isThermal50 && !isThermal88 && y > maxPageY) {
         doc.addPage();
-        y = isA3 ? 24 : 18;
+        y = isA3 ? 20 : 15;
         drawTableHeader(y);
-        y += 11;
+        y += headerHeight + 2;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(itemFontSize);
       }
@@ -2457,34 +2555,47 @@ function downloadCustomerDirectoryPDF(filterDateStr = null) {
       const displayDateStr = formatDisplayDate(item.invDate) || '14-08-2026';
       const displayId = formatCustomerId(item.clientId, daySeq, item.invDate);
 
-      doc.setTextColor(...textDark);
-      doc.text(displayId, col1X, y + 4);
-      doc.text(displayDateStr, col2X, y + 4);
-      doc.text(item.paymentMode || 'Cash', col3X, y + 4);
-      doc.text(formatPdfCurrency(item.amount), rightX, y + 4, { align: 'right' });
+      let displayMode = item.paymentMode || 'Cash';
+      if (isThermal50 && displayMode.length > 7) {
+        displayMode = displayMode.slice(0, 6) + '..';
+      } else if (isThermal88 && displayMode.length > 12) {
+        displayMode = displayMode.slice(0, 11) + '..';
+      }
 
-      y += isThermal50 ? 5.5 : (isThermal88 ? 6.5 : 7);
+      if (!isThermal50 && !isThermal88 && index % 2 === 1) {
+        doc.setFillColor(252, 252, 254);
+        doc.rect(margin, y, tableWidth, rowHeight, 'F');
+      }
+
+      doc.setTextColor(...textDark);
+      doc.text(displayId, col1X, y + textYOffset);
+      doc.text(displayDateStr, col2X, y + textYOffset);
+      doc.text(displayMode, col3X, y + textYOffset);
+      doc.text(formatPdfCurrency(item.amount), rightX, y + textYOffset, { align: 'right' });
+
+      y += rowHeight;
       doc.setDrawColor(241, 245, 249);
       doc.line(margin, y, pageWidth - margin, y);
-      y += isThermal50 ? 2 : 3;
+      y += 1;
     });
 
     if (!isThermal50 && !isThermal88 && y > maxPageY) {
       doc.addPage();
-      y = 20;
+      y = isA3 ? 20 : 15;
     }
 
-    y += 6;
+    y += isThermal50 ? 4 : (isThermal88 ? 5 : 6);
     doc.setDrawColor(...borderLight);
     doc.setLineWidth(0.8);
     doc.line(margin, y, pageWidth - margin, y);
-    y += isThermal50 ? 6 : 8;
+    y += isThermal50 ? 5 : (isThermal88 ? 6 : 8);
 
-    const totalFontSize = isThermal50 ? 8 : (isThermal88 ? 9 : (isA3 ? 14 : 10.5));
+    const totalFontSize = isThermal50 ? 7.0 : (isThermal88 ? 8.2 : (isA3 ? 13 : 10.5));
     doc.setFontSize(totalFontSize);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...purplePrimary);
-    doc.text(`TOTAL CUSTOMER AMOUNT: ${formatPdfCurrency(totalCustomerAmount)}`, rightX, y, { align: 'right' });
+    const totalLabel = isThermal50 ? `TOTAL: ${formatPdfCurrency(totalCustomerAmount)}` : `TOTAL CUSTOMER AMOUNT: ${formatPdfCurrency(totalCustomerAmount)}`;
+    doc.text(totalLabel, rightX, y, { align: 'right' });
 
     const fileName = rawDate ? `Customer_Directory_Report_${normalizeDateToIso(rawDate)}_${paperSize}.pdf` : `Customer_Directory_Report_${paperSize}.pdf`;
 
@@ -3016,8 +3127,8 @@ function getSubCategoriesForCategory(categoryName) {
 }
 
 function updateSubCategoryOptions(catSelectEl, subCatSelectEl) {
-  if (!catSelectEl || !subCatSelectEl) return;
-  const selectedCategory = catSelectEl.value;
+  if (!subCatSelectEl) return;
+  const selectedCategory = typeof catSelectEl === 'string' ? catSelectEl : (catSelectEl ? catSelectEl.value : '');
   const subCats = getSubCategoriesForCategory(selectedCategory);
   subCatSelectEl.innerHTML = subCats.map(sub => `<option value="${sub}">${sub}</option>`).join('');
 }
@@ -4556,7 +4667,16 @@ async function handleConfirmDownloadPDF() {
       category: categorySummary
     });
   } catch (e) {
-    console.warn('api.createInvoice:', e);
+    console.warn('api.createInvoice failed/offline, queuing sync:', e);
+    enqueueOfflineSync('INVOICE', {
+      id: finalInvId,
+      clientName: shopName,
+      clientId: customer.id,
+      clientEmail: '',
+      amount: totalAmount,
+      dueDate: dateStr,
+      category: categorySummary
+    });
   }
 
   // Push created invoice locally to appData.invoices
@@ -4643,7 +4763,8 @@ async function getOrCreateCustomer(shopName) {
       return res.client;
     }
   } catch (e) {
-    console.warn('api.createClient failed:', e);
+    console.warn('api.createClient failed/offline, queuing sync:', e);
+    enqueueOfflineSync('CLIENT', { id: nextId, name: cleanName });
   }
 
   const fallbackClient = { id: nextId, name: cleanName, contact: 'orders@client.com', status: 'Active', totalBilled: 0 };
@@ -5079,50 +5200,43 @@ createInvoiceForm.addEventListener('submit', async (e) => {
 
   const totalAmount = parseFloat(document.getElementById('inv-amount').value || 0);
   const dateStr = new Date().toISOString().split('T')[0];
+  const categorySummary = items.map(i => i.name).join(', ') || 'Retail Sale';
+  const modalPaymentSelect = document.getElementById('inv-payment-mode') || document.getElementById('page-inv-payment-mode');
+  const selectedPaymentMode = modalPaymentSelect ? modalPaymentSelect.value : 'Cash';
+  const generatedInvId = formatInvoiceIdWithDate(dateStr);
+
+  const invoicePayload = {
+    id: generatedInvId,
+    clientName: shopName,
+    clientEmail: '',
+    amount: totalAmount,
+    dueDate: dateStr,
+    category: categorySummary,
+    paymentMode: selectedPaymentMode
+  };
+
+  // Download PDF File
+  downloadInvoicePDF({
+    shopName,
+    items,
+    totalAmount,
+    invoiceId: generatedInvId,
+    date: dateStr
+  });
 
   try {
-    const categorySummary = items.map(i => i.name).join(', ') || 'Retail Sale';
-    const modalPaymentSelect = document.getElementById('inv-payment-mode') || document.getElementById('page-inv-payment-mode');
-    const selectedPaymentMode = modalPaymentSelect ? modalPaymentSelect.value : 'Cash';
-
-    const res = await api.createInvoice({
-      clientName: shopName,
-      clientEmail: '',
-      amount: totalAmount,
-      dueDate: dateStr,
-      category: categorySummary,
-      paymentMode: selectedPaymentMode
-    });
-
-    const generatedInvId = res.invoice?.id || formatInvoiceIdWithDate(dateStr);
-
-    // Download PDF File
-    downloadInvoicePDF({
-      shopName,
-      items,
-      totalAmount,
-      invoiceId: generatedInvId,
-      date: dateStr
-    });
-
+    await api.createInvoice(invoicePayload);
     showToast('Invoice created & PDF downloaded successfully!', 'success');
-    closeInvoiceModal();
-    createInvoiceForm.reset();
-    calculateInvoiceTotal();
-    await loadBusinessData();
   } catch (err) {
-    const generatedInvId = formatInvoiceIdWithDate(dateStr);
-    downloadInvoicePDF({
-      shopName,
-      items,
-      totalAmount,
-      invoiceId: generatedInvId,
-      date: dateStr
-    });
-    showToast('Invoice created & PDF downloaded!', 'success');
-    closeInvoiceModal();
-    createInvoiceForm.reset();
+    console.warn('api.createInvoice offline/failed, queuing sync:', err);
+    enqueueOfflineSync('INVOICE', invoicePayload);
+    showToast('Invoice created offline & PDF downloaded! Will auto-sync when connected.', 'info');
   }
+
+  closeInvoiceModal();
+  createInvoiceForm.reset();
+  calculateInvoiceTotal();
+  await loadBusinessData();
 });
 
 createProductForm.addEventListener('submit', async (e) => {
@@ -5131,26 +5245,34 @@ createProductForm.addEventListener('submit', async (e) => {
   const category = document.getElementById('prd-category').value;
   const color = document.getElementById('prd-color')?.value || 'Black';
   const size = document.getElementById('prd-size')?.value || 'M';
-  const price = document.getElementById('prd-price').value;
-  const count = document.getElementById('prd-stock').value;
+  const price = parseFloat(document.getElementById('prd-price').value) || 0;
+  const count = parseInt(document.getElementById('prd-stock').value || 50, 10);
 
   const createdPrd = addNewProductToSystem({ name, category, color, size, price, count });
+  const productPayload = { id: createdPrd.id, name, category, color, size, price, count };
 
-  try {
-    const res = await api.createProduct({ name, category, price, count });
-    if (res && res.product && res.product.id) {
-      createdPrd.id = res.product.id;
-      localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
-      renderProductsTable();
-      renderInventoryView();
-    }
-  } catch (err) {
-    console.warn('Backend sync for product creation deferred/offline:', err);
-  }
-
-  showToast('Product added successfully to Catalog & Inventory!', 'success');
   closeProductModal();
   createProductForm.reset();
+
+  if (!navigator.onLine) {
+    enqueueOfflineSync('PRODUCT', productPayload);
+    showToast(`Product "${name}" added offline! Will auto-sync when connected.`, 'info');
+  } else {
+    try {
+      const res = await api.createProduct(productPayload);
+      if (res && res.product && (res.product.id || res.product._id)) {
+        createdPrd.id = res.product.id || res.product._id;
+        localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
+        renderProductsTable();
+        renderInventoryView();
+      }
+      showToast('Product added successfully to Catalog & Inventory!', 'success');
+    } catch (err) {
+      console.warn('Backend sync for product creation deferred/offline:', err);
+      enqueueOfflineSync('PRODUCT', productPayload);
+      showToast(`Product "${name}" added offline! Will auto-sync when connected.`, 'info');
+    }
+  }
 });
 
 createCategoryForm.addEventListener('submit', async (e) => {
@@ -5164,22 +5286,34 @@ createCategoryForm.addEventListener('submit', async (e) => {
   const statusSelect = document.getElementById('cat-status');
   const status = statusSelect ? statusSelect.value : 'Active';
 
-  try {
-    const res = await api.createCategory({
-      name,
-      subCategories,
-      genderType,
-      seasonTag,
-      itemCounts,
-      status
-    });
-    showToast(res.message || 'Category created!', 'success');
-    closeCategoryModal();
-    createCategoryForm.reset();
-    await loadBusinessData();
-  } catch (err) {
-    showToast(err.message || 'Failed to create category.', 'error');
+  const categoryPayload = { name, subCategories, genderType, seasonTag, itemCounts, status };
+
+  const newId = `CAT-${String((appData.categories || []).length + 1).padStart(2, '0')}`;
+  const localCat = { id: newId, ...categoryPayload };
+  if (!appData.categories) appData.categories = [];
+  const existingCatIdx = appData.categories.findIndex(c => c.name && c.name.toLowerCase() === name.toLowerCase());
+  if (existingCatIdx >= 0) {
+    appData.categories[existingCatIdx] = { ...appData.categories[existingCatIdx], ...localCat };
+  } else {
+    appData.categories.push(localCat);
   }
+  try {
+    localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
+  } catch (err) {}
+  renderCategoriesGrid();
+  updateInvoiceProductSelectOptions();
+
+  try {
+    const res = await api.createCategory(categoryPayload);
+    showToast(res.message || 'Category created!', 'success');
+  } catch (err) {
+    console.warn('Backend offline - queuing category creation:', err);
+    enqueueOfflineSync('CATEGORY', categoryPayload);
+    showToast(`Category "${name}" saved offline! Will auto-sync when connected.`, 'info');
+  }
+
+  closeCategoryModal();
+  createCategoryForm.reset();
 });
 
 if (createBillForm) {
@@ -5349,16 +5483,27 @@ if (createProductPageForm) {
       showToast(`Product "${name}" updated successfully!`, 'success');
     } else {
       const createdPrd = addNewProductToSystem({ name, category, subCategory, color, size, price, count });
-      try {
-        const res = await api.createProduct({ name, category, subCategory, color, size, price, count });
-        if (res && res.product && res.product.id) {
-          createdPrd.id = res.product.id;
-          localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
+      const productPayload = { id: createdPrd.id, name, category, subCategory, color, size, price, count };
+      
+      if (!navigator.onLine) {
+        enqueueOfflineSync('PRODUCT', productPayload);
+        showToast(`Product "${name}" added offline! Will auto-sync when connected.`, 'info');
+      } else {
+        try {
+          const res = await api.createProduct(productPayload);
+          if (res && res.product && (res.product.id || res.product._id)) {
+            createdPrd.id = res.product.id || res.product._id;
+            localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
+            renderProductsTable();
+            renderInventoryView();
+          }
+          showToast('Apparel product added to Catalog & Inventory!', 'success');
+        } catch (err) {
+          console.warn('Backend sync for product creation deferred/offline:', err);
+          enqueueOfflineSync('PRODUCT', productPayload);
+          showToast(`Product "${name}" added offline! Will auto-sync when connected.`, 'info');
         }
-      } catch (err) {
-        console.warn('Backend sync for product creation deferred/offline:', err);
       }
-      showToast('Apparel product added to Catalog & Inventory!', 'success');
     }
 
     switchView('products');
@@ -5416,13 +5561,14 @@ if (createCategoryPageForm) {
 
       try {
         await api.updateCategory(editId, { name, subCategories, status });
+        showToast(`Category "${name}" updated successfully!`, 'success');
       } catch (err) {
         console.warn('api.updateCategory error:', err);
+        showToast(`Category "${name}" updated locally!`, 'success');
       }
-
-      showToast(`Category "${name}" updated successfully!`, 'success');
     } else {
       const newId = `CAT-${String((appData.categories || []).length + 1).padStart(2, '0')}`;
+      const categoryPayload = { name, subCategories, status };
       const newCat = {
         id: newId,
         name,
@@ -5437,12 +5583,13 @@ if (createCategoryPageForm) {
       } catch (err) {}
 
       try {
-        await api.createCategory({ name, subCategories, status });
+        await api.createCategory(categoryPayload);
+        showToast(`Category "${name}" created successfully!`, 'success');
       } catch (err) {
         console.warn('api.createCategory error:', err);
+        enqueueOfflineSync('CATEGORY', categoryPayload);
+        showToast(`Category "${name}" saved offline! Will auto-sync when connected.`, 'info');
       }
-
-      showToast(`Category "${name}" created successfully!`, 'success');
     }
 
     switchView('categories');

@@ -1150,30 +1150,30 @@
               </button>
             </div>
 
-            <form id="create-category-page-form" class="modal-form">
+            <form id="create-category-page-form" class="modal-form" style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
               <input type="hidden" id="page-cat-edit-id" value="" />
               <!-- 1. Category Name -->
-              <div class="input-group">
-                <label for="page-cat-name" style="font-weight: 700;">Category Name *</label>
-                <input type="text" id="page-cat-name" placeholder="e.g. Ethnic & Festive Wear" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 0.92rem; outline: none; color: var(--text-main);" required />
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                <label for="page-cat-name" style="font-weight: 700; color: var(--text-heading); font-size: 0.9rem;">Category Name *</label>
+                <input type="text" id="page-cat-name" placeholder="e.g. Ethnic & Festive Wear" style="width: 100%; box-sizing: border-box; padding: 12px 14px; background: #f8fafc; border: 1px solid var(--border-light, #cbd5e1); border-radius: 12px; font-family: inherit; font-size: 0.92rem; outline: none; color: var(--text-main);" required />
               </div>
 
               <!-- 2. Sub-Categories -->
-              <div class="input-group">
-                <label for="page-cat-subcategories" style="font-weight: 700;">Sub-Categories (Comma-separated) *</label>
-                <input type="text" id="page-cat-subcategories" placeholder="e.g. Kurta Sets, Sarees, Lehengas, Sherwanis, Anarkalis" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; outline: none; color: var(--text-main);" required />
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                <label for="page-cat-subcategories" style="font-weight: 700; color: var(--text-heading); font-size: 0.9rem;">Sub-Categories (Comma-separated) *</label>
+                <input type="text" id="page-cat-subcategories" placeholder="e.g. Kurta Sets, Sarees, Lehengas, Sherwanis, Anarkalis" style="width: 100%; box-sizing: border-box; padding: 12px 14px; background: #f8fafc; border: 1px solid var(--border-light, #cbd5e1); border-radius: 12px; font-family: inherit; font-size: 0.9rem; outline: none; color: var(--text-main);" required />
               </div>
 
               <!-- 3. Status -->
-              <div class="input-group">
-                <label for="page-cat-status" style="font-weight: 700;">Status</label>
-                <select id="page-cat-status" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
+              <div class="form-group" style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                <label for="page-cat-status" style="font-weight: 700; color: var(--text-heading); font-size: 0.9rem;">Status</label>
+                <select id="page-cat-status" style="width: 100%; box-sizing: border-box; padding: 12px 14px; background: #f8fafc; border: 1px solid var(--border-light, #cbd5e1); border-radius: 12px; font-family: inherit; outline: none; color: var(--text-main); font-size: 0.9rem;">
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                 </select>
               </div>
 
-              <!-- 5. Action Footer -->
+              <!-- 4. Action Footer -->
               <div style="display: flex; justify-content: flex-end; gap: 12px; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-light);">
                 <button type="button" class="secondary-btn back-to-categories-btn" onclick="switchView('categories')" style="padding: 12px 20px; font-weight: 600; border-radius: 12px; cursor: pointer;">
                   Cancel
