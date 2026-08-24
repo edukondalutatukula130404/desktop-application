@@ -855,9 +855,20 @@ const dataStore = {
     return updated;
   },
 
-  deleteCategory: async (id) => {
-    const deleted = await Category.findOneAndDelete({ id }).exec();
-    return { deleted: !!deleted };
+  deleteCategory: async (id, name = '') => {
+    try {
+      await seedInitialDataIfNeeded();
+      const queries = [{ id: id }];
+      if (name && name.trim()) {
+        const safeRegex = new RegExp(`^${name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+        queries.push({ name: safeRegex });
+      }
+      await Category.deleteMany({ $or: queries }).exec();
+      return { success: true };
+    } catch (err) {
+      console.error('deleteCategory error:', err.message);
+      return { success: false, error: err.message };
+    }
   },
 
   toggleCategoryStatus: async (id) => {

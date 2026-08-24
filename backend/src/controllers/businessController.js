@@ -249,7 +249,8 @@ const businessController = {
   deleteCategory: async (req, res) => {
     try {
       const { id } = req.params;
-      const result = await dataStore.deleteCategory(id);
+      const { name } = req.query;
+      const result = await dataStore.deleteCategory(id, name);
       res.json({ success: true, message: 'Category deleted successfully', ...result });
     } catch (error) {
       console.error('deleteCategory error:', error);

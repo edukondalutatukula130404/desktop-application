@@ -150,7 +150,7 @@ export const api = {
     body: JSON.stringify(payload)
   }),
 
-  deleteCategory: (id) => request(`/business/categories/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  deleteCategory: (id, name = '') => request(`/business/categories/${encodeURIComponent(id)}?name=${encodeURIComponent(name || '')}`, { method: 'DELETE' }),
 
   toggleCategoryStatus: (id) => request(`/business/categories/${id}/status`, { method: 'PATCH' }),
 

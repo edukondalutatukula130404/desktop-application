@@ -548,7 +548,7 @@ async function processOfflineSyncQueue() {
   isProcessingSyncQueue = true;
   console.log(`[Offline Sync] Backend online! Processing ${queue.length} pending offline items...`);
 
-  const priorityOrder = { CATEGORY: 1, PRODUCT: 2, CLIENT: 3, INVOICE: 4, DELETE_PRODUCT: 5 };
+  const priorityOrder = { CATEGORY: 1, PRODUCT: 2, CLIENT: 3, INVOICE: 4, DELETE_PRODUCT: 5, DELETE_CATEGORY: 6 };
   queue.sort((a, b) => (priorityOrder[a.type] || 5) - (priorityOrder[b.type] || 5));
 
   const remainingQueue = [];
@@ -572,6 +572,11 @@ async function processOfflineSyncQueue() {
         const targetId = item.payload.id || item.payload;
         const targetName = item.payload.name || '';
         await api.deleteProduct(targetId, targetName);
+        syncedCount++;
+      } else if (item.type === 'DELETE_CATEGORY') {
+        const targetId = item.payload.id || item.payload;
+        const targetName = item.payload.name || '';
+        await api.deleteCategory(targetId, targetName);
         syncedCount++;
       }
     } catch (err) {
@@ -1997,16 +2002,25 @@ function renderCategoriesGrid() {
           localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
         } catch (err) {}
 
-        try {
-          await api.deleteCategory(catId);
-        } catch (err) {
-          console.warn('api.deleteCategory error:', err);
+        const deletePayload = { id: catId, name: catName };
+
+        if (!navigator.onLine) {
+          enqueueOfflineSync('DELETE_CATEGORY', deletePayload);
+          showToast(`Category "${catName}" deleted offline! Will sync deletion when connected.`, 'info');
+        } else {
+          try {
+            await api.deleteCategory(catId, catName);
+            showToast(`Category "${catName}" deleted successfully!`, 'success');
+          } catch (err) {
+            console.warn('api.deleteCategory error, queuing sync:', err);
+            enqueueOfflineSync('DELETE_CATEGORY', deletePayload);
+            showToast(`Category "${catName}" deleted locally! Will sync deletion when connected.`, 'info');
+          }
         }
 
         renderCategoriesGrid();
         populatePageProductCategoryOptions();
         updateInvoiceProductSelectOptions();
-        showToast(`Category "${catName}" deleted successfully!`, 'success');
       }
     });
   });
