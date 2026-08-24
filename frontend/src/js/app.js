@@ -548,7 +548,7 @@ async function processOfflineSyncQueue() {
   isProcessingSyncQueue = true;
   console.log(`[Offline Sync] Backend online! Processing ${queue.length} pending offline items...`);
 
-  const priorityOrder = { CATEGORY: 1, PRODUCT: 2, CLIENT: 3, INVOICE: 4 };
+  const priorityOrder = { CATEGORY: 1, PRODUCT: 2, CLIENT: 3, INVOICE: 4, DELETE_PRODUCT: 5 };
   queue.sort((a, b) => (priorityOrder[a.type] || 5) - (priorityOrder[b.type] || 5));
 
   const remainingQueue = [];
@@ -567,6 +567,11 @@ async function processOfflineSyncQueue() {
         syncedCount++;
       } else if (item.type === 'INVOICE') {
         await api.createInvoice(item.payload);
+        syncedCount++;
+      } else if (item.type === 'DELETE_PRODUCT') {
+        const targetId = item.payload.id || item.payload;
+        const targetName = item.payload.name || '';
+        await api.deleteProduct(targetId, targetName);
         syncedCount++;
       }
     } catch (err) {
@@ -1383,16 +1388,25 @@ function renderProductsTable(filterCategory = 'all', searchQuery = '') {
           localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
         } catch (err) {}
 
-        try {
-          await api.deleteProduct(prdId);
-        } catch (err) {
-          console.warn('api.deleteProduct:', err);
+        const deletePayload = { id: prdId, name: prdName };
+
+        if (!navigator.onLine) {
+          enqueueOfflineSync('DELETE_PRODUCT', deletePayload);
+          showToast(`Product "${prdName}" deleted locally! Will sync deletion when connected.`, 'info');
+        } else {
+          try {
+            await api.deleteProduct(prdId, prdName);
+            showToast(`Product "${prdName}" deleted successfully!`, 'success');
+          } catch (err) {
+            console.warn('api.deleteProduct error, queuing sync:', err);
+            enqueueOfflineSync('DELETE_PRODUCT', deletePayload);
+            showToast(`Product "${prdName}" deleted locally! Will sync deletion when connected.`, 'info');
+          }
         }
 
         renderProductsTable(filterCategory, searchQuery);
         renderInventoryView();
         updateInvoiceProductSelectOptions();
-        showToast(`Product "${prdName}" deleted successfully!`, 'success');
       }
     });
   });
@@ -4656,27 +4670,26 @@ async function handleConfirmDownloadPDF() {
   // Ensure unique Customer record without duplicates
   const customer = await getOrCreateCustomer(shopName);
 
-  try {
-    await api.createInvoice({
-      id: finalInvId,
-      clientName: shopName,
-      clientId: customer.id,
-      clientEmail: '',
-      amount: totalAmount,
-      dueDate: dateStr,
-      category: categorySummary
-    });
-  } catch (e) {
-    console.warn('api.createInvoice failed/offline, queuing sync:', e);
-    enqueueOfflineSync('INVOICE', {
-      id: finalInvId,
-      clientName: shopName,
-      clientId: customer.id,
-      clientEmail: '',
-      amount: totalAmount,
-      dueDate: dateStr,
-      category: categorySummary
-    });
+  const invoicePayload = {
+    id: finalInvId,
+    clientName: shopName,
+    clientId: customer.id,
+    clientEmail: '',
+    amount: totalAmount,
+    dueDate: dateStr,
+    category: categorySummary,
+    paymentMode: (pendingInvoiceDraft && pendingInvoiceDraft.paymentMode) ? pendingInvoiceDraft.paymentMode : 'Cash'
+  };
+
+  if (!navigator.onLine) {
+    enqueueOfflineSync('INVOICE', invoicePayload);
+  } else {
+    try {
+      await api.createInvoice(invoicePayload);
+    } catch (e) {
+      console.warn('api.createInvoice failed/offline, queuing sync:', e);
+      enqueueOfflineSync('INVOICE', invoicePayload);
+    }
   }
 
   // Push created invoice locally to appData.invoices
@@ -4731,7 +4744,11 @@ async function handleConfirmDownloadPDF() {
 
   // Immediately re-render Customers Directory and all views
   renderClientsGrid(currentCustomerSelectedDate || dateStr);
-  await loadBusinessData();
+  if (navigator.onLine) {
+    try {
+      await loadBusinessData();
+    } catch (e) {}
+  }
   renderClientsGrid(currentCustomerSelectedDate || dateStr);
 }
 
@@ -4754,17 +4771,22 @@ async function getOrCreateCustomer(shopName) {
   });
 
   const nextId = `CUST-${todayStr}${(maxNum + 1).toString().padStart(3, '0')}`;
+  const clientPayload = { id: nextId, name: cleanName };
 
-  try {
-    const res = await api.createClient({ id: nextId, name: cleanName });
-    if (res && res.client) {
-      if (!appData.clients) appData.clients = [];
-      appData.clients.push(res.client);
-      return res.client;
+  if (!navigator.onLine) {
+    enqueueOfflineSync('CLIENT', clientPayload);
+  } else {
+    try {
+      const res = await api.createClient(clientPayload);
+      if (res && res.client) {
+        if (!appData.clients) appData.clients = [];
+        appData.clients.push(res.client);
+        return res.client;
+      }
+    } catch (e) {
+      console.warn('api.createClient failed/offline, queuing sync:', e);
+      enqueueOfflineSync('CLIENT', clientPayload);
     }
-  } catch (e) {
-    console.warn('api.createClient failed/offline, queuing sync:', e);
-    enqueueOfflineSync('CLIENT', { id: nextId, name: cleanName });
   }
 
   const fallbackClient = { id: nextId, name: cleanName, contact: 'orders@client.com', status: 'Active', totalBilled: 0 };
@@ -5215,7 +5237,6 @@ createInvoiceForm.addEventListener('submit', async (e) => {
     paymentMode: selectedPaymentMode
   };
 
-  // Download PDF File
   downloadInvoicePDF({
     shopName,
     items,
@@ -5224,19 +5245,28 @@ createInvoiceForm.addEventListener('submit', async (e) => {
     date: dateStr
   });
 
-  try {
-    await api.createInvoice(invoicePayload);
-    showToast('Invoice created & PDF downloaded successfully!', 'success');
-  } catch (err) {
-    console.warn('api.createInvoice offline/failed, queuing sync:', err);
+  if (!navigator.onLine) {
     enqueueOfflineSync('INVOICE', invoicePayload);
-    showToast('Invoice created offline & PDF downloaded! Will auto-sync when connected.', 'info');
+    showToast('Invoice created offline & PDF downloaded!', 'success');
+  } else {
+    try {
+      await api.createInvoice(invoicePayload);
+      showToast('Invoice created & PDF downloaded successfully!', 'success');
+    } catch (err) {
+      console.warn('api.createInvoice offline/failed, queuing sync:', err);
+      enqueueOfflineSync('INVOICE', invoicePayload);
+      showToast('Invoice created offline & PDF downloaded! Will auto-sync when connected.', 'info');
+    }
   }
 
   closeInvoiceModal();
   createInvoiceForm.reset();
   calculateInvoiceTotal();
-  await loadBusinessData();
+  if (navigator.onLine) {
+    try {
+      await loadBusinessData();
+    } catch (e) {}
+  }
 });
 
 createProductForm.addEventListener('submit', async (e) => {

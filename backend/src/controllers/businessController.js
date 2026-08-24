@@ -171,7 +171,8 @@ const businessController = {
   deleteProduct: async (req, res) => {
     try {
       const { id } = req.params;
-      const result = await dataStore.deleteProduct(id);
+      const { name } = req.query;
+      const result = await dataStore.deleteProduct(id, name);
       res.json({ success: true, message: 'Product deleted successfully', ...result });
     } catch (error) {
       console.error('deleteProduct error:', error);

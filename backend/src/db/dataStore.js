@@ -662,12 +662,19 @@ const dataStore = {
     }
   },
 
-  deleteProduct: async (id) => {
+  deleteProduct: async (id, name = '') => {
     try {
-      await Product.deleteOne({ id }).exec();
+      await seedInitialDataIfNeeded();
+      const queries = [{ id: id }];
+      if (name && name.trim()) {
+        const safeRegex = new RegExp(`^${name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+        queries.push({ name: safeRegex });
+      }
+      await Product.deleteMany({ $or: queries }).exec();
       return { success: true };
     } catch (err) {
-      return { success: false };
+      console.error('deleteProduct error:', err.message);
+      return { success: false, error: err.message };
     }
   },
 

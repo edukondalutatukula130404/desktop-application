@@ -136,7 +136,7 @@ export const api = {
     body: JSON.stringify(payload)
   }),
 
-  deleteProduct: (id) => request(`/business/products/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  deleteProduct: (id, name = '') => request(`/business/products/${encodeURIComponent(id)}?name=${encodeURIComponent(name || '')}`, { method: 'DELETE' }),
 
   getCategories: () => request('/business/categories', { method: 'GET' }),
 
