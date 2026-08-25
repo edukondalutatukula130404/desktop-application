@@ -1,3 +1,5 @@
+const path = require('path');
+try { require('dotenv').config({ path: path.join(__dirname, '../../.env') }); } catch (e) {}
 const mongoose = require('mongoose');
 const { startLocalMongoServer } = require('./localMongo');
 
@@ -12,7 +14,7 @@ const connectDB = async () => {
 
   if (mongoURI) {
     try {
-      const conn = await mongoose.connect(mongoURI);
+      const conn = await mongoose.connect(mongoURI, { serverSelectionTimeoutMS: 5000 });
       isConnected = !!conn.connections[0].readyState;
       console.log(`=================================`);
       console.log(`🍃 MongoDB Connected (Environment URI): ${conn.connection.host}`);
@@ -26,7 +28,7 @@ const connectDB = async () => {
   // Attempt local MongoDB on default port first
   try {
     const defaultLocalURI = 'mongodb://127.0.0.1:27017/login_page_db';
-    const conn = await mongoose.connect(defaultLocalURI, { serverSelectionTimeoutMS: 2000 });
+    const conn = await mongoose.connect(defaultLocalURI, { serverSelectionTimeoutMS: 1000 });
     isConnected = !!conn.connections[0].readyState;
     console.log(`=================================`);
     console.log(`🍃 MongoDB Connected (Local Service 27017): ${conn.connection.host}`);

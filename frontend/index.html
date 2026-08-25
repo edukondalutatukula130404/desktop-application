@@ -1086,27 +1086,28 @@
         </div>
 
         <!-- VIEW 10: ADD NEW PRODUCT DEDICATED PAGE -->
-        <div id="view-add_product" class="view-panel">
-          <div class="panel-card" style="padding: 28px; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); width: 100%;">
-            <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
-              <button type="button" class="secondary-btn back-to-products-btn" onclick="switchView('products')" style="padding: 8px 18px; font-weight: 600; cursor: pointer; border-radius: 12px;">
+        <div id="view-add_product" class="view-panel" style="overflow-y: auto; max-height: calc(100vh - 110px); padding-bottom: 30px; box-sizing: border-box;">
+          <div class="panel-card" style="padding: 20px 24px; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); width: 100%; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+              <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text-main);">Product Specification</h3>
+              <button type="button" class="secondary-btn back-to-products-btn" onclick="switchView('products')" style="padding: 6px 14px; font-weight: 600; cursor: pointer; border-radius: 10px; font-size: 0.85rem;">
                 &larr; Back to Products Catalog
               </button>
             </div>
 
-            <form id="create-product-page-form" class="modal-form">
+            <form id="create-product-page-form" class="modal-form" style="display: flex; flex-direction: column; gap: 12px;">
               <input type="hidden" id="page-prd-edit-id" value="" />
               <!-- 1. Product Name -->
-              <div class="input-group">
-                <label for="page-prd-name" style="font-weight: 700;">Product Name *</label>
-                <input type="text" id="page-prd-name" placeholder="e.g. Premium Cotton Slim-Fit Shirt" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 0.92rem; outline: none; color: var(--text-main);" required />
+              <div class="input-group" style="margin-bottom: 0;">
+                <label for="page-prd-name" style="font-weight: 700; margin-bottom: 4px; display: block; font-size: 0.88rem;">Product Name *</label>
+                <input type="text" id="page-prd-name" placeholder="e.g. Premium Cotton Slim-Fit Shirt" style="padding: 10px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.9rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" required />
               </div>
 
               <!-- 2. Category & Sub-Category Grid -->
-              <div class="form-grid-2">
-                <div class="input-group">
-                  <label for="page-prd-category" style="font-weight: 700;">Apparel Category *</label>
-                  <select id="page-prd-category" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
+              <div class="form-grid-2" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+                <div class="input-group" style="margin-bottom: 0;">
+                  <label for="page-prd-category" style="font-weight: 700; margin-bottom: 4px; display: block; font-size: 0.88rem;">Apparel Category *</label>
+                  <select id="page-prd-category" style="width:100%; padding:10px 12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:10px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.88rem; box-sizing: border-box;">
                     <option value="Men's Apparel">Men's Apparel</option>
                     <option value="Women's Fashion">Women's Fashion</option>
                     <option value="Kidswear & Toddlers">Kidswear & Toddlers</option>
@@ -1115,9 +1116,9 @@
                     <option value="Winterwear & Outerwear">Winterwear & Outerwear</option>
                   </select>
                 </div>
-                <div class="input-group">
-                  <label for="page-prd-subcategory" style="font-weight: 700;">Sub-Category</label>
-                  <select id="page-prd-subcategory" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
+                <div class="input-group" style="margin-bottom: 0;">
+                  <label for="page-prd-subcategory" style="font-weight: 700; margin-bottom: 4px; display: block; font-size: 0.88rem;">Sub-Category</label>
+                  <select id="page-prd-subcategory" style="width:100%; padding:10px 12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:10px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.88rem; box-sizing: border-box;">
                     <option value="Shirts">Shirts</option>
                     <option value="T-Shirts">T-Shirts</option>
                     <option value="Jeans & Trousers">Jeans & Trousers</option>
@@ -1128,10 +1129,10 @@
               </div>
 
               <!-- 3. Product Color & Size Variant Options -->
-              <div class="form-grid-2">
-                <div class="input-group">
-                  <label for="page-prd-color" style="font-weight: 700;">Product Color</label>
-                  <select id="page-prd-color" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
+              <div class="form-grid-2" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+                <div class="input-group" style="margin-bottom: 0;">
+                  <label for="page-prd-color" style="font-weight: 700; margin-bottom: 4px; display: block; font-size: 0.88rem;">Product Color</label>
+                  <select id="page-prd-color" style="width:100%; padding:10px 12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:10px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.88rem; box-sizing: border-box;">
                     <option value="Black">Black</option>
                     <option value="White">White</option>
                     <option value="Navy Blue">Navy Blue</option>
@@ -1147,9 +1148,9 @@
                     <option value="Multicolor">Multicolor / Assorted</option>
                   </select>
                 </div>
-                <div class="input-group">
-                  <label for="page-prd-size" style="font-weight: 700;">Size / Size Variant</label>
-                  <select id="page-prd-size" style="width:100%; padding:12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:12px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.9rem;">
+                <div class="input-group" style="margin-bottom: 0;">
+                  <label for="page-prd-size" style="font-weight: 700; margin-bottom: 4px; display: block; font-size: 0.88rem;">Size / Size Variant</label>
+                  <select id="page-prd-size" style="width:100%; padding:10px 12px; background:#f8fafc; border:1px solid var(--input-border); border-radius:10px; font-family:inherit; outline:none; color:var(--text-main); font-size: 0.88rem; box-sizing: border-box;">
                     <option value="M">Medium (M)</option>
                     <option value="L">Large (L)</option>
                     <option value="XL">Extra Large (XL)</option>
@@ -1160,24 +1161,24 @@
                 </div>
               </div>
 
-              <!-- 3. Price & Stock Quantity Grid -->
-              <div class="form-grid-2">
-                <div class="input-group">
-                  <label for="page-prd-price" style="font-weight: 700;">Price (₹) *</label>
-                  <input type="number" step="0.01" id="page-prd-price" placeholder="0.00" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 1rem; font-weight: 700; color: var(--primary-accent); outline: none;" required />
+              <!-- 4. Price & Stock Quantity Grid -->
+              <div class="form-grid-2" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+                <div class="input-group" style="margin-bottom: 0;">
+                  <label for="page-prd-price" style="font-weight: 700; margin-bottom: 4px; display: block; font-size: 0.88rem;">Price (₹) *</label>
+                  <input type="number" step="0.01" id="page-prd-price" placeholder="0.00" style="padding: 10px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.95rem; font-weight: 700; color: var(--primary-accent); outline: none; width: 100%; box-sizing: border-box;" required />
                 </div>
-                <div class="input-group">
-                  <label for="page-prd-stock" style="font-weight: 700;">Initial Inventory Stock Quantity</label>
-                  <input type="number" id="page-prd-stock" placeholder="e.g. 50" value="50" style="padding: 12px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 12px; font-family: inherit; font-size: 0.9rem; outline: none; color: var(--text-main);" />
+                <div class="input-group" style="margin-bottom: 0;">
+                  <label for="page-prd-stock" style="font-weight: 700; margin-bottom: 4px; display: block; font-size: 0.88rem;">Initial Inventory Stock Quantity</label>
+                  <input type="number" id="page-prd-stock" placeholder="e.g. 50" value="50" style="padding: 10px 14px; background: #f8fafc; border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.9rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" />
                 </div>
               </div>
 
-              <!-- 4. Action Footer -->
-              <div style="display: flex; justify-content: flex-end; gap: 12px; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-light);">
-                <button type="button" class="secondary-btn back-to-products-btn" onclick="switchView('products')" style="padding: 12px 20px; font-weight: 600; border-radius: 12px; cursor: pointer;">
+              <!-- 5. Action Footer - ALWAYS VISIBLE & CLEARLY CLICKABLE -->
+              <div style="display: flex; justify-content: flex-end; gap: 12px; align-items: center; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-light);">
+                <button type="button" class="secondary-btn back-to-products-btn" onclick="switchView('products')" style="padding: 10px 20px; font-weight: 600; border-radius: 10px; cursor: pointer; font-size: 0.88rem;">
                   Cancel
                 </button>
-                <button type="submit" id="page-submit-create-product-btn" class="primary-action-btn" style="padding: 12px 28px; font-size: 0.95rem; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center;">
+                <button type="submit" id="page-submit-create-product-btn" class="primary-action-btn" style="padding: 10px 28px; font-size: 0.92rem; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: 700;">
                   <span>Save Product</span>
                 </button>
               </div>

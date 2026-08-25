@@ -535,6 +535,39 @@ function enqueueOfflineSync(type, payload) {
   }
 }
 
+function getDeletedEntityList(type) {
+  try {
+    const raw = localStorage.getItem(`nexus_deleted_${type.toLowerCase()}s`);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function markEntityAsDeleted(type, id, name = '') {
+  try {
+    const list = getDeletedEntityList(type);
+    const keyId = id ? String(id).toLowerCase().trim() : '';
+    const keyName = name ? String(name).toLowerCase().trim() : '';
+    if (keyId && !list.includes(keyId)) list.push(keyId);
+    if (keyName && !list.includes(keyName)) list.push(keyName);
+    localStorage.setItem(`nexus_deleted_${type.toLowerCase()}s`, JSON.stringify(list));
+  } catch (e) {
+    console.warn(`Error marking ${type} as deleted:`, e);
+  }
+}
+
+function isEntityDeleted(type, id, name = '') {
+  try {
+    const list = getDeletedEntityList(type);
+    const keyId = id ? String(id).toLowerCase().trim() : '';
+    const keyName = name ? String(name).toLowerCase().trim() : '';
+    return (keyId && list.includes(keyId)) || (keyName && list.includes(keyName));
+  } catch (e) {
+    return false;
+  }
+}
+
 let isProcessingSyncQueue = false;
 
 async function processOfflineSyncQueue() {
@@ -642,6 +675,13 @@ window.addEventListener('online', () => {
 setInterval(processOfflineSyncQueue, 4000);
 
 async function loadBusinessData() {
+  if (navigator.onLine) {
+    const queue = getOfflineSyncQueue();
+    if (queue && queue.length > 0 && !isProcessingSyncQueue) {
+      await processOfflineSyncQueue();
+    }
+  }
+
   let invRes = {}, billRes = {}, clientRes = {}, prdRes = {}, catRes = {};
 
   try {
@@ -662,6 +702,15 @@ async function loadBusinessData() {
     console.warn('Error loading business data:', error);
   }
 
+  const syncQueue = getOfflineSyncQueue();
+  const isOnline = navigator.onLine && (
+    invRes.invoices !== undefined ||
+    billRes.bills !== undefined ||
+    clientRes.clients !== undefined ||
+    prdRes.products !== undefined ||
+    catRes.categories !== undefined
+  );
+
   // 1. Invoices from Backend API + local custom invoices
   const fetchedInvoices = invRes.invoices || [];
   const invMap = new Map();
@@ -681,7 +730,7 @@ async function loadBusinessData() {
           if (inv) {
             const idNorm = normalizeInvoiceId(inv);
             const key = idNorm.toLowerCase();
-            if (!invMap.has(key)) {
+            if (!invMap.has(key) && !isEntityDeleted('INVOICE', inv.id, idNorm)) {
               invMap.set(key, { ...inv, id: idNorm });
             }
           }
@@ -709,7 +758,7 @@ async function loadBusinessData() {
         parsedBills.forEach(b => {
           if (b && b.id) {
             const key = b.id.toLowerCase();
-            if (!billMap.has(key)) {
+            if (!billMap.has(key) && !isEntityDeleted('BILL', b.id, b.vendor)) {
               billMap.set(key, { ...b });
             }
           }
@@ -740,7 +789,7 @@ async function loadBusinessData() {
         parsedClients.forEach(c => {
           if (c && (c.id || c.name)) {
             const key = (c.id || c.name).trim().toLowerCase();
-            if (!clientMap.has(key)) {
+            if (!clientMap.has(key) && !isEntityDeleted('CLIENT', c.id, c.name)) {
               clientMap.set(key, { ...c });
             }
           }
@@ -768,7 +817,7 @@ async function loadBusinessData() {
         parsedPrds.forEach(p => {
           if (p && p.name) {
             const key = p.name.trim().toLowerCase();
-            if (!prdMap.has(key)) {
+            if (!prdMap.has(key) && !isEntityDeleted('PRODUCT', p.id, p.name)) {
               prdMap.set(key, { ...p });
             }
           }
@@ -778,6 +827,9 @@ async function loadBusinessData() {
   }
 
   appData.products = sortProductsBySku(Array.from(prdMap.values()));
+  try {
+    localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
+  } catch (e) {}
 
   // 5. Categories from Backend API (deduplicated by normalized name)
   const fetchedCats = catRes.categories || [];
@@ -804,7 +856,7 @@ async function loadBusinessData() {
         parsedCats.forEach(cat => {
           if (cat && cat.name) {
             const key = cat.name.trim().toLowerCase();
-            if (!catMap.has(key)) {
+            if (!catMap.has(key) && !isEntityDeleted('CATEGORY', cat.id, cat.name)) {
               catMap.set(key, { ...cat });
             }
           }
@@ -814,6 +866,9 @@ async function loadBusinessData() {
   }
 
   appData.categories = Array.from(catMap.values());
+  try {
+    localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
+  } catch (e) {}
 
   renderOverview();
   renderInvoicesTable();
@@ -834,16 +889,11 @@ async function loadBusinessData() {
 
 function sortProductsBySku(prds) {
   if (!Array.isArray(prds)) return [];
-  const sorted = [...prds].sort((a, b) => {
+  return [...prds].sort((a, b) => {
     const numA = parseInt((a.id || '').replace(/\D/g, ''), 10) || 99999;
     const numB = parseInt((b.id || '').replace(/\D/g, ''), 10) || 99999;
     return numA - numB;
   });
-
-  return sorted.map((prd, idx) => ({
-    ...prd,
-    id: `SKU-PRD-${(idx + 1).toString().padStart(2, '0')}`
-  }));
 }
 
 function addNewProductToSystem(productData) {
@@ -1506,6 +1556,7 @@ function renderProductsTable(filterCategory = 'all', searchQuery = '') {
       const prdName = btn.getAttribute('data-name');
 
       if (confirm(`Are you sure you want to delete product "${prdName}"?`)) {
+        markEntityAsDeleted('PRODUCT', prdId, prdName);
         appData.products = sortProductsBySku((appData.products || []).filter(p => p.id !== prdId && p.name !== prdName));
 
         try {
@@ -4802,10 +4853,14 @@ function deductStockLevelsForInvoice(items) {
   }
 }
 
-async function handleConfirmDownloadPDF() {
-  if (!pendingInvoiceDraft) return;
+let isProcessingInvoiceCreation = false;
 
-  const { shopName, items, totalAmount, dateStr } = pendingInvoiceDraft;
+async function handleConfirmDownloadPDF() {
+  if (!pendingInvoiceDraft || isProcessingInvoiceCreation) return;
+  isProcessingInvoiceCreation = true;
+
+  try {
+    const { shopName, items, totalAmount, dateStr } = pendingInvoiceDraft;
   const dateMerged = (dateStr ? dateStr.replace(/-/g, '') : new Date().toISOString().split('T')[0].replace(/-/g, ''));
   const seqNum = incrementDailyInvoiceSequence(dateMerged);
   const finalInvId = formatInvoiceIdWithDate(dateStr, seqNum);
@@ -4889,12 +4944,9 @@ async function handleConfirmDownloadPDF() {
 
   // Immediately re-render Customers Directory and all views
   renderClientsGrid(currentCustomerSelectedDate || dateStr);
-  if (navigator.onLine) {
-    try {
-      await loadBusinessData();
-    } catch (e) {}
+  } finally {
+    isProcessingInvoiceCreation = false;
   }
-  renderClientsGrid(currentCustomerSelectedDate || dateStr);
 }
 
 async function getOrCreateCustomer(shopName) {
@@ -5022,319 +5074,358 @@ function buildInvoiceJsPdfDocument({ shopName, items = [], totalAmount, subtotal
   const borderLight = [233, 213, 255];  // #e9d5ff
   const purplePillBg = [243, 232, 255]; // #f3e8ff
   const purplePillText = [126, 34, 206];// #7e22ce
+  const bluePillBg = [224, 242, 254];   // #e0f2fe
+  const bluePillText = [2, 132, 199];    // #0284c7
 
-  let y = isThermal50 ? 4 : (isThermal88 ? 5 : (isA3 ? 12 : 7));
+  function renderSingleInvoiceCopy(copyTagLabel, isDuplicateCopy = false) {
+    let y = isThermal50 ? 4 : (isThermal88 ? 5 : (isA3 ? 12 : 7));
 
-  // 1. Header Logo & Title
-  if (isThermal50) {
-    try {
-      doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 7, y, 14, 14);
-    } catch (e) {
-      console.warn('Failed to render logo image in PDF:', e);
+    // 1. Header Logo & Title
+    if (isThermal50) {
+      try {
+        doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 7, y, 14, 14);
+      } catch (e) {}
+
+      y += 17;
+      doc.setFontSize(10);
+      doc.setFont('times', 'bold');
+      doc.setTextColor(...purpleDark);
+      doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
+
+      y += 4;
+      doc.setFontSize(6);
+      doc.setFont('times', 'normal');
+      doc.setTextColor(...textDark);
+      doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
+
+      y += 4.5;
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...textDark);
+      doc.text('I N V O I C E', centerX, y, { align: 'center' });
+
+      y += 4;
+      doc.setFillColor(...purplePillBg);
+      doc.roundedRect(centerX - 14, y, 28, 5, 2.5, 2.5, 'F');
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...purplePillText);
+      doc.text(cleanInvId, centerX, y + 3.5, { align: 'center' });
+
+      y += 6.5;
+      const pillBg = isDuplicateCopy ? bluePillBg : purplePillBg;
+      const pillTxt = isDuplicateCopy ? bluePillText : purplePillText;
+      doc.setFillColor(...pillBg);
+      doc.roundedRect(centerX - 17, y, 34, 4.5, 2.2, 2.2, 'F');
+      doc.setFontSize(5.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...pillTxt);
+      doc.text(copyTagLabel, centerX, y + 3.2, { align: 'center' });
+
+      y += 7.5;
+    } else if (isThermal88) {
+      try {
+        doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 9, y, 18, 18);
+      } catch (e) {}
+
+      y += 21.5;
+      doc.setFontSize(12);
+      doc.setFont('times', 'bold');
+      doc.setTextColor(...purpleDark);
+      doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
+
+      y += 4.5;
+      doc.setFontSize(7.5);
+      doc.setFont('times', 'normal');
+      doc.setTextColor(...textDark);
+      doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
+
+      y += 5;
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...textDark);
+      doc.text('I N V O I C E', centerX, y, { align: 'center' });
+
+      y += 4.5;
+      doc.setFillColor(...purplePillBg);
+      doc.roundedRect(centerX - 18, y, 36, 5.5, 2.8, 2.8, 'F');
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...purplePillText);
+      doc.text(cleanInvId, centerX, y + 3.9, { align: 'center' });
+
+      y += 7;
+      const pillBg = isDuplicateCopy ? bluePillBg : purplePillBg;
+      const pillTxt = isDuplicateCopy ? bluePillText : purplePillText;
+      doc.setFillColor(...pillBg);
+      doc.roundedRect(centerX - 22, y, 44, 5, 2.5, 2.5, 'F');
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...pillTxt);
+      doc.text(copyTagLabel, centerX, y + 3.6, { align: 'center' });
+
+      y += 8.5;
+    } else if (isA3) {
+      try {
+        doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 16, y, 32, 32);
+      } catch (e) {}
+
+      y += 36;
+      doc.setFontSize(22);
+      doc.setFont('times', 'bold');
+      doc.setTextColor(...purpleDark);
+      doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
+
+      y += 7;
+      doc.setFontSize(12);
+      doc.setFont('times', 'normal');
+      doc.setTextColor(...textDark);
+      doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
+
+      y += 9;
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...textDark);
+      doc.text('I N V O I C E', centerX, y, { align: 'center' });
+
+      y += 7.5;
+      doc.setFillColor(...purplePillBg);
+      doc.roundedRect(centerX - 30, y, 60, 8.5, 4, 4, 'F');
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...purplePillText);
+      doc.text(cleanInvId, centerX, y + 6, { align: 'center' });
+
+      y += 10;
+      const pillBg = isDuplicateCopy ? bluePillBg : purplePillBg;
+      const pillTxt = isDuplicateCopy ? bluePillText : purplePillText;
+      doc.setFillColor(...pillBg);
+      doc.roundedRect(centerX - 35, y, 70, 7.5, 3.8, 3.8, 'F');
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...pillTxt);
+      doc.text(copyTagLabel, centerX, y + 5.2, { align: 'center' });
+
+      y += 12;
+    } else {
+      try {
+        doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 12, y, 24, 24);
+      } catch (e) {}
+
+      y += 27;
+      doc.setFontSize(15);
+      doc.setFont('times', 'bold');
+      doc.setTextColor(...purpleDark);
+      doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
+
+      y += 5;
+      doc.setFontSize(8.5);
+      doc.setFont('times', 'normal');
+      doc.setTextColor(...textDark);
+      doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
+
+      y += 6.5;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...textDark);
+      doc.text('I N V O I C E', centerX, y, { align: 'center' });
+
+      y += 5.5;
+      doc.setFillColor(...purplePillBg);
+      doc.roundedRect(centerX - 22, y, 44, 6, 3, 3, 'F');
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...purplePillText);
+      doc.text(cleanInvId, centerX, y + 4.2, { align: 'center' });
+
+      y += 7.5;
+      const pillBg = isDuplicateCopy ? bluePillBg : purplePillBg;
+      const pillTxt = isDuplicateCopy ? bluePillText : purplePillText;
+      doc.setFillColor(...pillBg);
+      doc.roundedRect(centerX - 26, y, 52, 5.5, 2.8, 2.8, 'F');
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...pillTxt);
+      doc.text(copyTagLabel, centerX, y + 4, { align: 'center' });
+
+      y += 9.5;
     }
 
-    y += 17;
-    doc.setFontSize(10);
-    doc.setFont('times', 'bold');
-    doc.setTextColor(...purpleDark);
-    doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
+    // 2. Dashed Divider Line Top
+    doc.setDrawColor(...purplePrimary);
+    doc.setLineWidth(0.4);
+    doc.line(margin, y, rightX, y);
 
-    y += 4;
-    doc.setFontSize(6);
-    doc.setFont('times', 'normal');
-    doc.setTextColor(...textDark);
-    doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
+    // 3. Customer & Info Metadata Section
+    y += isThermal50 ? 4.5 : (isThermal88 ? 5.5 : (isA3 ? 9 : 6.5));
 
-    y += 4.5;
-    doc.setFontSize(6.5);
+    const metaFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 12 : 8.5));
+    doc.setFontSize(metaFontSize);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...textDark);
-    doc.text('I N V O I C E', centerX, y, { align: 'center' });
 
-    y += 4;
-    doc.setFillColor(...purplePillBg);
-    doc.roundedRect(centerX - 14, y, 28, 5, 2.5, 2.5, 'F');
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...purplePillText);
-    doc.text(cleanInvId, centerX, y + 3.5, { align: 'center' });
+    const customerText = `Billed To: ${formattedShopName}`;
+    const customerLines = doc.splitTextToSize(customerText, printableW);
+    doc.text(customerLines, margin, y);
 
-    y += 8.5;
-  } else if (isThermal88) {
-    try {
-      doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 9, y, 18, 18);
-    } catch (e) {
-      console.warn('Failed to render logo image in PDF:', e);
-    }
+    y += (customerLines.length * (isA3 ? 5 : 3.4)) + (isA3 ? 4 : 2.2);
 
-    y += 21.5;
-    doc.setFontSize(12);
-    doc.setFont('times', 'bold');
-    doc.setTextColor(...purpleDark);
-    doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
-
-    y += 4.5;
-    doc.setFontSize(7.5);
-    doc.setFont('times', 'normal');
-    doc.setTextColor(...textDark);
-    doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
-
-    y += 5;
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...textDark);
-    doc.text('I N V O I C E', centerX, y, { align: 'center' });
-
-    y += 4.5;
-    doc.setFillColor(...purplePillBg);
-    doc.roundedRect(centerX - 18, y, 36, 5.5, 2.8, 2.8, 'F');
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...purplePillText);
-    doc.text(cleanInvId, centerX, y + 3.9, { align: 'center' });
-
-    y += 9.5;
-  } else if (isA3) {
-    try {
-      doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 16, y, 32, 32);
-    } catch (e) {
-      console.warn('Failed to render logo image in PDF:', e);
-    }
-
-    y += 36;
-    doc.setFontSize(22);
-    doc.setFont('times', 'bold');
-    doc.setTextColor(...purpleDark);
-    doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
-
-    y += 7;
-    doc.setFontSize(12);
-    doc.setFont('times', 'normal');
-    doc.setTextColor(...textDark);
-    doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
-
-    y += 9;
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...textDark);
-    doc.text('I N V O I C E', centerX, y, { align: 'center' });
-
-    y += 7.5;
-    doc.setFillColor(...purplePillBg);
-    doc.roundedRect(centerX - 30, y, 60, 8.5, 4, 4, 'F');
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...purplePillText);
-    doc.text(cleanInvId, centerX, y + 6, { align: 'center' });
-
-    y += 14;
-  } else {
-    try {
-      doc.addImage(NEXUS_LOGO_BASE64, 'PNG', centerX - 12, y, 24, 24);
-    } catch (e) {
-      console.warn('Failed to render logo image in PDF:', e);
-    }
-
-    y += 27;
-    doc.setFontSize(15);
-    doc.setFont('times', 'bold');
-    doc.setTextColor(...purpleDark);
-    doc.text('NEXUS SUITE', centerX, y, { align: 'center' });
-
-    y += 5;
-    doc.setFontSize(8.5);
-    doc.setFont('times', 'normal');
-    doc.setTextColor(...textDark);
-    doc.text('Enterprise Billing Suite', centerX, y, { align: 'center' });
-
-    y += 6.5;
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...textDark);
-    doc.text('I N V O I C E', centerX, y, { align: 'center' });
-
-    y += 5.5;
-    doc.setFillColor(...purplePillBg);
-    doc.roundedRect(centerX - 22, y, 44, 6, 3, 3, 'F');
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...purplePillText);
-    doc.text(cleanInvId, centerX, y + 4.2, { align: 'center' });
-
-    y += 10;
-  }
-
-  // 2. Dashed Divider Line Top
-  doc.setDrawColor(...purplePrimary);
-  doc.setLineWidth(0.4);
-  doc.line(margin, y, rightX, y);
-
-  // 3. Customer & Info Metadata Section
-  y += isThermal50 ? 4.5 : (isThermal88 ? 5.5 : (isA3 ? 9 : 6.5));
-
-  const metaFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 12 : 8.5));
-  doc.setFontSize(metaFontSize);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...textDark);
-
-  const customerText = `Billed To: ${formattedShopName}`;
-  const customerLines = doc.splitTextToSize(customerText, printableW);
-  doc.text(customerLines, margin, y);
-
-  y += (customerLines.length * (isA3 ? 5 : 3.4)) + (isA3 ? 4 : 2.2);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...textDark);
-
-  if (isThermal50) {
-    doc.text(`Date: ${displayDate}`, margin, y);
-    doc.text(`Time: ${timeStr}`, rightX, y, { align: 'right' });
-    y += 3.8;
-    doc.text(`Mode: ${paymentMode}`, margin, y);
-    doc.text(`Status: Paid`, rightX, y, { align: 'right' });
-    y += 4.2;
-  } else if (isA3) {
-    doc.text(`Date: ${displayDate}`, margin, y);
-    doc.text(`Time: ${timeStr}`, rightX, y, { align: 'right' });
-    y += 6.5;
-    doc.text(`Mode: ${paymentMode}`, margin, y);
-    doc.text(`Status: Paid`, rightX, y, { align: 'right' });
-    y += 7.5;
-  } else {
-    doc.text(`Date: ${displayDate}`, margin, y);
-    doc.text(`Time: ${timeStr}`, rightX, y, { align: 'right' });
-    y += 4.8;
-    doc.text(`Mode: ${paymentMode}`, margin, y);
-    doc.text(`Status: Paid`, rightX, y, { align: 'right' });
-    y += 5.2;
-  }
-
-  doc.setDrawColor(...purplePrimary);
-  doc.setLineWidth(0.4);
-  doc.line(margin, y, rightX, y);
-
-  y += isThermal50 ? 4.5 : (isThermal88 ? 5.5 : (isA3 ? 9 : 6.5));
-
-  // 4. Table Header & Column Positions
-  let qtyX, nameWidth;
-  if (isThermal50) {
-    qtyX = 29;
-    nameWidth = 22;
-  } else if (isThermal88) {
-    qtyX = 52;
-    nameWidth = 45;
-  } else if (isA3) {
-    qtyX = centerX + 15;
-    nameWidth = printableW - 65;
-  } else {
-    qtyX = centerX + 10;
-    nameWidth = printableW - 45;
-  }
-
-  const tableHeaderFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 12 : 8.5));
-  doc.setFontSize(tableHeaderFontSize);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...purpleDark);
-
-  doc.text('Item', margin, y);
-  doc.text('Qty', qtyX, y, { align: 'center' });
-  doc.text('Amount', rightX, y, { align: 'right' });
-
-  y += isThermal50 ? 2.2 : (isA3 ? 4 : 2.8);
-  doc.setDrawColor(...borderLight);
-  doc.setLineWidth(0.3);
-  doc.line(margin, y, rightX, y);
-
-  y += isThermal50 ? 4 : (isThermal88 ? 4.5 : (isA3 ? 8 : 5.5));
-
-  // 5. Table Items Loop
-  let itemIdx = 1;
-  const itemFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 12 : 8.5));
-
-  items.forEach((item) => {
-    const qty = Number(item.qty || 1);
-    const price = Number(item.price || 0);
-    const itemSubtotal = qty * price;
-
-    doc.setFontSize(itemFontSize);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...textDark);
 
-    let itemName = `${itemIdx}. ${item.name}`;
-    const variantParts = [];
-    if (item.color) variantParts.push(`Color: ${item.color}`);
-    if (item.size) variantParts.push(`Size: ${item.size}`);
-    if (variantParts.length > 0) {
-      itemName += ` (${variantParts.join(', ')})`;
+    if (isThermal50) {
+      doc.text(`Date: ${displayDate}`, margin, y);
+      doc.text(`Time: ${timeStr}`, rightX, y, { align: 'right' });
+      y += 3.8;
+      doc.text(`Mode: ${paymentMode}`, margin, y);
+      doc.text(`Status: Paid`, rightX, y, { align: 'right' });
+      y += 4.2;
+    } else if (isA3) {
+      doc.text(`Date: ${displayDate}`, margin, y);
+      doc.text(`Time: ${timeStr}`, rightX, y, { align: 'right' });
+      y += 6.5;
+      doc.text(`Mode: ${paymentMode}`, margin, y);
+      doc.text(`Status: Paid`, rightX, y, { align: 'right' });
+      y += 7.5;
+    } else {
+      doc.text(`Date: ${displayDate}`, margin, y);
+      doc.text(`Time: ${timeStr}`, rightX, y, { align: 'right' });
+      y += 4.8;
+      doc.text(`Mode: ${paymentMode}`, margin, y);
+      doc.text(`Status: Paid`, rightX, y, { align: 'right' });
+      y += 5.2;
     }
 
-    const nameLines = doc.splitTextToSize(itemName, nameWidth);
-    doc.text(nameLines, margin, y);
+    doc.setDrawColor(...purplePrimary);
+    doc.setLineWidth(0.4);
+    doc.line(margin, y, rightX, y);
 
-    doc.setFont('helvetica', 'normal');
-    doc.text(String(qty), qtyX, y, { align: 'center' });
+    y += isThermal50 ? 4.5 : (isThermal88 ? 5.5 : (isA3 ? 9 : 6.5));
 
+    // 4. Table Header & Column Positions
+    let qtyX, nameWidth;
+    if (isThermal50) {
+      qtyX = 29;
+      nameWidth = 22;
+    } else if (isThermal88) {
+      qtyX = 52;
+      nameWidth = 45;
+    } else if (isA3) {
+      qtyX = centerX + 15;
+      nameWidth = printableW - 65;
+    } else {
+      qtyX = centerX + 10;
+      nameWidth = printableW - 45;
+    }
+
+    const tableHeaderFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 12 : 8.5));
+    doc.setFontSize(tableHeaderFontSize);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...purpleDark);
-    doc.text(formatPdfCurrency(itemSubtotal), rightX, y, { align: 'right' });
 
-    const nameExtraH = (nameLines.length - 1) * (itemFontSize * (isA3 ? 0.55 : 0.45));
-    y += nameExtraH + (isThermal50 ? 4.5 : (isA3 ? 8.5 : 5.5));
+    doc.text('Item', margin, y);
+    doc.text('Qty', qtyX, y, { align: 'center' });
+    doc.text('Amount', rightX, y, { align: 'right' });
 
+    y += isThermal50 ? 2.2 : (isA3 ? 4 : 2.8);
     doc.setDrawColor(...borderLight);
-    doc.setLineWidth(0.2);
-    doc.line(margin, y - 1.2, rightX, y - 1.2);
-    itemIdx++;
-  });
+    doc.setLineWidth(0.3);
+    doc.line(margin, y, rightX, y);
 
-  y += isThermal50 ? 2 : (isA3 ? 4 : 2.5);
+    y += isThermal50 ? 4 : (isThermal88 ? 4.5 : (isA3 ? 8 : 5.5));
 
-  // 6. Subtotal & GST Summary
-  const summaryFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 12 : 8.5));
-  doc.setFontSize(summaryFontSize);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...textDark);
-  doc.text('Subtotal', margin, y);
-  doc.text(formatPdfCurrency(cleanSubtotal), rightX, y, { align: 'right' });
+    // 5. Table Items Loop
+    let itemIdx = 1;
+    const itemFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 12 : 8.5));
 
-  y += isThermal50 ? 3.8 : (isThermal88 ? 4.2 : (isA3 ? 7 : 5));
-  doc.text(`GST (${cleanGstRate}%)`, margin, y);
-  doc.setTextColor(...purpleDark);
-  doc.text(formatPdfCurrency(cleanGstAmount), rightX, y, { align: 'right' });
+    items.forEach((item) => {
+      const qty = Number(item.qty || 1);
+      const price = Number(item.price || 0);
+      const itemSubtotal = qty * price;
 
-  y += isThermal50 ? 5 : (isThermal88 ? 6 : (isA3 ? 10 : 7));
-  doc.setDrawColor(...purplePrimary);
-  doc.setLineWidth(0.4);
-  doc.line(margin, y, rightX, y);
+      doc.setFontSize(itemFontSize);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...textDark);
 
-  y += isThermal50 ? 5 : (isThermal88 ? 6 : (isA3 ? 10 : 7));
+      let itemName = `${itemIdx}. ${item.name}`;
+      const variantParts = [];
+      if (item.color) variantParts.push(`Color: ${item.color}`);
+      if (item.size) variantParts.push(`Size: ${item.size}`);
+      if (variantParts.length > 0) {
+        itemName += ` (${variantParts.join(', ')})`;
+      }
 
-  // 7. TOTAL AMOUNT Callout
-  const totalLabelFontSize = isThermal50 ? 7.5 : (isThermal88 ? 8.5 : (isA3 ? 13 : 9));
-  const totalAmountFontSize = isThermal50 ? 12 : (isThermal88 ? 14 : (isA3 ? 24 : 18));
+      const nameLines = doc.splitTextToSize(itemName, nameWidth);
+      doc.text(nameLines, margin, y);
 
-  doc.setFontSize(totalLabelFontSize);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...textDark);
-  doc.text('TOTAL AMOUNT', centerX, y, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.text(String(qty), qtyX, y, { align: 'center' });
 
-  y += isThermal50 ? 5 : (isThermal88 ? 6 : (isA3 ? 10 : 7));
-  doc.setFontSize(totalAmountFontSize);
-  doc.setFont('times', 'bold');
-  doc.setTextColor(...purpleDark);
-  doc.text(formatPdfCurrency(cleanTotal), centerX, y, { align: 'center' });
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...purpleDark);
+      doc.text(formatPdfCurrency(itemSubtotal), rightX, y, { align: 'right' });
 
-  y += isThermal50 ? 6.5 : (isThermal88 ? 8 : (isA3 ? 13 : 9.5));
-  doc.setDrawColor(...purplePrimary);
-  doc.setLineWidth(0.4);
-  doc.line(margin, y, rightX, y);
+      const nameExtraH = (nameLines.length - 1) * (itemFontSize * (isA3 ? 0.55 : 0.45));
+      y += nameExtraH + (isThermal50 ? 4.5 : (isA3 ? 8.5 : 5.5));
 
-  y += isThermal50 ? 5 : (isThermal88 ? 6 : (isA3 ? 10 : 7));
-  const footerFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 11 : 8));
-  doc.setFontSize(footerFontSize);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...textDark);
-  doc.text('Thank you for choosing Nexus Suite!', centerX, y, { align: 'center' });
+      doc.setDrawColor(...borderLight);
+      doc.setLineWidth(0.2);
+      doc.line(margin, y - 1.2, rightX, y - 1.2);
+      itemIdx++;
+    });
+
+    y += isThermal50 ? 2 : (isA3 ? 4 : 2.5);
+
+    // 6. Subtotal & GST Summary
+    const summaryFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 12 : 8.5));
+    doc.setFontSize(summaryFontSize);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...textDark);
+    doc.text('Subtotal', margin, y);
+    doc.text(formatPdfCurrency(cleanSubtotal), rightX, y, { align: 'right' });
+
+    y += isThermal50 ? 3.8 : (isThermal88 ? 4.2 : (isA3 ? 7 : 5));
+    doc.text(`GST (${cleanGstRate}%)`, margin, y);
+    doc.setTextColor(...purpleDark);
+    doc.text(formatPdfCurrency(cleanGstAmount), rightX, y, { align: 'right' });
+
+    y += isThermal50 ? 5 : (isThermal88 ? 6 : (isA3 ? 10 : 7));
+    doc.setDrawColor(...purplePrimary);
+    doc.setLineWidth(0.4);
+    doc.line(margin, y, rightX, y);
+
+    y += isThermal50 ? 5 : (isThermal88 ? 6 : (isA3 ? 10 : 7));
+
+    // 7. TOTAL AMOUNT Callout
+    const totalLabelFontSize = isThermal50 ? 7.5 : (isThermal88 ? 8.5 : (isA3 ? 13 : 9));
+    const totalAmountFontSize = isThermal50 ? 12 : (isThermal88 ? 14 : (isA3 ? 24 : 18));
+
+    doc.setFontSize(totalLabelFontSize);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...textDark);
+    doc.text('TOTAL AMOUNT', centerX, y, { align: 'center' });
+
+    y += isThermal50 ? 5 : (isThermal88 ? 6 : (isA3 ? 10 : 7));
+    doc.setFontSize(totalAmountFontSize);
+    doc.setFont('times', 'bold');
+    doc.setTextColor(...purpleDark);
+    doc.text(formatPdfCurrency(cleanTotal), centerX, y, { align: 'center' });
+
+    y += isThermal50 ? 6.5 : (isThermal88 ? 8 : (isA3 ? 13 : 9.5));
+    doc.setDrawColor(...purplePrimary);
+    doc.setLineWidth(0.4);
+    doc.line(margin, y, rightX, y);
+
+    y += isThermal50 ? 5 : (isThermal88 ? 6 : (isA3 ? 10 : 7));
+    const footerFontSize = isThermal50 ? 6.5 : (isThermal88 ? 7.5 : (isA3 ? 11 : 8));
+    doc.setFontSize(footerFontSize);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...textDark);
+    doc.text('Thank you for choosing Nexus Suite!', centerX, y, { align: 'center' });
+  }
+
+  // Render Single Clean Invoice Page
+  renderSingleInvoiceCopy("ORIGINAL INVOICE", false);
 
   const cleanShopFilename = formattedShopName.replace(/[^a-zA-Z0-9]/g, '_');
   const pdfFilename = `Invoice_${cleanInvId}_${cleanShopFilename}_${paperSize}.pdf`;
@@ -5350,67 +5441,70 @@ function downloadInvoicePDF(params) {
 // Form Submission Handlers
 createInvoiceForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const shopName = document.getElementById('inv-client-name').value.trim();
-  
-  // Gather Products List
-  const items = [];
-  invoiceItemsList.querySelectorAll('.invoice-item-row').forEach(row => {
-    const name = row.querySelector('.item-name-input')?.value.trim() || 'Product';
-    const category = row.querySelector('.item-category-select')?.value || "Men's Apparel";
-    const subCategory = row.querySelector('.item-subcategory-select')?.value || 'Shirts';
-    const color = row.querySelector('.item-color-select')?.value || 'Black';
-    const size = row.querySelector('.item-size-select')?.value || 'M';
-    const qty = parseFloat(row.querySelector('.item-qty-input')?.value || 1);
-    const price = parseFloat(row.querySelector('.item-price-input')?.value || 0);
-    items.push({ name, category, subCategory, color, size, qty, price });
-  });
+  if (isProcessingInvoiceCreation) return;
+  isProcessingInvoiceCreation = true;
 
-  const totalAmount = parseFloat(document.getElementById('inv-amount').value || 0);
-  const dateStr = new Date().toISOString().split('T')[0];
-  const categorySummary = items.map(i => i.name).join(', ') || 'Retail Sale';
-  const modalPaymentSelect = document.getElementById('inv-payment-mode') || document.getElementById('page-inv-payment-mode');
-  const selectedPaymentMode = modalPaymentSelect ? modalPaymentSelect.value : 'Cash';
-  const generatedInvId = formatInvoiceIdWithDate(dateStr);
+  try {
+    const shopName = document.getElementById('inv-client-name').value.trim();
+    
+    // Gather Products List
+    const items = [];
+    invoiceItemsList.querySelectorAll('.invoice-item-row').forEach(row => {
+      const name = row.querySelector('.item-name-input')?.value.trim() || 'Product';
+      const category = row.querySelector('.item-category-select')?.value || "Men's Apparel";
+      const subCategory = row.querySelector('.item-subcategory-select')?.value || 'Shirts';
+      const color = row.querySelector('.item-color-select')?.value || 'Black';
+      const size = row.querySelector('.item-size-select')?.value || 'M';
+      const qty = parseFloat(row.querySelector('.item-qty-input')?.value || 1);
+      const price = parseFloat(row.querySelector('.item-price-input')?.value || 0);
+      items.push({ name, category, subCategory, color, size, qty, price });
+    });
 
-  const invoicePayload = {
-    id: generatedInvId,
-    clientName: shopName,
-    clientEmail: '',
-    amount: totalAmount,
-    dueDate: dateStr,
-    category: categorySummary,
-    paymentMode: selectedPaymentMode
-  };
+    const totalAmount = parseFloat(document.getElementById('inv-amount').value || 0);
+    const dateStr = new Date().toISOString().split('T')[0];
+    const categorySummary = items.map(i => i.name).join(', ') || 'Retail Sale';
+    const modalPaymentSelect = document.getElementById('inv-payment-mode') || document.getElementById('page-inv-payment-mode');
+    const selectedPaymentMode = modalPaymentSelect ? modalPaymentSelect.value : 'Cash';
+    const generatedInvId = formatInvoiceIdWithDate(dateStr);
 
-  downloadInvoicePDF({
-    shopName,
-    items,
-    totalAmount,
-    invoiceId: generatedInvId,
-    date: dateStr
-  });
+    const invoicePayload = {
+      id: generatedInvId,
+      clientName: shopName,
+      clientEmail: '',
+      amount: totalAmount,
+      dueDate: dateStr,
+      category: categorySummary,
+      paymentMode: selectedPaymentMode,
+      items: items
+    };
 
-  if (!navigator.onLine) {
-    enqueueOfflineSync('INVOICE', invoicePayload);
-    showToast('Invoice created offline & PDF downloaded!', 'success');
-  } else {
-    try {
-      await api.createInvoice(invoicePayload);
-      showToast('Invoice created & PDF downloaded successfully!', 'success');
-    } catch (err) {
-      console.warn('api.createInvoice offline/failed, queuing sync:', err);
+    downloadInvoicePDF({
+      shopName,
+      items,
+      totalAmount,
+      invoiceId: generatedInvId,
+      date: dateStr
+    });
+
+    if (!navigator.onLine) {
       enqueueOfflineSync('INVOICE', invoicePayload);
-      showToast('Invoice created offline & PDF downloaded! Will auto-sync when connected.', 'info');
+      showToast('Invoice created offline & PDF downloaded!', 'success');
+    } else {
+      try {
+        await api.createInvoice(invoicePayload);
+        showToast('Invoice created & PDF downloaded successfully!', 'success');
+      } catch (err) {
+        console.warn('api.createInvoice offline/failed, queuing sync:', err);
+        enqueueOfflineSync('INVOICE', invoicePayload);
+        showToast('Invoice created offline & PDF downloaded! Will auto-sync when connected.', 'info');
+      }
     }
-  }
 
-  closeInvoiceModal();
-  createInvoiceForm.reset();
-  calculateInvoiceTotal();
-  if (navigator.onLine) {
-    try {
-      await loadBusinessData();
-    } catch (e) {}
+    closeInvoiceModal();
+    createInvoiceForm.reset();
+    calculateInvoiceTotal();
+  } finally {
+    isProcessingInvoiceCreation = false;
   }
 });
 
@@ -5418,13 +5512,14 @@ createProductForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const name = document.getElementById('prd-name').value.trim();
   const category = document.getElementById('prd-category').value;
+  const subCategory = document.getElementById('prd-subcategory')?.value || '';
   const color = document.getElementById('prd-color')?.value || 'Black';
   const size = document.getElementById('prd-size')?.value || 'M';
   const price = parseFloat(document.getElementById('prd-price').value) || 0;
   const count = parseInt(document.getElementById('prd-stock').value || 50, 10);
 
-  const createdPrd = addNewProductToSystem({ name, category, color, size, price, count });
-  const productPayload = { id: createdPrd.id, name, category, color, size, price, count };
+  const createdPrd = addNewProductToSystem({ name, category, subCategory, color, size, price, count });
+  const productPayload = { id: createdPrd.id, name, category, subCategory, color, size, price, count };
 
   closeProductModal();
   createProductForm.reset();
@@ -5437,9 +5532,7 @@ createProductForm.addEventListener('submit', async (e) => {
       const res = await api.createProduct(productPayload);
       if (res && res.product && (res.product.id || res.product._id)) {
         createdPrd.id = res.product.id || res.product._id;
-        localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
-        renderProductsTable();
-        renderInventoryView();
+        await loadBusinessData();
       }
       showToast('Product added successfully to Catalog & Inventory!', 'success');
     } catch (err) {
@@ -5710,6 +5803,7 @@ if (createProductPageForm) {
       } else {
         try {
           await api.updateProduct(editId, updatePayload);
+          await loadBusinessData();
           showToast(`Product "${name}" updated successfully!`, 'success');
         } catch (err) {
           console.warn('api.updateProduct error:', err);
@@ -5729,9 +5823,7 @@ if (createProductPageForm) {
           const res = await api.createProduct(productPayload);
           if (res && res.product && (res.product.id || res.product._id)) {
             createdPrd.id = res.product.id || res.product._id;
-            localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
-            renderProductsTable();
-            renderInventoryView();
+            await loadBusinessData();
           }
           showToast('Apparel product added to Catalog & Inventory!', 'success');
         } catch (err) {
@@ -5888,7 +5980,6 @@ window.openSidebarMenu = openSidebarMenu;
 window.closeSidebarMenu = closeSidebarMenu;
 window.toggleSidebarMenu = toggleSidebarMenu;
 
-// Data Backup & Restore Logic
 async function backupDatabaseData() {
   try {
     showToast('Starting database cloud backup...', 'info');
@@ -5896,7 +5987,12 @@ async function backupDatabaseData() {
     // 1. First process any pending offline sync queue items
     await processOfflineSyncQueue();
 
-    // 2. Prepare full backup snapshot
+    // 2. Fetch fresh authoritative business data from cloud database if online so CRUD operations from other devices/systems are fetched
+    if (navigator.onLine) {
+      await loadBusinessData();
+    }
+
+    // 3. Prepare full backup snapshot with fresh merged data
     const backupData = {
       timestamp: new Date().toISOString(),
       appVersion: '2.5.0',
@@ -5908,7 +6004,7 @@ async function backupDatabaseData() {
       offlineQueue: getOfflineSyncQueue()
     };
 
-    // 3. Save to MongoDB Cloud Database if online
+    // 4. Save to MongoDB Cloud Database if online
     if (navigator.onLine) {
       try {
         const res = await api.backupDatabase({
@@ -5933,7 +6029,7 @@ async function backupDatabaseData() {
       (backupData.bills || []).forEach(b => enqueueOfflineSync('BILL', b));
     }
 
-    // 4. Reload business data to sync frontend state directly with MongoDB
+    // 5. Reload business data to sync frontend state directly with MongoDB
     await loadBusinessData();
 
     showToast('⚡ Backup complete! All business data directly saved to MongoDB database.', 'success');

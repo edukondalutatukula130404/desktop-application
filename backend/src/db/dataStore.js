@@ -340,13 +340,6 @@ async function seedInitialDataIfNeeded() {
 
   isSeedingPromise = (async () => {
     try {
-      // 1. Purge bloated category collection if duplicates exist (> 10 documents)
-      const currentCatCount = await Category.countDocuments();
-      if (currentCatCount > 10) {
-        console.log(`[Database Purge] Wiping ${currentCatCount} duplicate categories from MongoDB...`);
-        await Category.deleteMany({});
-      }
-
       const invoiceCount = await Invoice.countDocuments();
       if (invoiceCount === 0) {
         await Invoice.insertMany(initialData.invoices);
@@ -426,7 +419,25 @@ const dataStore = {
       if (invoiceData.category) existingInv.category = invoiceData.category;
       if (invoiceData.paymentMode) existingInv.paymentMode = invoiceData.paymentMode;
       if (invoiceData.status) existingInv.status = invoiceData.status;
+      if (invoiceData.items) existingInv.items = invoiceData.items;
+      if (invoiceData.subtotal !== undefined) existingInv.subtotal = parseFloat(invoiceData.subtotal) || amount;
+      if (invoiceData.tax !== undefined) existingInv.tax = parseFloat(invoiceData.tax) || 0;
+      if (invoiceData.discount !== undefined) existingInv.discount = parseFloat(invoiceData.discount) || 0;
+      if (invoiceData.notes) existingInv.notes = invoiceData.notes;
       return await existingInv.save();
+    }
+
+    // Backend Deduplication Guard: Check if an identical invoice was created in the last 10 seconds
+    const tenSecAgo = new Date(Date.now() - 10000);
+    const recentDuplicate = await Invoice.findOne({
+      clientName: { $regex: new RegExp(`^${clientName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+      amount: amount,
+      createdAt: { $gte: tenSecAgo }
+    }).exec();
+
+    if (recentDuplicate) {
+      console.log(`[Deduplication Guard] Blocked duplicate invoice creation for "${clientName}" (Rs. ${amount}). Returning existing ID: ${recentDuplicate.id}`);
+      return recentDuplicate;
     }
 
     const newInvoice = new Invoice({
@@ -434,12 +445,17 @@ const dataStore = {
       clientId: invoiceData.clientId || `CUST-${dateMerged}001`,
       clientName: clientName,
       clientEmail: invoiceData.clientEmail || 'billing@client.com',
-      issueDate: dateStr,
+      issueDate: invoiceData.issueDate || dateStr,
       dueDate: invoiceData.dueDate || dateStr,
       amount: amount,
+      subtotal: parseFloat(invoiceData.subtotal) || amount,
+      tax: parseFloat(invoiceData.tax) || 0,
+      discount: parseFloat(invoiceData.discount) || 0,
       status: invoiceData.status || 'Paid',
       category: invoiceData.category || 'General Service',
-      paymentMode: invoiceData.paymentMode || 'Cash'
+      paymentMode: invoiceData.paymentMode || 'Cash',
+      items: Array.isArray(invoiceData.items) ? invoiceData.items : [],
+      notes: invoiceData.notes || ''
     });
 
     const savedInvoice = await newInvoice.save();
@@ -561,10 +577,7 @@ const dataStore = {
         clients = initialData.clients;
       }
     }
-    return (clients || []).map((c, idx) => ({
-      ...c,
-      id: c.id ? c.id.replace(/^CLT-/i, 'CUST-') : `CUST-0${idx + 1}`
-    }));
+    return clients || [];
   },
 
   createClient: async (clientData) => {
@@ -638,10 +651,7 @@ const dataStore = {
       return numA - numB;
     });
 
-    return sorted.map((p, idx) => ({
-      ...p,
-      id: `SKU-PRD-${(idx + 1).toString().padStart(2, '0')}`
-    }));
+    return sorted;
   },
 
   createProduct: async (productData) => {
@@ -653,33 +663,37 @@ const dataStore = {
     const priceNum = parseFloat(productData.price) || 0;
     const stockStatus = productData.stock || (countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock'));
 
-    const safeRegex = new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-    let existingPrd = await Product.findOne({ name: safeRegex }).exec();
+    const safeRegexName = new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
 
-    if (existingPrd) {
-      existingPrd.name = cleanName;
-      existingPrd.category = productData.category || existingPrd.category || "Men's Apparel";
-      existingPrd.subCategory = productData.subCategory || existingPrd.subCategory || '';
-      existingPrd.color = productData.color || existingPrd.color || '';
-      existingPrd.size = productData.size || existingPrd.size || '';
-      existingPrd.price = priceNum;
-      existingPrd.count = countNum;
-      existingPrd.stock = stockStatus;
-      return await existingPrd.save();
-    } else {
-      const allProducts = await Product.find().lean().exec();
-      let maxNum = 0;
-      allProducts.forEach(p => {
-        const match = (p.id || '').match(/SKU-PRD-(\d+)/i);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > maxNum) maxNum = num;
-        }
-      });
-      const newSkuId = `SKU-PRD-${(maxNum + 1).toString().padStart(2, '0')}`;
+    let existingByName = await Product.findOne({ name: safeRegexName }).exec();
+    if (existingByName) {
+      existingByName.name = cleanName;
+      existingByName.category = productData.category || existingByName.category || "Men's Apparel";
+      existingByName.subCategory = productData.subCategory || existingByName.subCategory || '';
+      existingByName.color = productData.color || existingByName.color || '';
+      existingByName.size = productData.size || existingByName.size || '';
+      existingByName.price = priceNum;
+      existingByName.count = countNum;
+      existingByName.stock = stockStatus;
+      return await existingByName.save();
+    }
 
+    const allProducts = await Product.find().lean().exec();
+    const usedIds = new Set(allProducts.map(p => (p.id || '').toUpperCase()));
+
+    let nextNum = allProducts.length + 1;
+    let candidateId = productData.id && !usedIds.has(productData.id.toUpperCase())
+      ? productData.id
+      : `SKU-PRD-${nextNum.toString().padStart(2, '0')}`;
+
+    while (usedIds.has(candidateId.toUpperCase())) {
+      nextNum++;
+      candidateId = `SKU-PRD-${nextNum.toString().padStart(2, '0')}`;
+    }
+
+    try {
       const newPrd = new Product({
-        id: newSkuId,
+        id: candidateId,
         name: cleanName,
         category: productData.category || "Men's Apparel",
         subCategory: productData.subCategory || '',
@@ -691,18 +705,39 @@ const dataStore = {
       });
 
       return await newPrd.save();
+    } catch (err) {
+      if (err.code === 11000) {
+        const fallbackId = `SKU-PRD-${Date.now().toString().slice(-5)}`;
+        const fallbackPrd = new Product({
+          id: fallbackId,
+          name: cleanName,
+          category: productData.category || "Men's Apparel",
+          subCategory: productData.subCategory || '',
+          color: productData.color || '',
+          size: productData.size || '',
+          price: priceNum,
+          count: countNum,
+          stock: stockStatus
+        });
+        return await fallbackPrd.save();
+      }
+      throw err;
     }
   },
 
   deleteProduct: async (id, name = '') => {
     try {
       await seedInitialDataIfNeeded();
-      const queries = [{ id: id }];
-      if (name && name.trim()) {
-        const safeRegex = new RegExp(`^${name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-        queries.push({ name: safeRegex });
+      const queries = [];
+      if (id && String(id).trim()) {
+        queries.push({ id: { $regex: new RegExp(`^${String(id).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
       }
-      await Product.deleteMany({ $or: queries }).exec();
+      if (name && String(name).trim()) {
+        queries.push({ name: { $regex: new RegExp(`^${String(name).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+      }
+      if (queries.length > 0) {
+        await Product.deleteMany({ $or: queries }).exec();
+      }
       return { success: true };
     } catch (err) {
       console.error('deleteProduct error:', err.message);
@@ -711,46 +746,36 @@ const dataStore = {
   },
 
   updateProduct: async (id, productData) => {
+    await seedInitialDataIfNeeded();
     const priceNum = parseFloat(productData.price) || 0;
     const countNum = parseInt(productData.count, 10) || 0;
     const stockStatus = productData.stock || (countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock'));
+    const cleanName = (productData.name || '').trim();
 
-    let product = await Product.findOneAndUpdate(
-      { id: { $regex: new RegExp(`^${id}$`, 'i') } },
-      {
-        $set: {
-          name: productData.name,
-          category: productData.category,
-          subCategory: productData.subCategory || '',
-          color: productData.color || '',
-          size: productData.size || '',
-          price: priceNum,
-          count: countNum,
-          stock: stockStatus
-        }
-      },
-      { new: true }
-    ).lean().exec();
+    const safeRegexName = cleanName ? new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') : null;
+    const safeRegexId = id ? new RegExp(`^${String(id).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') : null;
 
-    if (!product) {
-      product = await Product.findByIdAndUpdate(
-        id,
-        {
-          $set: {
-            name: productData.name,
-            category: productData.category,
-            subCategory: productData.subCategory || '',
-            color: productData.color || '',
-            size: productData.size || '',
-            price: priceNum,
-            count: countNum,
-            stock: stockStatus
-          }
-        },
-        { new: true }
-      ).lean().exec();
+    let existingPrd = null;
+    if (safeRegexId) {
+      existingPrd = await Product.findOne({ id: safeRegexId }).exec();
     }
-    return product;
+    if (!existingPrd && safeRegexName) {
+      existingPrd = await Product.findOne({ name: safeRegexName }).exec();
+    }
+
+    if (existingPrd) {
+      if (cleanName) existingPrd.name = cleanName;
+      if (productData.category) existingPrd.category = productData.category;
+      if (productData.subCategory !== undefined) existingPrd.subCategory = productData.subCategory;
+      if (productData.color !== undefined) existingPrd.color = productData.color;
+      if (productData.size !== undefined) existingPrd.size = productData.size;
+      existingPrd.price = priceNum;
+      existingPrd.count = countNum;
+      existingPrd.stock = stockStatus;
+      return await existingPrd.save();
+    } else {
+      return await dataStore.createProduct({ id, ...productData });
+    }
   },
 
   updateProductStock: async (id, stockData) => {

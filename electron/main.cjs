@@ -3,27 +3,43 @@ const fs = require('fs');
 const path = require('path');
 const { startMongo, stopMongo } = require('./mongoManager.cjs');
 const { buildAppMenu } = require('./menu.cjs');
-const { startServer, PORT } = require('../backend/server');
+
+// Global Uncaught Exception Handlers to prevent silent app crashes on new devices
+process.on('uncaughtException', (err) => {
+  console.error('[Electron UncaughtException]', err);
+  try {
+    if (dialog && dialog.showErrorBox) {
+      dialog.showErrorBox('Nexus Suite Application Warning', `Background Service Warning: ${err.message || err}`);
+    }
+  } catch (e) {}
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[Electron UnhandledRejection]', reason);
+});
 
 let mainWindow = null;
 let backendServer = null;
 let isQuitting = false;
+let PORT = 5050;
 
 const isDev = !app.isPackaged && (process.env.NODE_ENV === 'development' || !!process.env.ELECTRON_START_URL);
 
-// Single Instance Lock
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) {
-  console.log('[Electron Main] Another instance is already running. Quitting.');
-  app.quit();
-  process.exit(0);
-} else {
-  app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
-  });
+// Single Instance Lock (Enforce single instance only in packaged production)
+if (app.isPackaged) {
+  const gotTheLock = app.requestSingleInstanceLock();
+  if (!gotTheLock) {
+    console.log('[Electron Main] Another instance is already running. Quitting.');
+    app.quit();
+    process.exit(0);
+  } else {
+    app.on('second-instance', () => {
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
+      }
+    });
+  }
 }
 
 async function createWindow() {
@@ -59,19 +75,35 @@ async function createWindow() {
 
   buildAppMenu(mainWindow);
 
-  const startUrl = process.env.ELECTRON_START_URL || (isDev ? 'http://127.0.0.1:3000' : `http://127.0.0.1:${PORT}`);
-  console.log(`[Electron Main] Target renderer URL: ${startUrl}`);
+  const distIndexPath = path.join(__dirname, '../frontend/dist/index.html');
+  const hasDistFile = fs.existsSync(distIndexPath);
 
   let loaded = false;
-  for (let attempt = 1; attempt <= 10; attempt++) {
+  if (!isDev && hasDistFile) {
+    console.log(`[Electron Main] Production Mode: Loading local static bundle ${distIndexPath}`);
     try {
-      console.log(`[Electron Main] Loading renderer URL (attempt ${attempt}): ${startUrl}`);
-      await mainWindow.loadURL(startUrl);
+      await mainWindow.loadFile(distIndexPath);
       loaded = true;
-      break;
-    } catch (err) {
-      console.warn(`[Electron Main] Load attempt ${attempt} pending: ${err.message}. Retrying in 1s...`);
-      await new Promise((r) => setTimeout(r, 1000));
+    } catch (e) {
+      console.warn('[Electron Main] loadFile error, falling back to HTTP:', e.message);
+    }
+  }
+
+  if (!loaded) {
+    const startUrl = process.env.ELECTRON_START_URL || (isDev ? 'http://127.0.0.1:3000' : `http://127.0.0.1:${PORT}`);
+    console.log(`[Electron Main] Target renderer URL: ${startUrl}`);
+
+    for (let attempt = 1; attempt <= 60; attempt++) {
+      try {
+        await mainWindow.loadURL(startUrl);
+        loaded = true;
+        break;
+      } catch (err) {
+        if (attempt % 5 === 0) {
+          console.warn(`[Electron Main] Waiting for backend HTTP server (attempt ${attempt}/60)...`);
+        }
+        await new Promise((r) => setTimeout(r, 500));
+      }
     }
   }
 
@@ -118,18 +150,32 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  try {
-    console.log('[Electron Main] Starting MongoDB database...');
-    const mongoUri = await startMongo();
-    process.env.MONGO_URI = mongoUri;
+  // 1. Open Electron window immediately (under 1 second startup)
+  const windowPromise = createWindow();
 
-    console.log('[Electron Main] Starting Express API Server...');
-    backendServer = startServer(PORT);
-  } catch (err) {
-    console.error('[Electron Main] Error initializing backend services:', err.message);
-  }
+  // 2. Start Backend & Database services asynchronously
+  (async () => {
+    try {
+      console.log('[Electron Main] Starting MongoDB database...');
+      const mongoUri = await startMongo();
+      process.env.MONGO_URI = mongoUri;
 
-  await createWindow();
+      console.log('[Electron Main] Starting Express API Server...');
+      try {
+        const backendModule = require('../backend/server');
+        if (backendModule && typeof backendModule.startServer === 'function') {
+          PORT = backendModule.PORT || 5050;
+          backendServer = await backendModule.startServer(PORT);
+        }
+      } catch (srvErr) {
+        console.error('[Electron Main] Express server launch error:', srvErr.message);
+      }
+    } catch (err) {
+      console.error('[Electron Main] Error initializing backend services:', err.message);
+    }
+  })();
+
+  await windowPromise;
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

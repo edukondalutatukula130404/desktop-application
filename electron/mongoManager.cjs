@@ -19,8 +19,15 @@ function getAppDataDir() {
   return path.join(home, '.config', 'InvoiceProDesktop');
 }
 
+const { execSync } = require('child_process');
+
 function clearStaleLocks(dirPath) {
   try {
+    if (process.platform === 'win32') {
+      try {
+        execSync('taskkill /F /IM mongod.exe /T', { stdio: 'ignore' });
+      } catch (e) {}
+    }
     const lockFiles = ['mongod.lock', 'WiredTiger.lock', 'WiredTiger.turtle.set'];
     lockFiles.forEach((file) => {
       const p = path.join(dirPath, file);
@@ -38,6 +45,10 @@ async function startMongo() {
   if (mongodInstance) {
     return mongoUri;
   }
+
+  try {
+    require('dotenv').config({ path: path.join(__dirname, '../backend/.env') });
+  } catch (e) {}
 
   // Check if external MONGO_URI is explicitly provided in env
   if (process.env.MONGO_URI && !process.env.MONGO_URI.includes('127.0.0.1') && !process.env.MONGO_URI.includes('localhost')) {

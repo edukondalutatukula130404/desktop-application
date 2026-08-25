@@ -102,22 +102,30 @@ app.use((err, req, res, next) => {
 async function startServer(port = PORT) {
   await connectDB();
   const HOST = '127.0.0.1';
-  const server = app.listen(port, HOST, () => {
-    console.log(`=================================`);
-    console.log(`🚀 Backend Auth Server running on http://${HOST}:${port}`);
-    console.log(`=================================`);
-  });
 
-  server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.error(`\n⚠️  Port ${port} is currently in use by another process.`);
-      console.error(`👉 Stop the process occupying port ${port} or run on a different port.\n`);
-    } else {
-      console.error('Server error:', err);
-    }
-  });
+  const createServer = (p) => {
+    return new Promise((resolve) => {
+      const s = app.listen(p, HOST, () => {
+        console.log(`=================================`);
+        console.log(`🚀 Backend Auth Server running on http://${HOST}:${p}`);
+        console.log(`=================================`);
+        resolve(s);
+      });
 
-  return server;
+      s.on('error', async (err) => {
+        if (err.code === 'EADDRINUSE') {
+          console.warn(`⚠️ Port ${p} in use, trying port ${p + 1}...`);
+          const fallbackServer = await createServer(p + 1);
+          resolve(fallbackServer);
+        } else {
+          console.error('Server error:', err);
+          resolve(null);
+        }
+      });
+    });
+  };
+
+  return await createServer(port);
 }
 
 if (require.main === module) {
