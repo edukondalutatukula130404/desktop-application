@@ -695,6 +695,8 @@
         <!-- VIEW 5: ACCOUNT SETTINGS -->
         <div id="view-settings" class="view-panel">
           <div class="settings-layout" style="width: 100%; display: flex; flex-direction: column; gap: 24px;">
+            
+            <!-- Panel 1: Account Profile Form -->
             <div class="panel-card" style="background: #ffffff; border-radius: 20px; padding: 32px 36px; border: 1px solid var(--border-light); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);">
               <div style="margin-bottom: 24px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px;">
                 <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Account & Profile Details</h3>
@@ -725,7 +727,49 @@
               </form>
             </div>
 
-            <!-- PDF Paper Size Settings Card -->
+            <!-- Panel 2: Data Backup & Cloud Sync Card -->
+            <div class="panel-card" style="background: #ffffff; border-radius: 20px; padding: 32px 36px; border: 1px solid var(--border-light); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);">
+              <div style="margin-bottom: 24px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div>
+                  <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Data Backup & Cloud Sync</h3>
+                  <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Save all business data directly to MongoDB database for instant multi-device access</p>
+                </div>
+                <span style="padding: 6px 14px; background: #ecfdf5; color: #059669; border-radius: 20px; font-size: 0.78rem; font-weight: 700; border: 1px solid #a7f3d0; display: inline-flex; align-items: center; gap: 6px;">
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span> Auto-Sync Active
+                </span>
+              </div>
+
+              <div style="width: 100%;">
+                <!-- Single Backup Option Card -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                      <div style="width: 38px; height: 38px; border-radius: 10px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="7 10 12 15 17 10"></polyline>
+                          <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                      </div>
+                      <h4 style="font-size: 1.05rem; font-weight: 700; color: #0f172a; margin: 0;">Save All Records directly to Database</h4>
+                    </div>
+                    <p style="font-size: 0.85rem; color: #64748b; margin: 0; line-height: 1.5;">Directly sync and store all invoices, products, categories, clients, and bills into MongoDB database so your data is available on any device upon login.</p>
+                  </div>
+                  <div style="display: flex; justify-content: flex-end;">
+                    <button type="button" onclick="backupDatabaseData()" style="padding: 10px 24px; font-size: 0.88rem; font-weight: 700; border-radius: 10px; cursor: pointer; background: #0284c7; color: #ffffff; border: none; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2); transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                      </svg>
+                      <span>Backup</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Panel 3: PDF Paper Size Settings Card -->
             <div class="panel-card" style="background: #ffffff; border-radius: 20px; padding: 32px 36px; border: 1px solid var(--border-light); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);">
               <div style="margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px;">
                 <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">PDF Paper Size Preferences</h3>

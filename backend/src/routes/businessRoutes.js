@@ -43,4 +43,7 @@ router.patch('/categories/:id/status', businessController.toggleCategoryStatus);
 // Relational Summary Route
 router.get('/summary/relational', businessController.getRelationalSummary);
 
+// Full System Backup Route
+router.post('/backup', businessController.backupAllData);
+
 module.exports = router;

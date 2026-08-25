@@ -308,6 +308,21 @@ const businessController = {
       console.error('getRelationalSummary error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch relational summary' });
     }
+  },
+
+  backupAllData: async (req, res) => {
+    try {
+      const { invoices, products, categories, clients, bills } = req.body || {};
+      const result = await dataStore.backupAllData({ invoices, products, categories, clients, bills });
+      res.json({
+        success: true,
+        message: 'All business data successfully backed up to cloud database!',
+        result
+      });
+    } catch (error) {
+      console.error('backupAllData error:', error);
+      res.status(500).json({ success: false, message: 'Failed to backup business data to database' });
+    }
   }
 };
 

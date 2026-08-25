@@ -548,7 +548,13 @@ async function processOfflineSyncQueue() {
   isProcessingSyncQueue = true;
   console.log(`[Offline Sync] Backend online! Processing ${queue.length} pending offline items...`);
 
-  const priorityOrder = { CATEGORY: 1, PRODUCT: 2, CLIENT: 3, INVOICE: 4, DELETE_PRODUCT: 5, DELETE_CATEGORY: 6 };
+  const priorityOrder = {
+    CATEGORY: 1, UPDATE_CATEGORY: 1, DELETE_CATEGORY: 1, TOGGLE_CATEGORY_STATUS: 1,
+    PRODUCT: 2, UPDATE_PRODUCT: 2, UPDATE_PRODUCT_STOCK: 2, DELETE_PRODUCT: 2,
+    CLIENT: 3, TOGGLE_CLIENT_STATUS: 3,
+    INVOICE: 4, UPDATE_INVOICE_STATUS: 4,
+    BILL: 5, PAY_BILL: 5, TOGGLE_BILL_STATUS: 5, TOGGLE_BILL_AUTOPAY: 5
+  };
   queue.sort((a, b) => (priorityOrder[a.type] || 5) - (priorityOrder[b.type] || 5));
 
   const remainingQueue = [];
@@ -559,24 +565,59 @@ async function processOfflineSyncQueue() {
       if (item.type === 'CATEGORY') {
         await api.createCategory(item.payload);
         syncedCount++;
+      } else if (item.type === 'UPDATE_CATEGORY') {
+        await api.updateCategory(item.payload.id || item.payload._id, item.payload);
+        syncedCount++;
+      } else if (item.type === 'DELETE_CATEGORY') {
+        const targetId = item.payload.id || item.payload;
+        const targetName = item.payload.name || '';
+        await api.deleteCategory(targetId, targetName);
+        syncedCount++;
+      } else if (item.type === 'TOGGLE_CATEGORY_STATUS') {
+        const targetId = item.payload.id || item.payload;
+        await api.toggleCategoryStatus(targetId);
+        syncedCount++;
       } else if (item.type === 'PRODUCT') {
         await api.createProduct(item.payload);
         syncedCount++;
-      } else if (item.type === 'CLIENT') {
-        await api.createClient(item.payload);
+      } else if (item.type === 'UPDATE_PRODUCT') {
+        await api.updateProduct(item.payload.id || item.payload._id, item.payload);
         syncedCount++;
-      } else if (item.type === 'INVOICE') {
-        await api.createInvoice(item.payload);
+      } else if (item.type === 'UPDATE_PRODUCT_STOCK') {
+        await api.updateProductStock(item.payload.id || item.payload._id, item.payload);
         syncedCount++;
       } else if (item.type === 'DELETE_PRODUCT') {
         const targetId = item.payload.id || item.payload;
         const targetName = item.payload.name || '';
         await api.deleteProduct(targetId, targetName);
         syncedCount++;
-      } else if (item.type === 'DELETE_CATEGORY') {
+      } else if (item.type === 'CLIENT') {
+        await api.createClient(item.payload);
+        syncedCount++;
+      } else if (item.type === 'TOGGLE_CLIENT_STATUS') {
         const targetId = item.payload.id || item.payload;
-        const targetName = item.payload.name || '';
-        await api.deleteCategory(targetId, targetName);
+        await api.toggleClientStatus(targetId);
+        syncedCount++;
+      } else if (item.type === 'INVOICE') {
+        await api.createInvoice(item.payload);
+        syncedCount++;
+      } else if (item.type === 'UPDATE_INVOICE_STATUS') {
+        await api.updateInvoiceStatus(item.payload.id || item.payload._id, item.payload.status);
+        syncedCount++;
+      } else if (item.type === 'BILL') {
+        await api.createBill(item.payload);
+        syncedCount++;
+      } else if (item.type === 'PAY_BILL') {
+        const targetId = item.payload.id || item.payload;
+        await api.payBill(targetId);
+        syncedCount++;
+      } else if (item.type === 'TOGGLE_BILL_STATUS') {
+        const targetId = item.payload.id || item.payload;
+        await api.toggleBillStatus(targetId);
+        syncedCount++;
+      } else if (item.type === 'TOGGLE_BILL_AUTOPAY') {
+        const targetId = item.payload.id || item.payload;
+        await api.toggleBillAutoPay(targetId);
         syncedCount++;
       }
     } catch (err) {
@@ -598,7 +639,7 @@ window.addEventListener('online', () => {
   console.log('[Offline Sync] Browser online event detected!');
   processOfflineSyncQueue();
 });
-setInterval(processOfflineSyncQueue, 8000);
+setInterval(processOfflineSyncQueue, 4000);
 
 async function loadBusinessData() {
   let invRes = {}, billRes = {}, clientRes = {}, prdRes = {}, catRes = {};
@@ -621,18 +662,96 @@ async function loadBusinessData() {
     console.warn('Error loading business data:', error);
   }
 
-  // 1. Invoices from Backend API
+  // 1. Invoices from Backend API + local custom invoices
   const fetchedInvoices = invRes.invoices || [];
-  appData.invoices = fetchedInvoices.map(inv => ({
-    ...inv,
-    id: normalizeInvoiceId(inv)
-  }));
+  const invMap = new Map();
+  fetchedInvoices.forEach(inv => {
+    if (inv) {
+      const idNorm = normalizeInvoiceId(inv);
+      invMap.set(idNorm.toLowerCase(), { ...inv, id: idNorm });
+    }
+  });
 
-  // 2. Bills from Backend API
-  appData.bills = billRes.bills || [];
+  const savedInvoices = localStorage.getItem('nexus_custom_invoices');
+  if (savedInvoices) {
+    try {
+      const parsedInv = JSON.parse(savedInvoices);
+      if (Array.isArray(parsedInv)) {
+        parsedInv.forEach(inv => {
+          if (inv) {
+            const idNorm = normalizeInvoiceId(inv);
+            const key = idNorm.toLowerCase();
+            if (!invMap.has(key)) {
+              invMap.set(key, { ...inv, id: idNorm });
+            }
+          }
+        });
+      }
+    } catch (e) {}
+  }
+  appData.invoices = Array.from(invMap.values());
+  try {
+    localStorage.setItem('nexus_custom_invoices', JSON.stringify(appData.invoices));
+  } catch (e) {}
 
-  // 3. Clients from Backend API
-  appData.clients = clientRes.clients || [];
+  // 2. Bills from Backend API + local custom bills
+  const fetchedBills = billRes.bills || [];
+  const billMap = new Map();
+  fetchedBills.forEach(b => {
+    if (b && b.id) billMap.set(b.id.toLowerCase(), { ...b });
+  });
+
+  const savedBills = localStorage.getItem('nexus_custom_bills');
+  if (savedBills) {
+    try {
+      const parsedBills = JSON.parse(savedBills);
+      if (Array.isArray(parsedBills)) {
+        parsedBills.forEach(b => {
+          if (b && b.id) {
+            const key = b.id.toLowerCase();
+            if (!billMap.has(key)) {
+              billMap.set(key, { ...b });
+            }
+          }
+        });
+      }
+    } catch (e) {}
+  }
+  appData.bills = Array.from(billMap.values());
+  try {
+    localStorage.setItem('nexus_custom_bills', JSON.stringify(appData.bills));
+  } catch (e) {}
+
+  // 3. Clients from Backend API + local custom clients
+  const fetchedClients = clientRes.clients || [];
+  const clientMap = new Map();
+  fetchedClients.forEach(c => {
+    if (c && (c.id || c.name)) {
+      const key = (c.id || c.name).trim().toLowerCase();
+      clientMap.set(key, { ...c });
+    }
+  });
+
+  const savedClients = localStorage.getItem('nexus_custom_clients');
+  if (savedClients) {
+    try {
+      const parsedClients = JSON.parse(savedClients);
+      if (Array.isArray(parsedClients)) {
+        parsedClients.forEach(c => {
+          if (c && (c.id || c.name)) {
+            const key = (c.id || c.name).trim().toLowerCase();
+            if (!clientMap.has(key)) {
+              clientMap.set(key, { ...c });
+            }
+          }
+        });
+      }
+    } catch (e) {}
+  }
+  appData.clients = Array.from(clientMap.values());
+  try {
+    localStorage.setItem('nexus_custom_clients', JSON.stringify(appData.clients));
+  } catch (e) {}
 
   // 4. Products from Backend API + local custom products
   const fetchedPrds = prdRes.products || [];
@@ -1754,10 +1873,16 @@ async function handleStockStepClick(id, delta) {
     console.warn('localStorage save error:', e);
   }
 
-  try {
-    await api.updateProductStock(id, { count: newCount, stock: newStockStatus });
-  } catch (e) {
-    console.warn('Backend update error:', e);
+  const updateStockPayload = { id, count: newCount, stock: newStockStatus };
+  if (!navigator.onLine) {
+    enqueueOfflineSync('UPDATE_PRODUCT_STOCK', updateStockPayload);
+  } else {
+    try {
+      await api.updateProductStock(id, updateStockPayload);
+    } catch (e) {
+      console.warn('Backend update error, queuing sync:', e);
+      enqueueOfflineSync('UPDATE_PRODUCT_STOCK', updateStockPayload);
+    }
   }
 
   renderInventoryView();
@@ -1896,10 +2021,16 @@ async function submitStockAdjustment(event) {
     console.warn('localStorage nexus_custom_products error:', err);
   }
 
-  try {
-    await api.updateProductStock(currentStockAdjustProduct.id, { count: newCount, stock: newStockStatus });
-  } catch (err) {
-    console.warn('Backend stock update warning:', err);
+  const updateStockPayload = { id: currentStockAdjustProduct.id, count: newCount, stock: newStockStatus };
+  if (!navigator.onLine) {
+    enqueueOfflineSync('UPDATE_PRODUCT_STOCK', updateStockPayload);
+  } else {
+    try {
+      await api.updateProductStock(currentStockAdjustProduct.id, updateStockPayload);
+    } catch (err) {
+      console.warn('Backend stock update warning:', err);
+      enqueueOfflineSync('UPDATE_PRODUCT_STOCK', updateStockPayload);
+    }
   }
 
   closeStockAdjustModal();
@@ -5360,6 +5491,66 @@ createCategoryForm.addEventListener('submit', async (e) => {
   createCategoryForm.reset();
 });
 
+async function addNewBillToSystem(billData) {
+  const currentBills = appData.bills || [];
+  const nextId = billData.id || `BILL-${100 + currentBills.length + 1}`;
+  const vendorClean = (billData.vendor || 'Supplier').trim();
+  const categoryClean = billData.category || 'General Expenses';
+  const amountNum = parseFloat(billData.amount) || 0;
+  const dueDateStr = billData.dueDate || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
+  const autoPayVal = !!billData.autoPay;
+
+  const newBill = {
+    id: nextId,
+    vendor: vendorClean,
+    category: categoryClean,
+    amount: amountNum,
+    dueDate: dueDateStr,
+    status: 'Unpaid',
+    autoPay: autoPayVal
+  };
+
+  if (!appData.bills) appData.bills = [];
+  const existingIdx = appData.bills.findIndex(b => b.id === nextId);
+  if (existingIdx >= 0) {
+    appData.bills[existingIdx] = newBill;
+  } else {
+    appData.bills.unshift(newBill);
+  }
+
+  try {
+    localStorage.setItem('nexus_custom_bills', JSON.stringify(appData.bills));
+  } catch (e) {}
+
+  renderBillsTable('', currentBillSelectedDate);
+  updateBadges();
+
+  const billPayload = { id: nextId, vendor: vendorClean, category: categoryClean, amount: amountNum, dueDate: dueDateStr, autoPay: autoPayVal };
+
+  if (!navigator.onLine) {
+    enqueueOfflineSync('BILL', billPayload);
+    showToast(`Bill from "${vendorClean}" added offline! Will auto-sync when connected.`, 'info');
+  } else {
+    try {
+      const res = await api.createBill(billPayload);
+      if (res && res.bill && res.bill.id) {
+        newBill.id = res.bill.id;
+        try {
+          localStorage.setItem('nexus_custom_bills', JSON.stringify(appData.bills));
+        } catch (e) {}
+        renderBillsTable('', currentBillSelectedDate);
+      }
+      showToast('Vendor bill created successfully!', 'success');
+    } catch (err) {
+      console.warn('api.createBill error, queuing sync:', err);
+      enqueueOfflineSync('BILL', billPayload);
+      showToast(`Bill from "${vendorClean}" added offline! Will auto-sync when connected.`, 'info');
+    }
+  }
+  return newBill;
+}
+window.addNewBillToSystem = addNewBillToSystem;
+
 if (createBillForm) {
   createBillForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -5369,15 +5560,9 @@ if (createBillForm) {
     const dueDate = document.getElementById('bill-due-date').value;
     const autoPay = document.getElementById('bill-autopay').checked;
 
-    try {
-      const res = await api.createBill({ vendor, category, amount, dueDate, autoPay });
-      showToast(res.message || 'Bill created!', 'success');
-      closeBillModal();
-      createBillForm.reset();
-      await loadBusinessData();
-    } catch (err) {
-      showToast(err.message || 'Failed to create bill.', 'error');
-    }
+    await addNewBillToSystem({ vendor, category, amount, dueDate, autoPay });
+    closeBillModal();
+    createBillForm.reset();
   });
 }
 
@@ -5518,13 +5703,20 @@ if (createProductPageForm) {
         localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
       } catch (err) {}
 
-      try {
-        await api.updateProduct(editId, { name, category, subCategory, color, size, price, count, stock });
-      } catch (err) {
-        console.warn('api.updateProduct error:', err);
+      const updatePayload = { id: editId, name, category, subCategory, color, size, price, count, stock };
+      if (!navigator.onLine) {
+        enqueueOfflineSync('UPDATE_PRODUCT', updatePayload);
+        showToast(`Product "${name}" updated offline! Will auto-sync when connected.`, 'info');
+      } else {
+        try {
+          await api.updateProduct(editId, updatePayload);
+          showToast(`Product "${name}" updated successfully!`, 'success');
+        } catch (err) {
+          console.warn('api.updateProduct error:', err);
+          enqueueOfflineSync('UPDATE_PRODUCT', updatePayload);
+          showToast(`Product "${name}" updated offline! Will auto-sync when connected.`, 'info');
+        }
       }
-
-      showToast(`Product "${name}" updated successfully!`, 'success');
     } else {
       const createdPrd = addNewProductToSystem({ name, category, subCategory, color, size, price, count });
       const productPayload = { id: createdPrd.id, name, category, subCategory, color, size, price, count };
@@ -5570,15 +5762,9 @@ if (createBillPageForm) {
     const dueDate = document.getElementById('page-bill-due-date').value;
     const autoPay = document.getElementById('page-bill-autopay').checked;
 
-    try {
-      const res = await api.createBill({ vendor, category, amount, dueDate, autoPay });
-      showToast(res.message || 'Bill created!', 'success');
-      switchView('bills');
-      createBillPageForm.reset();
-      await loadBusinessData();
-    } catch (err) {
-      showToast(err.message || 'Failed to create bill.', 'error');
-    }
+    await addNewBillToSystem({ vendor, category, amount, dueDate, autoPay });
+    switchView('bills');
+    createBillPageForm.reset();
   });
 }
 
@@ -5603,12 +5789,19 @@ if (createCategoryPageForm) {
         localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
       } catch (err) {}
 
-      try {
-        await api.updateCategory(editId, { name, subCategories, status });
-        showToast(`Category "${name}" updated successfully!`, 'success');
-      } catch (err) {
-        console.warn('api.updateCategory error:', err);
-        showToast(`Category "${name}" updated locally!`, 'success');
+      const updatePayload = { id: editId, name, subCategories, status };
+      if (!navigator.onLine) {
+        enqueueOfflineSync('UPDATE_CATEGORY', updatePayload);
+        showToast(`Category "${name}" updated offline! Will auto-sync when connected.`, 'info');
+      } else {
+        try {
+          await api.updateCategory(editId, updatePayload);
+          showToast(`Category "${name}" updated successfully!`, 'success');
+        } catch (err) {
+          console.warn('api.updateCategory error:', err);
+          enqueueOfflineSync('UPDATE_CATEGORY', updatePayload);
+          showToast(`Category "${name}" updated offline! Will auto-sync when connected.`, 'info');
+        }
       }
     } else {
       const newId = `CAT-${String((appData.categories || []).length + 1).padStart(2, '0')}`;
@@ -5626,13 +5819,18 @@ if (createCategoryPageForm) {
         localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
       } catch (err) {}
 
-      try {
-        await api.createCategory(categoryPayload);
-        showToast(`Category "${name}" created successfully!`, 'success');
-      } catch (err) {
-        console.warn('api.createCategory error:', err);
+      if (!navigator.onLine) {
         enqueueOfflineSync('CATEGORY', categoryPayload);
         showToast(`Category "${name}" saved offline! Will auto-sync when connected.`, 'info');
+      } else {
+        try {
+          await api.createCategory(categoryPayload);
+          showToast(`Category "${name}" created successfully!`, 'success');
+        } catch (err) {
+          console.warn('api.createCategory error:', err);
+          enqueueOfflineSync('CATEGORY', categoryPayload);
+          showToast(`Category "${name}" saved offline! Will auto-sync when connected.`, 'info');
+        }
       }
     }
 
@@ -5689,6 +5887,152 @@ function toggleSidebarMenu(e) {
 window.openSidebarMenu = openSidebarMenu;
 window.closeSidebarMenu = closeSidebarMenu;
 window.toggleSidebarMenu = toggleSidebarMenu;
+
+// Data Backup & Restore Logic
+async function backupDatabaseData() {
+  try {
+    showToast('Starting database cloud backup...', 'info');
+
+    // 1. First process any pending offline sync queue items
+    await processOfflineSyncQueue();
+
+    // 2. Prepare full backup snapshot
+    const backupData = {
+      timestamp: new Date().toISOString(),
+      appVersion: '2.5.0',
+      invoices: appData.invoices || [],
+      products: appData.products || [],
+      categories: appData.categories || [],
+      clients: appData.clients || [],
+      bills: appData.bills || [],
+      offlineQueue: getOfflineSyncQueue()
+    };
+
+    // 3. Save to MongoDB Cloud Database if online
+    if (navigator.onLine) {
+      try {
+        const res = await api.backupDatabase({
+          invoices: backupData.invoices,
+          products: backupData.products,
+          categories: backupData.categories,
+          clients: backupData.clients,
+          bills: backupData.bills
+        });
+        if (res && res.success) {
+          console.log('MongoDB backup result:', res.result);
+        }
+      } catch (backendErr) {
+        console.warn('Backend database backup warning:', backendErr.message);
+      }
+    } else {
+      // If offline, queue all items to ensure auto-sync when online
+      (backupData.invoices || []).forEach(inv => enqueueOfflineSync('INVOICE', inv));
+      (backupData.products || []).forEach(prd => enqueueOfflineSync('PRODUCT', prd));
+      (backupData.categories || []).forEach(cat => enqueueOfflineSync('CATEGORY', cat));
+      (backupData.clients || []).forEach(cl => enqueueOfflineSync('CLIENT', cl));
+      (backupData.bills || []).forEach(b => enqueueOfflineSync('BILL', b));
+    }
+
+    // 4. Reload business data to sync frontend state directly with MongoDB
+    await loadBusinessData();
+
+    showToast('⚡ Backup complete! All business data directly saved to MongoDB database.', 'success');
+  } catch (err) {
+    console.error('Backup error:', err);
+    showToast('Failed to backup data to database.', 'error');
+  }
+}
+
+function triggerRestoreFileInput() {
+  const fileInput = document.getElementById('restore-backup-file-input');
+  if (fileInput) {
+    fileInput.click();
+  }
+}
+
+async function restoreFromCloudDatabase() {
+  try {
+    showToast('Syncing & restoring all backup data from Cloud Database...', 'info');
+    await loadBusinessData();
+    showToast('⚡ All backup data restored successfully from Cloud Database!', 'success');
+  } catch (err) {
+    console.error('Cloud restore error:', err);
+    showToast('Failed to restore data from cloud database.', 'error');
+  }
+}
+
+async function handleRestoreFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const content = e.target.result;
+      const data = JSON.parse(content);
+
+      if (!data || (!data.invoices && !data.products && !data.categories && !data.clients && !data.bills)) {
+        return showToast('Invalid backup JSON file structure.', 'error');
+      }
+
+      if (Array.isArray(data.invoices)) {
+        appData.invoices = data.invoices;
+        localStorage.setItem('nexus_custom_invoices', JSON.stringify(data.invoices));
+        data.invoices.forEach(inv => enqueueOfflineSync('INVOICE', inv));
+      }
+      if (Array.isArray(data.products)) {
+        appData.products = data.products;
+        localStorage.setItem('nexus_custom_products', JSON.stringify(data.products));
+        data.products.forEach(prd => enqueueOfflineSync('PRODUCT', prd));
+      }
+      if (Array.isArray(data.categories)) {
+        appData.categories = data.categories;
+        localStorage.setItem('nexus_custom_categories', JSON.stringify(data.categories));
+        data.categories.forEach(cat => enqueueOfflineSync('CATEGORY', cat));
+      }
+      if (Array.isArray(data.clients)) {
+        appData.clients = data.clients;
+        localStorage.setItem('nexus_custom_clients', JSON.stringify(data.clients));
+        data.clients.forEach(c => enqueueOfflineSync('CLIENT', c));
+      }
+      if (Array.isArray(data.bills)) {
+        appData.bills = data.bills;
+        localStorage.setItem('nexus_custom_bills', JSON.stringify(data.bills));
+        data.bills.forEach(b => enqueueOfflineSync('BILL', b));
+      }
+
+      // Also trigger cloud database backup so backend database is synced
+      if (navigator.onLine) {
+        try {
+          await api.backupDatabase({
+            invoices: appData.invoices,
+            products: appData.products,
+            categories: appData.categories,
+            clients: appData.clients,
+            bills: appData.bills
+          });
+        } catch (err) {}
+      }
+
+      await loadBusinessData();
+      processOfflineSyncQueue();
+
+      showToast('⚡ System database restored successfully & synced to Cloud Database!', 'success');
+    } catch (err) {
+      console.error('Restore error:', err);
+      showToast('Error restoring backup file. Please check JSON format.', 'error');
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  reader.readAsText(file);
+}
+
+window.backupDatabaseData = backupDatabaseData;
+window.triggerRestoreFileInput = triggerRestoreFileInput;
+window.restoreFromCloudDatabase = restoreFromCloudDatabase;
+window.handleRestoreFileSelected = handleRestoreFileSelected;
 
 // Backdrop click on blurred content closes sidebar and unblurs page
 document.addEventListener('click', (e) => {

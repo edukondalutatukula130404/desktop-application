@@ -1,6 +1,6 @@
 // Centralized Fetch API Client for Backend REST Communications
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = (typeof window !== 'undefined' && window.location.protocol === 'file:') ? 'http://127.0.0.1:5050/api' : '/api';
 
 const TOKEN_KEY = 'nexus_auth_jwt_token';
 
@@ -160,9 +160,14 @@ export const api = {
 
   getRelationalSummary: () => request('/business/summary/relational', { method: 'GET' }),
 
+  backupDatabase: (payload) => request('/business/backup', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+
   checkHealth: async () => {
     try {
-      const res = await fetch('/api/health');
+      const res = await fetch(`${API_BASE_URL}/health`);
       return res.ok;
     } catch {
       return false;

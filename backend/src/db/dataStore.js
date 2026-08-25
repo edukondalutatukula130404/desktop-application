@@ -419,6 +419,16 @@ const dataStore = {
     const amount = parseFloat(invoiceData.amount) || 0;
     const dateStr = `${year}-${month}-${day}`;
 
+    let existingInv = await Invoice.findOne({ id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
+    if (existingInv) {
+      existingInv.clientName = clientName;
+      existingInv.amount = amount;
+      if (invoiceData.category) existingInv.category = invoiceData.category;
+      if (invoiceData.paymentMode) existingInv.paymentMode = invoiceData.paymentMode;
+      if (invoiceData.status) existingInv.status = invoiceData.status;
+      return await existingInv.save();
+    }
+
     const newInvoice = new Invoice({
       id: customId,
       clientId: invoiceData.clientId || `CUST-${dateMerged}001`,
@@ -436,7 +446,7 @@ const dataStore = {
 
     // Auto-create or update Client record in MongoDB
     try {
-      let client = await Client.findOne({ name: { $regex: new RegExp(`^${clientName}$`, 'i') } }).exec();
+      let client = await Client.findOne({ name: { $regex: new RegExp(`^${clientName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
       if (!client) {
         const clientCount = await Client.countDocuments();
         const custSeq = String(clientCount + 1).padStart(2, '0');
@@ -493,8 +503,20 @@ const dataStore = {
 
   createBill: async (billData) => {
     const count = await Bill.countDocuments();
+    const customId = billData.id || ('BILL-' + (100 + count + 1));
+    let existingBill = await Bill.findOne({ id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
+    if (existingBill) {
+      if (billData.vendor) existingBill.vendor = billData.vendor;
+      if (billData.category) existingBill.category = billData.category;
+      if (billData.dueDate) existingBill.dueDate = billData.dueDate;
+      if (billData.amount !== undefined) existingBill.amount = parseFloat(billData.amount) || 0;
+      if (billData.status) existingBill.status = billData.status;
+      if (billData.autoPay !== undefined) existingBill.autoPay = !!billData.autoPay;
+      return await existingBill.save();
+    }
+
     const newBill = new Bill({
-      id: 'BILL-' + (100 + count + 1),
+      id: customId,
       vendor: billData.vendor,
       category: billData.category || 'General Expenses',
       dueDate: billData.dueDate || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
@@ -547,15 +569,25 @@ const dataStore = {
 
   createClient: async (clientData) => {
     let customId = clientData.id ? clientData.id.trim() : '';
+    const cleanName = (clientData.name || 'New Customer').trim();
 
+    let existing = null;
     if (customId) {
-      const existing = await Client.findOne({ id: { $regex: new RegExp(`^${customId}$`, 'i') } }).exec();
-      if (existing) {
-        const err = new Error(`Customer ID ${customId} already exists.`);
-        err.statusCode = 400;
-        throw err;
-      }
-    } else {
+      existing = await Client.findOne({ id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
+    }
+    if (!existing) {
+      existing = await Client.findOne({ name: { $regex: new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
+    }
+
+    if (existing) {
+      existing.name = cleanName;
+      if (clientData.contact) existing.contact = clientData.contact;
+      if (clientData.status) existing.status = clientData.status;
+      if (clientData.totalBilled !== undefined) existing.totalBilled = parseFloat(clientData.totalBilled) || 0;
+      return await existing.save();
+    }
+
+    if (!customId) {
       const todayStr = new Date().toISOString().split('T')[0];
       const allClients = await Client.find().lean().exec();
       let maxNum = 0;
@@ -571,7 +603,7 @@ const dataStore = {
 
     const newClient = new Client({
       id: customId,
-      name: clientData.name || 'New Customer',
+      name: cleanName,
       contact: clientData.contact || 'contact@client.com',
       status: clientData.status || 'Active',
       totalBilled: parseFloat(clientData.totalBilled) || 0
@@ -1030,6 +1062,93 @@ const dataStore = {
       },
       clientBreakdown,
       categoryBreakdown
+    };
+  },
+
+  backupAllData: async ({ invoices = [], products = [], categories = [], clients = [], bills = [] }) => {
+    let syncedInvoices = 0;
+    let syncedProducts = 0;
+    let syncedCategories = 0;
+    let syncedClients = 0;
+    let syncedBills = 0;
+
+    // 1. Save Invoices to MongoDB
+    if (Array.isArray(invoices)) {
+      for (const inv of invoices) {
+        try {
+          if (inv && (inv.clientName || inv.amount)) {
+            await dataStore.createInvoice(inv);
+            syncedInvoices++;
+          }
+        } catch (e) {
+          console.warn('Backup invoice sync warning:', e.message);
+        }
+      }
+    }
+
+    // 2. Save Products to MongoDB
+    if (Array.isArray(products)) {
+      for (const prd of products) {
+        try {
+          if (prd && prd.name) {
+            await dataStore.createProduct(prd);
+            syncedProducts++;
+          }
+        } catch (e) {
+          console.warn('Backup product sync warning:', e.message);
+        }
+      }
+    }
+
+    // 3. Save Categories to MongoDB
+    if (Array.isArray(categories)) {
+      for (const cat of categories) {
+        try {
+          if (cat && cat.name) {
+            await dataStore.createCategory(cat);
+            syncedCategories++;
+          }
+        } catch (e) {
+          console.warn('Backup category sync warning:', e.message);
+        }
+      }
+    }
+
+    // 4. Save Clients to MongoDB
+    if (Array.isArray(clients)) {
+      for (const cl of clients) {
+        try {
+          if (cl && cl.name) {
+            await dataStore.createClient(cl);
+            syncedClients++;
+          }
+        } catch (e) {
+          console.warn('Backup client sync warning:', e.message);
+        }
+      }
+    }
+
+    // 5. Save Bills to MongoDB
+    if (Array.isArray(bills)) {
+      for (const b of bills) {
+        try {
+          if (b && (b.vendor || b.amount)) {
+            await dataStore.createBill(b);
+            syncedBills++;
+          }
+        } catch (e) {
+          console.warn('Backup bill sync warning:', e.message);
+        }
+      }
+    }
+
+    return {
+      syncedInvoices,
+      syncedProducts,
+      syncedCategories,
+      syncedClients,
+      syncedBills,
+      totalCount: syncedInvoices + syncedProducts + syncedCategories + syncedClients + syncedBills
     };
   }
 };
