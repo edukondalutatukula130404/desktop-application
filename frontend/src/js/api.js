@@ -19,6 +19,8 @@ export const tokenStorage = {
   }
 };
 
+let ACTIVE_PORT = 5050;
+
 async function request(endpoint, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
@@ -33,8 +35,10 @@ async function request(endpoint, options = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+  const getUrl = (port) => (typeof window !== 'undefined' && window.location.protocol === 'file:') ? `http://127.0.0.1:${port}/api` : '/api';
+
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${getUrl(ACTIVE_PORT)}${endpoint}`, {
       ...options,
       headers,
       signal: controller.signal
@@ -58,6 +62,24 @@ async function request(endpoint, options = {}) {
     return data;
   } catch (error) {
     clearTimeout(timeoutId);
+
+    if (typeof window !== 'undefined' && window.location.protocol === 'file:' && ACTIVE_PORT === 5050) {
+      ACTIVE_PORT = 5051;
+      try {
+        const retryController = new AbortController();
+        const retryTimeout = setTimeout(() => retryController.abort(), 10000);
+        const retryRes = await fetch(`${getUrl(ACTIVE_PORT)}${endpoint}`, {
+          ...options,
+          headers,
+          signal: retryController.signal
+        });
+        clearTimeout(retryTimeout);
+        if (retryRes.ok) {
+          return await retryRes.json();
+        }
+      } catch (e2) {}
+    }
+
     console.warn(`API Request [${endpoint}] error:`, error.message);
     throw error;
   }

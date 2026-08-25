@@ -4,9 +4,10 @@ const mongoose = require('mongoose');
 const { startLocalMongoServer } = require('./localMongo');
 
 let isConnected = false;
+let isAtlasConnected = false;
 
 const connectDB = async () => {
-  if (isConnected) {
+  if (isConnected && isAtlasConnected) {
     return;
   }
 
@@ -14,10 +15,16 @@ const connectDB = async () => {
 
   if (mongoURI) {
     try {
-      const conn = await mongoose.connect(mongoURI, { serverSelectionTimeoutMS: 5000 });
+      console.log('🍃 Connecting to MongoDB Atlas Cloud Database (Cluster0)...');
+      const conn = await mongoose.connect(mongoURI, {
+        serverSelectionTimeoutMS: 30000,
+        connectTimeoutMS: 30000,
+        socketTimeoutMS: 45000
+      });
       isConnected = !!conn.connections[0].readyState;
+      isAtlasConnected = true;
       console.log(`=================================`);
-      console.log(`🍃 MongoDB Connected (Environment URI): ${conn.connection.host}`);
+      console.log(`🍃 MongoDB Connected to Cloud Atlas Database: ${conn.connection.host} (Database: ${conn.connection.name})`);
       console.log(`=================================`);
       return;
     } catch (error) {
