@@ -1,6 +1,6 @@
 {
   "name": "invoicepro-desktop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "InvoicePro Desktop Application with persistent local MongoDB storage",
   "main": "electron/main.cjs",
   "private": true,
@@ -47,7 +47,7 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "InvoicePro Desktop",
-      "artifactName": "InvoicePro-Setup-1.0.0.exe"
+      "artifactName": "InvoicePro-Setup-1.0.1.exe"
     }
   },
   "dependencies": {

@@ -156,9 +156,18 @@ app.whenReady().then(async () => {
   // 2. Start Backend & Database services asynchronously
   (async () => {
     try {
-      console.log('[Electron Main] Starting MongoDB database...');
-      const mongoUri = await startMongo();
-      process.env.MONGO_URI = mongoUri;
+      try {
+        const path = require('path');
+        require('dotenv').config({ path: path.join(__dirname, '../backend/.env') });
+      } catch (e) {}
+
+      if (!process.env.MONGO_URI || process.env.MONGO_URI.includes('127.0.0.1') || process.env.MONGO_URI.includes('localhost')) {
+        console.log('[Electron Main] Starting embedded MongoDB database fallback...');
+        const mongoUri = await startMongo();
+        process.env.MONGO_URI = mongoUri;
+      } else {
+        console.log('[Electron Main] 🍃 Using MongoDB Atlas Cloud MONGO_URI from .env');
+      }
 
       console.log('[Electron Main] Starting Express API Server...');
       try {

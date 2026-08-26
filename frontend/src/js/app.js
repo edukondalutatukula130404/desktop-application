@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { api, tokenStorage } from './api.js';
+import { api, tokenStorage, getDeviceId } from './api.js';
 import { NEXUS_LOGO_BASE64 } from './logoBase64.js';
 
 // Application State
@@ -116,7 +116,8 @@ const VIEW_META = {
   add_category: { title: 'Add Apparel Category', subtitle: '' },
   preview_invoice: { title: 'Invoice Statement Preview', subtitle: '' },
   clients: { title: 'Customers Directory', subtitle: '' },
-  settings: { title: 'Account Preferences & Security', subtitle: '' }
+  settings: { title: 'Account Preferences & Security', subtitle: '' },
+  datasync: { title: 'Data Management & Multi-Device Sync', subtitle: '' }
 };
 
 // ================= UTILITIES & HELPER FUNCTIONS =================
@@ -242,6 +243,22 @@ async function handleUserLogin(e) {
       tokenStorage.set(res.token, remember);
       appData.user = res.user || { name: (email || 'Admin').split('@')[0], email: email || 'admin@gmail.com' };
       showToast('Signed in successfully!', 'success');
+
+      // WhatsApp-style: Check if cloud has data for this user but local device is fresh
+      const isNewDevice = !localStorage.getItem('nexus_data_initialized_' + (res.user?.id || email));
+      if (res.hasCloudData && isNewDevice) {
+        if (submitBtn) setButtonLoading(submitBtn, false);
+        showCloudRestoreModal(res.user?.id || email, () => {
+          localStorage.setItem('nexus_data_initialized_' + (res.user?.id || email), '1');
+          enterWorkspace();
+        }, () => {
+          localStorage.setItem('nexus_data_initialized_' + (res.user?.id || email), '1');
+          enterWorkspace();
+        });
+        return;
+      }
+
+      localStorage.setItem('nexus_data_initialized_' + (res.user?.id || email), '1');
       await enterWorkspace();
     } else {
       throw new Error(res.message || 'Login failed');
@@ -259,6 +276,64 @@ async function handleUserLogin(e) {
     if (submitBtn) setButtonLoading(submitBtn, false);
   }
 }
+
+// WhatsApp-style Cloud Restore Modal
+function showCloudRestoreModal(userKey, onRestore, onSkip) {
+  const existingModal = document.getElementById('cloud-restore-modal');
+  if (existingModal) existingModal.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'cloud-restore-modal';
+  modal.style.cssText = `
+    position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);
+    font-family:'Inter',sans-serif;
+  `;
+  modal.innerHTML = `
+    <div style="background:linear-gradient(135deg,#1a1f3e 0%,#0d1117 100%);border:1px solid rgba(99,102,241,0.4);border-radius:20px;padding:40px 36px;max-width:440px;width:90%;text-align:center;box-shadow:0 25px 80px rgba(0,0,0,0.6);">
+      <div style="width:72px;height:72px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:32px;">☁️</div>
+      <h2 style="color:#fff;font-size:22px;font-weight:700;margin:0 0 10px;">Cloud Backup Found!</h2>
+      <p style="color:#94a3b8;font-size:14px;margin:0 0 24px;line-height:1.6;">
+        Your account has data saved on the cloud from a previous device.<br>
+        Would you like to restore it to this device?
+      </p>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <button id="cloud-restore-btn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:12px;padding:14px 24px;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.2s;">
+          🔄 Restore from Cloud
+        </button>
+        <button id="cloud-skip-btn" style="background:rgba(255,255,255,0.08);color:#94a3b8;border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:12px 24px;font-size:14px;cursor:pointer;transition:all 0.2s;">
+          Start Fresh (skip restore)
+        </button>
+      </div>
+      <p style="color:#64748b;font-size:12px;margin:16px 0 0;">This only needs to be done once on each device.</p>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  document.getElementById('cloud-restore-btn').addEventListener('click', async () => {
+    const restoreBtn = document.getElementById('cloud-restore-btn');
+    if (restoreBtn) { restoreBtn.textContent = '⏳ Restoring...'; restoreBtn.disabled = true; }
+    try {
+      const result = await api.restoreBackup({});
+      if (result && result.success) {
+        showToast('✅ Cloud data restored to this device!', 'success');
+      } else {
+        showToast('ℹ️ No backup found. Starting fresh.', 'info');
+      }
+    } catch (err) {
+      showToast('ℹ️ Cloud restore unavailable. You can restore later from Settings.', 'info');
+    }
+    modal.remove();
+    if (onRestore) onRestore();
+  });
+
+  document.getElementById('cloud-skip-btn').addEventListener('click', () => {
+    modal.remove();
+    if (onSkip) onSkip();
+  });
+}
+
 
 async function handleUserRegister(e) {
   if (e) e.preventDefault();
@@ -494,8 +569,13 @@ async function enterWorkspace() {
       }
     }
 
-    // Load Business Data
+    // Clear stale localStorage client and invoice cache so backend is authoritative
+    localStorage.removeItem('nexus_custom_clients');
+    localStorage.removeItem('nexus_custom_invoices');
+
+    // Load Business Data & Sync Cloud Snapshot
     await loadBusinessData();
+    await syncLatestCloudBackupData(false);
     processOfflineSyncQueue();
   } catch (err) {
     console.error('Error entering workspace:', err);
@@ -521,7 +601,36 @@ function saveOfflineSyncQueue(queue) {
 }
 
 function enqueueOfflineSync(type, payload) {
-  const queue = getOfflineSyncQueue();
+  let queue = getOfflineSyncQueue();
+  const targetId = payload?.id || payload?._id || payload;
+  const targetName = payload?.name || '';
+  const normId = targetId ? String(targetId).toLowerCase().trim() : '';
+  const normName = targetName ? String(targetName).toLowerCase().trim() : '';
+
+  if (type === 'DELETE_PRODUCT') {
+    queue = queue.filter(q => {
+      if (q.type === 'PRODUCT' || q.type === 'UPDATE_PRODUCT' || q.type === 'UPDATE_PRODUCT_STOCK') {
+        const qId = String(q.payload?.id || q.payload?._id || '').toLowerCase().trim();
+        const qName = String(q.payload?.name || '').toLowerCase().trim();
+        if ((normId && qId === normId) || (normName && qName === normName)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  } else if (type === 'DELETE_CATEGORY') {
+    queue = queue.filter(q => {
+      if (q.type === 'CATEGORY' || q.type === 'UPDATE_CATEGORY' || q.type === 'TOGGLE_CATEGORY_STATUS') {
+        const qId = String(q.payload?.id || q.payload?._id || '').toLowerCase().trim();
+        const qName = String(q.payload?.name || '').toLowerCase().trim();
+        if ((normId && qId === normId) || (normName && qName === normName)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }
+
   const isDup = queue.some(q => q.type === type && JSON.stringify(q.payload) === JSON.stringify(payload));
   if (!isDup) {
     queue.push({
@@ -532,12 +641,16 @@ function enqueueOfflineSync(type, payload) {
     });
     saveOfflineSyncQueue(queue);
     console.log(`[Offline Sync] Enqueued ${type}:`, payload);
+  } else {
+    saveOfflineSyncQueue(queue);
   }
 }
 
 function getDeletedEntityList(type) {
   try {
-    const raw = localStorage.getItem(`nexus_deleted_${type.toLowerCase()}s`);
+    const rawType = String(type).toLowerCase().trim();
+    const keyType = rawType === 'category' ? 'categories' : `${rawType}s`;
+    const raw = localStorage.getItem(`nexus_deleted_${keyType}`);
     return raw ? JSON.parse(raw) : [];
   } catch (e) {
     return [];
@@ -551,7 +664,9 @@ function markEntityAsDeleted(type, id, name = '') {
     const keyName = name ? String(name).toLowerCase().trim() : '';
     if (keyId && !list.includes(keyId)) list.push(keyId);
     if (keyName && !list.includes(keyName)) list.push(keyName);
-    localStorage.setItem(`nexus_deleted_${type.toLowerCase()}s`, JSON.stringify(list));
+    const rawType = String(type).toLowerCase().trim();
+    const keyType = rawType === 'category' ? 'categories' : `${rawType}s`;
+    localStorage.setItem(`nexus_deleted_${keyType}`, JSON.stringify(list));
   } catch (e) {
     console.warn(`Error marking ${type} as deleted:`, e);
   }
@@ -559,12 +674,48 @@ function markEntityAsDeleted(type, id, name = '') {
 
 function isEntityDeleted(type, id, name = '') {
   try {
-    const list = getDeletedEntityList(type);
     const keyId = id ? String(id).toLowerCase().trim() : '';
     const keyName = name ? String(name).toLowerCase().trim() : '';
-    return (keyId && list.includes(keyId)) || (keyName && list.includes(keyName));
+    if (!keyId && !keyName) return false;
+
+    // Check if the item is currently pending deletion in the offline sync queue
+    const queue = getOfflineSyncQueue();
+    const isPendingInQueue = queue.some(q => {
+      const qType = String(q.type || '').toUpperCase();
+      if (!qType.startsWith('DELETE_')) return false;
+      const targetEntity = qType.replace('DELETE_', '');
+      if (targetEntity !== type.toUpperCase()) return false;
+      const qId = String(q.payload?.id || q.payload?._id || q.payload || '').toLowerCase().trim();
+      const qName = String(q.payload?.name || '').toLowerCase().trim();
+      return (keyId && qId === keyId) || (keyName && qName === keyName);
+    });
+
+    if (isPendingInQueue) return true;
+
+    // Fallback check on deleted list ONLY when offline
+    if (!navigator.onLine) {
+      const list = getDeletedEntityList(type);
+      return (keyId && list.includes(keyId)) || (keyName && list.includes(keyName));
+    }
+
+    return false;
   } catch (e) {
     return false;
+  }
+}
+
+function unmarkEntityAsDeleted(type, id, name = '') {
+  try {
+    let list = getDeletedEntityList(type);
+    const keyId = id ? String(id).toLowerCase().trim() : '';
+    const keyName = name ? String(name).toLowerCase().trim() : '';
+    if (!keyId && !keyName) return;
+    list = list.filter(item => item !== keyId && item !== keyName);
+    const rawType = String(type).toLowerCase().trim();
+    const keyType = rawType === 'category' ? 'categories' : `${rawType}s`;
+    localStorage.setItem(`nexus_deleted_${keyType}`, JSON.stringify(list));
+  } catch (e) {
+    console.warn(`Error unmarking ${type} as deleted:`, e);
   }
 }
 
@@ -602,9 +753,12 @@ async function processOfflineSyncQueue() {
         await api.updateCategory(item.payload.id || item.payload._id, item.payload);
         syncedCount++;
       } else if (item.type === 'DELETE_CATEGORY') {
-        const targetId = item.payload.id || item.payload;
-        const targetName = item.payload.name || '';
-        await api.deleteCategory(targetId, targetName);
+        const targetId = (typeof item.payload === 'object' && item.payload) ? (item.payload.id || item.payload._id || '') : item.payload;
+        const targetName = (typeof item.payload === 'object' && item.payload) ? (item.payload.name || '') : '';
+        const res = await api.deleteCategory(targetId, targetName);
+        if (res && res.success === false) {
+          throw new Error(res.message || res.error || 'Failed to delete category');
+        }
         syncedCount++;
       } else if (item.type === 'TOGGLE_CATEGORY_STATUS') {
         const targetId = item.payload.id || item.payload;
@@ -620,9 +774,12 @@ async function processOfflineSyncQueue() {
         await api.updateProductStock(item.payload.id || item.payload._id, item.payload);
         syncedCount++;
       } else if (item.type === 'DELETE_PRODUCT') {
-        const targetId = item.payload.id || item.payload;
-        const targetName = item.payload.name || '';
-        await api.deleteProduct(targetId, targetName);
+        const targetId = (typeof item.payload === 'object' && item.payload) ? (item.payload.id || item.payload._id || '') : item.payload;
+        const targetName = (typeof item.payload === 'object' && item.payload) ? (item.payload.name || '') : '';
+        const res = await api.deleteProduct(targetId, targetName);
+        if (res && res.success === false) {
+          throw new Error(res.message || res.error || 'Failed to delete product');
+        }
         syncedCount++;
       } else if (item.type === 'CLIENT') {
         await api.createClient(item.payload);
@@ -674,6 +831,17 @@ window.addEventListener('online', () => {
 });
 setInterval(processOfflineSyncQueue, 4000);
 
+// Multi-device sync: Periodically poll MongoDB cloud database every 12 seconds so updates from other systems reflect automatically
+setInterval(async () => {
+  if (navigator.onLine && !isProcessingSyncQueue) {
+    const activeEl = document.activeElement;
+    const isEditingForm = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+    if (!isEditingForm) {
+      await loadBusinessData();
+    }
+  }
+}, 12000);
+
 async function loadBusinessData() {
   if (navigator.onLine) {
     const queue = getOfflineSyncQueue();
@@ -711,7 +879,7 @@ async function loadBusinessData() {
     catRes.categories !== undefined
   );
 
-  // 1. Invoices from Backend API + local custom invoices
+  // 1. Invoices from Backend API (single source of truth when online)
   const fetchedInvoices = invRes.invoices || [];
   const invMap = new Map();
   fetchedInvoices.forEach(inv => {
@@ -721,22 +889,24 @@ async function loadBusinessData() {
     }
   });
 
-  const savedInvoices = localStorage.getItem('nexus_custom_invoices');
-  if (savedInvoices) {
-    try {
-      const parsedInv = JSON.parse(savedInvoices);
-      if (Array.isArray(parsedInv)) {
-        parsedInv.forEach(inv => {
-          if (inv) {
-            const idNorm = normalizeInvoiceId(inv);
-            const key = idNorm.toLowerCase();
-            if (!invMap.has(key) && !isEntityDeleted('INVOICE', inv.id, idNorm)) {
-              invMap.set(key, { ...inv, id: idNorm });
+  if (!isOnline) {
+    const savedInvoices = localStorage.getItem('nexus_custom_invoices');
+    if (savedInvoices) {
+      try {
+        const parsedInv = JSON.parse(savedInvoices);
+        if (Array.isArray(parsedInv)) {
+          parsedInv.forEach(inv => {
+            if (inv) {
+              const idNorm = normalizeInvoiceId(inv);
+              const key = idNorm.toLowerCase();
+              if (!invMap.has(key) && !isEntityDeleted('INVOICE', inv.id, idNorm)) {
+                invMap.set(key, { ...inv, id: idNorm });
+              }
             }
-          }
-        });
-      }
-    } catch (e) {}
+          });
+        }
+      } catch (e) {}
+    }
   }
   appData.invoices = Array.from(invMap.values());
   try {
@@ -771,42 +941,49 @@ async function loadBusinessData() {
     localStorage.setItem('nexus_custom_bills', JSON.stringify(appData.bills));
   } catch (e) {}
 
-  // 3. Clients from Backend API + local custom clients
+  // 3. Clients from Backend API (single source of truth when online)
   const fetchedClients = clientRes.clients || [];
   const clientMap = new Map();
   fetchedClients.forEach(c => {
     if (c && (c.id || c.name)) {
-      const key = (c.id || c.name).trim().toLowerCase();
+      const key = (c.name || c.id).trim().toLowerCase();
       clientMap.set(key, { ...c });
     }
   });
 
-  const savedClients = localStorage.getItem('nexus_custom_clients');
-  if (savedClients) {
-    try {
-      const parsedClients = JSON.parse(savedClients);
-      if (Array.isArray(parsedClients)) {
-        parsedClients.forEach(c => {
-          if (c && (c.id || c.name)) {
-            const key = (c.id || c.name).trim().toLowerCase();
-            if (!clientMap.has(key) && !isEntityDeleted('CLIENT', c.id, c.name)) {
-              clientMap.set(key, { ...c });
+  // Only merge localStorage clients when offline (backend unreachable)
+  if (!isOnline) {
+    const savedClients = localStorage.getItem('nexus_custom_clients');
+    if (savedClients) {
+      try {
+        const parsedClients = JSON.parse(savedClients);
+        if (Array.isArray(parsedClients)) {
+          parsedClients.forEach(c => {
+            if (c && (c.id || c.name)) {
+              const key = (c.name || c.id).trim().toLowerCase();
+              if (!clientMap.has(key) && !isEntityDeleted('CLIENT', c.id, c.name)) {
+                clientMap.set(key, { ...c });
+              }
             }
-          }
-        });
-      }
-    } catch (e) {}
+          });
+        }
+      } catch (e) {}
+    }
   }
+
   appData.clients = Array.from(clientMap.values());
   try {
     localStorage.setItem('nexus_custom_clients', JSON.stringify(appData.clients));
   } catch (e) {}
 
+
   // 4. Products from Backend API + local custom products
   const fetchedPrds = prdRes.products || [];
   const prdMap = new Map();
   fetchedPrds.forEach(p => {
-    if (p && p.name) prdMap.set(p.name.trim().toLowerCase(), { ...p });
+    if (p && p.name && !isEntityDeleted('PRODUCT', p.id, p.name)) {
+      prdMap.set(p.name.trim().toLowerCase(), { ...p });
+    }
   });
 
   const savedPrds = localStorage.getItem('nexus_custom_products');
@@ -835,7 +1012,7 @@ async function loadBusinessData() {
   const fetchedCats = catRes.categories || [];
   const catMap = new Map();
   fetchedCats.forEach(cat => {
-    if (cat && cat.name) {
+    if (cat && cat.name && !isEntityDeleted('CATEGORY', cat.id, cat.name)) {
       const key = cat.name.trim().toLowerCase();
       if (!catMap.has(key)) {
         catMap.set(key, { ...cat });
@@ -897,6 +1074,7 @@ function sortProductsBySku(prds) {
 }
 
 function addNewProductToSystem(productData) {
+  unmarkEntityAsDeleted('PRODUCT', productData.id, productData.name);
   const currentPrds = getUnifiedProductsList();
   const countNum = parseInt(productData.count, 10) || 50;
   const priceNum = parseFloat(productData.price) || 0;
@@ -914,6 +1092,8 @@ function addNewProductToSystem(productData) {
     count: countNum,
     stock: stockStatus
   };
+
+  unmarkEntityAsDeleted('PRODUCT', newPrd.id, newPrd.name);
 
   const existingIdx = currentPrds.findIndex(p => p.id === newPrd.id || (p.name && p.name.toLowerCase().trim() === newPrd.name.toLowerCase().trim()));
   if (existingIdx >= 0) {
@@ -1004,7 +1184,10 @@ function getUnifiedProductsList() {
       { id: 'SKU-PRD-09', name: 'Slim-Fit Stretch Denim Jeans', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Black', size: 'XL', price: 2199.00, stock: 'In Stock', count: 28 },
       { id: 'SKU-PRD-10', name: 'Embroidered Anarkali Kurti Set', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', color: 'Red', size: 'M', price: 3499.00, stock: 'In Stock', count: 18 },
       { id: 'SKU-PRD-11', name: 'Wool Blend Tailored Winter Coat', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', color: 'Black', size: 'XXL', price: 4999.00, stock: 'Low Stock', count: 8 },
-      { id: 'SKU-PRD-12', name: 'Toddler Denim Overalls & Polo Combo', category: 'Kidswear & Toddlers', subCategory: 'Boys Casuals', color: 'Olive Green', size: 'S', price: 1499.00, stock: 'In Stock', count: 35 }
+      { id: 'SKU-PRD-12', name: 'Toddler Denim Overalls & Polo Combo', category: 'Kidswear & Toddlers', subCategory: 'Boys Casuals', color: 'Olive Green', size: 'S', price: 1499.00, stock: 'In Stock', count: 35 },
+      { id: 'SKU-PRD-13', name: 'Shorts', category: "Men's Apparel", subCategory: 'Shorts', color: 'Sky Blue', size: 'XL', price: 599.00, stock: 'In Stock', count: 50 },
+      { id: 'SKU-PRD-14', name: 'trouser', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Yellow / Mustard', size: 'L', price: 2999.00, stock: 'In Stock', count: 50 },
+      { id: 'SKU-PRD-15', name: 'Classic premium Lenin Black Shirt', category: "Men's Apparel", subCategory: 'Shirts', color: 'Multicolor', size: 'M', price: 2999.00, stock: 'In Stock', count: 50 }
     ];
   }
 
@@ -1151,6 +1334,7 @@ function switchView(viewKey) {
 
   if (viewKey === 'settings') {
     initPaperSizeCards();
+    renderDataSyncDashboard();
   }
 }
 window.switchView = switchView;
@@ -1571,6 +1755,7 @@ function renderProductsTable(filterCategory = 'all', searchQuery = '') {
         } else {
           try {
             await api.deleteProduct(prdId, prdName);
+            triggerAutoCloudBackup();
             showToast(`Product "${prdName}" deleted successfully!`, 'success');
           } catch (err) {
             console.warn('api.deleteProduct error, queuing sync:', err);
@@ -1867,25 +2052,39 @@ function renderInventoryView() {
   }).join('');
 
   tbody.querySelectorAll('.remove-inventory-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
       const prdId = btn.getAttribute('data-id');
       const prdName = btn.getAttribute('data-name');
 
-      appData.products = (appData.products || []).filter(p => p.id !== prdId && p.name !== prdName);
-      try {
-        localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
-      } catch (e) {}
+      if (confirm(`Are you sure you want to delete product "${prdName}"?`)) {
+        markEntityAsDeleted('PRODUCT', prdId, prdName);
+        appData.products = sortProductsBySku((appData.products || []).filter(p => p.id !== prdId && p.name !== prdName));
 
-      try {
-        await api.deleteProduct(prdId);
-      } catch (e) {
-        console.warn('api.deleteProduct:', e);
+        try {
+          localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
+        } catch (err) {}
+
+        const deletePayload = { id: prdId, name: prdName };
+
+        if (!navigator.onLine) {
+          enqueueOfflineSync('DELETE_PRODUCT', deletePayload);
+          showToast(`Product "${prdName}" removed locally! Will sync deletion when connected.`, 'info');
+        } else {
+          try {
+            await api.deleteProduct(prdId, prdName);
+            showToast(`Product "${prdName}" removed from Inventory!`, 'success');
+          } catch (err) {
+            console.warn('api.deleteProduct error, queuing sync:', err);
+            enqueueOfflineSync('DELETE_PRODUCT', deletePayload);
+            showToast(`Product "${prdName}" removed locally! Will sync deletion when connected.`, 'info');
+          }
+        }
+
+        renderProductsTable();
+        renderInventoryView();
+        updateInvoiceProductSelectOptions();
       }
-
-      renderProductsTable();
-      renderInventoryView();
-      updateInvoiceProductSelectOptions();
-      showToast(`Product "${prdName}" removed from Inventory!`, 'success');
     });
   });
 
@@ -2179,6 +2378,7 @@ function renderCategoriesGrid() {
       const catId = btn.getAttribute('data-id');
       const catName = btn.getAttribute('data-name');
       if (confirm(`Are you sure you want to delete category "${catName}"?`)) {
+        markEntityAsDeleted('CATEGORY', catId, catName);
         appData.categories = (appData.categories || []).filter(c => c.id !== catId && c.name !== catName);
         try {
           localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
@@ -2332,6 +2532,23 @@ function renderClientsGrid(filterDateStr = null) {
 
   // Filter strictly for valid customer amounts
   customerTransactions = customerTransactions.filter(item => item.amount > 0);
+
+  // Deduplicate transactions by invId and by (clientName + isoDate + amount)
+  const uniqueTxMap = new Map();
+  const dedupedTx = [];
+  customerTransactions.forEach(item => {
+    const idKey = item.invId ? String(item.invId).replace(/-/g, '').toLowerCase().trim() : '';
+    const valKey = `${(item.clientName || '').toLowerCase()}_${item.isoDate}_${Number(item.amount).toFixed(2)}`;
+    if (idKey && !uniqueTxMap.has(idKey) && !uniqueTxMap.has(valKey)) {
+      uniqueTxMap.set(idKey, true);
+      uniqueTxMap.set(valKey, true);
+      dedupedTx.push(item);
+    } else if (!idKey && !uniqueTxMap.has(valKey)) {
+      uniqueTxMap.set(valKey, true);
+      dedupedTx.push(item);
+    }
+  });
+  customerTransactions = dedupedTx;
 
   // Filter strictly by selected date when targetIso date is selected via Search
   if (targetIso) {
@@ -2565,6 +2782,23 @@ function downloadCustomerDirectoryPDF(filterDateStr = null) {
 
     // Filter strictly for valid customer amounts
     customerTransactions = customerTransactions.filter(item => item.amount > 0);
+
+    // Deduplicate transactions by invId and by (clientName + isoDate + amount)
+    const uniqueTxMap = new Map();
+    const dedupedTx = [];
+    customerTransactions.forEach(item => {
+      const idKey = item.invId ? String(item.invId).replace(/-/g, '').toLowerCase().trim() : '';
+      const valKey = `${(item.clientName || '').toLowerCase()}_${item.isoDate}_${Number(item.amount).toFixed(2)}`;
+      if (idKey && !uniqueTxMap.has(idKey) && !uniqueTxMap.has(valKey)) {
+        uniqueTxMap.set(idKey, true);
+        uniqueTxMap.set(valKey, true);
+        dedupedTx.push(item);
+      } else if (!idKey && !uniqueTxMap.has(valKey)) {
+        uniqueTxMap.set(valKey, true);
+        dedupedTx.push(item);
+      }
+    });
+    customerTransactions = dedupedTx;
 
     const targetIso = rawDate ? normalizeDateToIso(rawDate) : '';
     if (targetIso) {
@@ -4838,6 +5072,15 @@ function deductStockLevelsForInvoice(items) {
         product.stock = 'In Stock';
       }
 
+      const updateStockPayload = { id: product.id || product._id, count: newCount, stock: product.stock };
+      if (!navigator.onLine) {
+        enqueueOfflineSync('UPDATE_PRODUCT_STOCK', updateStockPayload);
+      } else {
+        api.updateProductStock(product.id || product._id, updateStockPayload).catch(err => {
+          enqueueOfflineSync('UPDATE_PRODUCT_STOCK', updateStockPayload);
+        });
+      }
+
       updatedAny = true;
     }
   });
@@ -4881,33 +5124,38 @@ async function handleConfirmDownloadPDF() {
     paymentMode: (pendingInvoiceDraft && pendingInvoiceDraft.paymentMode) ? pendingInvoiceDraft.paymentMode : 'Cash'
   };
 
+  let onlineCreatedSuccess = false;
   if (!navigator.onLine) {
     enqueueOfflineSync('INVOICE', invoicePayload);
   } else {
     try {
       await api.createInvoice(invoicePayload);
+      await loadBusinessData();
+      onlineCreatedSuccess = true;
     } catch (e) {
       console.warn('api.createInvoice failed/offline, queuing sync:', e);
       enqueueOfflineSync('INVOICE', invoicePayload);
     }
   }
 
-  // Push created invoice locally to appData.invoices
-  if (!appData.invoices) appData.invoices = [];
-  const existingInv = appData.invoices.find(i => i.id === finalInvId);
-  if (!existingInv) {
-    appData.invoices.unshift({
-      id: finalInvId,
-      clientId: customer.id,
-      clientName: shopName,
-      clientEmail: '',
-      issueDate: dateStr,
-      date: dateStr,
-      dueDate: dateStr,
-      amount: Number(totalAmount) || 0,
-      status: 'Paid',
-      category: categorySummary
-    });
+  // Push created invoice locally only if offline or online save failed
+  if (!onlineCreatedSuccess) {
+    if (!appData.invoices) appData.invoices = [];
+    const existingInv = appData.invoices.find(i => (i.id || '').toLowerCase() === finalInvId.toLowerCase());
+    if (!existingInv) {
+      appData.invoices.unshift({
+        id: finalInvId,
+        clientId: customer.id,
+        clientName: shopName,
+        clientEmail: '',
+        issueDate: dateStr,
+        date: dateStr,
+        dueDate: dateStr,
+        amount: Number(totalAmount) || 0,
+        status: 'Paid',
+        category: categorySummary
+      });
+    }
   }
 
   // Update customer total billed amount
@@ -5492,6 +5740,7 @@ createInvoiceForm.addEventListener('submit', async (e) => {
     } else {
       try {
         await api.createInvoice(invoicePayload);
+        await loadBusinessData();
         showToast('Invoice created & PDF downloaded successfully!', 'success');
       } catch (err) {
         console.warn('api.createInvoice offline/failed, queuing sync:', err);
@@ -5518,7 +5767,9 @@ createProductForm.addEventListener('submit', async (e) => {
   const price = parseFloat(document.getElementById('prd-price').value) || 0;
   const count = parseInt(document.getElementById('prd-stock').value || 50, 10);
 
+  unmarkEntityAsDeleted('PRODUCT', '', name);
   const createdPrd = addNewProductToSystem({ name, category, subCategory, color, size, price, count });
+  unmarkEntityAsDeleted('PRODUCT', createdPrd.id, name);
   const productPayload = { id: createdPrd.id, name, category, subCategory, color, size, price, count };
 
   closeProductModal();
@@ -5532,6 +5783,7 @@ createProductForm.addEventListener('submit', async (e) => {
       const res = await api.createProduct(productPayload);
       if (res && res.product && (res.product.id || res.product._id)) {
         createdPrd.id = res.product.id || res.product._id;
+        unmarkEntityAsDeleted('PRODUCT', createdPrd.id, name);
         await loadBusinessData();
       }
       showToast('Product added successfully to Catalog & Inventory!', 'success');
@@ -5781,6 +6033,7 @@ if (createProductPageForm) {
     const stock = count > 10 ? 'In Stock' : (count > 0 ? 'Low Stock' : 'Out of Stock');
 
     if (editId) {
+      unmarkEntityAsDeleted('PRODUCT', editId, name);
       let prd = (appData.products || []).find(p => p.id === editId);
       if (prd) {
         prd.name = name;
@@ -5812,7 +6065,9 @@ if (createProductPageForm) {
         }
       }
     } else {
+      unmarkEntityAsDeleted('PRODUCT', '', name);
       const createdPrd = addNewProductToSystem({ name, category, subCategory, color, size, price, count });
+      unmarkEntityAsDeleted('PRODUCT', createdPrd.id, name);
       const productPayload = { id: createdPrd.id, name, category, subCategory, color, size, price, count };
       
       if (!navigator.onLine) {
@@ -5823,6 +6078,7 @@ if (createProductPageForm) {
           const res = await api.createProduct(productPayload);
           if (res && res.product && (res.product.id || res.product._id)) {
             createdPrd.id = res.product.id || res.product._id;
+            unmarkEntityAsDeleted('PRODUCT', createdPrd.id, name);
             await loadBusinessData();
           }
           showToast('Apparel product added to Catalog & Inventory!', 'success');
@@ -6149,36 +6405,21 @@ sidebarLogoutBtn.addEventListener('click', () => {
   authViewport.classList.remove('hidden');
 });
 
-// Auto-Login Session Initialization
+// Session Initialization - Always open to Login Page on App Launch
 async function initSession() {
-  const token = tokenStorage.get();
-  if (token) {
-    try {
-      const res = await api.getMe();
-      if (res && res.success && res.user) {
-        appData.user = res.user;
-        await enterWorkspace();
-      } else {
-        tokenStorage.clear();
-        appData.user = null;
-        if (saasDashboard) saasDashboard.classList.add('hidden');
-        if (authViewport) authViewport.classList.remove('hidden');
-      }
-    } catch (err) {
-      if (err.status === 401 || !tokenStorage.get()) {
-        tokenStorage.clear();
-        appData.user = null;
-        if (saasDashboard) saasDashboard.classList.add('hidden');
-        if (authViewport) authViewport.classList.remove('hidden');
-      } else {
-        // Server offline fallback
-        const savedEmail = localStorage.getItem('nexus_user_email') || 'admin@gmail.com';
-        const nameRaw = savedEmail.split('@')[0] || 'Admin';
-        appData.user = { id: 'usr_offline', name: nameRaw.charAt(0).toUpperCase() + nameRaw.slice(1), email: savedEmail };
-        await enterWorkspace();
-      }
-    }
+  getDeviceId();
+
+  // Pre-fill last user email if stored in local storage
+  const savedEmail = localStorage.getItem('nexus_user_email');
+  const emailInput = document.getElementById('login-email');
+  if (savedEmail && emailInput && !emailInput.value) {
+    emailInput.value = savedEmail;
   }
+
+  // Always force Login Page to be visible first on app opening
+  appData.user = null;
+  if (saasDashboard) saasDashboard.classList.add('hidden');
+  if (authViewport) authViewport.classList.remove('hidden');
 }
 
 // Bind autocomplete to all existing item rows on page startup
@@ -6193,10 +6434,545 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// ================= DATA MANAGEMENT, BACKUP & MULTI-DEVICE SYNC ENGINE =================
+
+let isSyncingMultiDevice = false;
+let lastSyncTimestamp = localStorage.getItem('nexus_last_sync_time') || new Date(0).toISOString();
+let pendingRestoreBackup = null;
+
+function updateSyncStatusBadge(status = 'synced') {
+  const badge = document.getElementById('sync-status-badge');
+  if (!badge) return;
+  if (status === 'synced') {
+    badge.innerHTML = '● Synced';
+    badge.style.background = 'rgba(34, 197, 94, 0.1)';
+    badge.style.color = '#16a34a';
+    badge.style.borderColor = 'rgba(34, 197, 94, 0.2)';
+  } else if (status === 'syncing') {
+    badge.innerHTML = '⚡ Syncing...';
+    badge.style.background = 'rgba(59, 130, 246, 0.1)';
+    badge.style.color = '#2563eb';
+    badge.style.borderColor = 'rgba(59, 130, 246, 0.2)';
+  } else if (status === 'offline') {
+    badge.innerHTML = '📡 Offline';
+    badge.style.background = 'rgba(245, 158, 11, 0.1)';
+    badge.style.color = '#d97706';
+    badge.style.borderColor = 'rgba(245, 158, 11, 0.2)';
+  } else if (status === 'failed') {
+    badge.innerHTML = '⚠️ Sync Failed';
+    badge.style.background = 'rgba(239, 68, 68, 0.1)';
+    badge.style.color = '#dc2626';
+    badge.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+  }
+}
+
+async function renderDataSyncDashboard() {
+  const deviceBadge = document.getElementById('current-device-id-badge');
+  const userEmailText = document.getElementById('device-user-email-text');
+  const lastBackupTime = document.getElementById('last-backup-timestamp-text');
+  const lastBackupDetails = document.getElementById('last-backup-details-text');
+
+  if (deviceBadge) deviceBadge.textContent = getDeviceId();
+  if (userEmailText) userEmailText.textContent = appData.user?.email || 'admin@gmail.com';
+
+  const autoSyncToggle = document.getElementById('auto-sync-toggle');
+  if (autoSyncToggle) {
+    const enabled = localStorage.getItem('nexus_auto_sync_enabled') !== 'false';
+    autoSyncToggle.checked = enabled;
+  }
+
+  updateSyncStatusBadge(navigator.onLine ? 'synced' : 'offline');
+
+  // Fetch Latest Cloud Backup Info
+  try {
+    const res = await api.getLatestBackup();
+    if (res && res.success && res.backup) {
+      const bkp = res.backup;
+      const bkpDate = new Date(bkp.createdAt).toLocaleString('en-IN', {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      });
+      if (lastBackupTime) lastBackupTime.textContent = bkpDate;
+
+      const counts = bkp.recordCounts || {};
+      if (lastBackupDetails) {
+        lastBackupDetails.innerHTML = `
+          <span style="background:#f1f5f9; padding:3px 8px; border-radius:6px; font-weight:600;">Products: ${counts.products || 0}</span>
+          <span style="background:#f1f5f9; padding:3px 8px; border-radius:6px; font-weight:600;">Categories: ${counts.categories || 0}</span>
+          <span style="background:#f1f5f9; padding:3px 8px; border-radius:6px; font-weight:600;">Customers: ${counts.clients || 0}</span>
+          <span style="background:#f1f5f9; padding:3px 8px; border-radius:6px; font-weight:600;">Invoices: ${counts.invoices || 0}</span>
+          <span style="background:#f1f5f9; padding:3px 8px; border-radius:6px; font-weight:600;">Bills: ${counts.bills || 0}</span>
+        `;
+      }
+    } else {
+      if (lastBackupTime) lastBackupTime.textContent = 'No cloud backup created yet';
+      if (lastBackupDetails) lastBackupDetails.textContent = 'Click "BACKUP NOW" to upload a complete cloud snapshot.';
+    }
+  } catch (e) {
+    console.warn('Error fetching latest backup:', e);
+  }
+
+  // Fetch Registered Devices
+  renderRegisteredDevices();
+}
+
+async function renderRegisteredDevices() {
+  const container = document.getElementById('registered-devices-list');
+  if (!container) return;
+
+  try {
+    const res = await api.getDevices();
+    if (res && res.success && Array.isArray(res.devices) && res.devices.length > 0) {
+      const currentDevId = getDeviceId();
+      container.innerHTML = res.devices.map(dev => {
+        const isCurrent = dev.deviceId === currentDevId;
+        const lastSyncFormatted = new Date(dev.lastSync || dev.updatedAt || Date.now()).toLocaleString('en-IN', {
+          dateStyle: 'short',
+          timeStyle: 'short'
+        });
+
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; padding:10px 14px; border-radius:10px; border:1px solid var(--border-light); font-size:0.85rem;">
+            <div>
+              <div style="font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                💻 ${dev.deviceName || 'Desktop Application'}
+                ${isCurrent ? '<span style="font-size:0.7rem; background:#dbeafe; color:#1e40af; padding:1px 6px; border-radius:4px;">THIS DEVICE</span>' : ''}
+              </div>
+              <div style="font-size:0.76rem; color:var(--text-subtle); font-family:monospace; margin-top:2px;">
+                ID: ${dev.deviceId} | Last Sync: ${lastSyncFormatted}
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:12px; ${dev.status === 'Online' ? 'background:#dcfce7; color:#15803d;' : 'background:#f1f5f9; color:#64748b;'}">
+                ● ${dev.status || 'Online'}
+              </span>
+              ${!isCurrent ? `
+                <button type="button" class="revoke-device-btn" data-device-id="${dev.deviceId}" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem; font-weight:600;" title="Revoke Device">
+                  Revoke
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.querySelectorAll('.revoke-device-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const devId = btn.getAttribute('data-device-id');
+          if (confirm(`Revoke device authorization for ${devId}?`)) {
+            await api.revokeDevice(devId);
+            showToast('Device revoked successfully', 'info');
+            renderRegisteredDevices();
+          }
+        });
+      });
+    } else {
+      container.innerHTML = `<div style="padding:12px; font-size:0.84rem; color:var(--text-subtle); text-align:center;">This is the only registered device on your account.</div>`;
+    }
+  } catch (e) {
+    const currentDevId = getDeviceId();
+    container.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; padding:10px 14px; border-radius:10px; border:1px solid var(--border-light); font-size:0.85rem;">
+        <div>
+          <div style="font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+            💻 Desktop Application
+            <span style="font-size:0.7rem; background:#dbeafe; color:#1e40af; padding:1px 6px; border-radius:4px;">THIS DEVICE</span>
+          </div>
+          <div style="font-size:0.76rem; color:var(--text-subtle); font-family:monospace; margin-top:2px;">
+            ID: ${currentDevId} | Status: Online
+          </div>
+        </div>
+        <div>
+          <span style="font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:12px; background:#dcfce7; color:#15803d;">
+            ● Online
+          </span>
+        </div>
+      </div>
+    `;
+  }
+}
+
+async function triggerManualBackup() {
+  if (!navigator.onLine) {
+    showToast('Cannot create cloud backup while offline. Please connect to internet.', 'error');
+    return;
+  }
+
+  const backupBtn = document.getElementById('backup-now-btn');
+  if (backupBtn) {
+    backupBtn.disabled = true;
+    backupBtn.textContent = '⏳ Uploading Backup...';
+  }
+
+  try {
+    const payload = {
+      invoices: appData.invoices || [],
+      products: getUnifiedProductsList(),
+      categories: appData.categories || [],
+      clients: appData.clients || [],
+      bills: appData.bills || []
+    };
+
+    const res = await api.createBackup(payload);
+    if (res && res.success) {
+      const counts = res.backup?.recordCounts || {
+        products: payload.products.length,
+        clients: payload.clients.length,
+        invoices: payload.invoices.length,
+        categories: payload.categories.length,
+        bills: payload.bills.length
+      };
+      showToast(`☁️ Backup completed successfully! (${counts.products || 0} Products, ${counts.clients || 0} Customers, ${counts.invoices || 0} Invoices)`, 'success');
+      await renderDataSyncDashboard();
+    } else {
+      showToast(res?.message || 'Backup failed.', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to upload cloud backup: ' + err.message, 'error');
+  } finally {
+    if (backupBtn) {
+      backupBtn.disabled = false;
+      backupBtn.textContent = '☁️ BACKUP NOW';
+    }
+  }
+}
+
+async function triggerRestoreBackup() {
+  if (!navigator.onLine) {
+    showToast('Cannot check cloud backups while offline.', 'error');
+    return;
+  }
+
+  try {
+    const res = await api.getLatestBackup();
+    if (!res || !res.success || !res.backup) {
+      showToast('No cloud backups found for your account.', 'info');
+      return;
+    }
+
+    pendingRestoreBackup = res.backup;
+    const modal = document.getElementById('restore-backup-modal');
+    const dateEl = document.getElementById('restore-modal-backup-date');
+    const countsGrid = document.getElementById('restore-modal-counts-grid');
+
+    if (dateEl) {
+      dateEl.textContent = new Date(pendingRestoreBackup.createdAt).toLocaleString('en-IN', {
+        dateStyle: 'full',
+        timeStyle: 'short'
+      });
+    }
+
+    if (countsGrid) {
+      const counts = pendingRestoreBackup.recordCounts || {};
+      countsGrid.innerHTML = `
+        <span style="background:#ffffff; border:1px solid #cbd5e1; padding:4px 10px; border-radius:8px; font-weight:700; font-size:0.85rem;">📦 Products: ${counts.products || 0}</span>
+        <span style="background:#ffffff; border:1px solid #cbd5e1; padding:4px 10px; border-radius:8px; font-weight:700; font-size:0.85rem;">🏷️ Categories: ${counts.categories || 0}</span>
+        <span style="background:#ffffff; border:1px solid #cbd5e1; padding:4px 10px; border-radius:8px; font-weight:700; font-size:0.85rem;">👥 Customers: ${counts.clients || 0}</span>
+        <span style="background:#ffffff; border:1px solid #cbd5e1; padding:4px 10px; border-radius:8px; font-weight:700; font-size:0.85rem;">🧾 Invoices: ${counts.invoices || 0}</span>
+        <span style="background:#ffffff; border:1px solid #cbd5e1; padding:4px 10px; border-radius:8px; font-weight:700; font-size:0.85rem;">💳 Bills: ${counts.bills || 0}</span>
+      `;
+    }
+
+    if (modal) modal.classList.remove('hidden');
+  } catch (err) {
+    if (err.status === 404 || err.message?.includes('404') || err.message?.includes('invalid JSON') || err.message?.includes('No cloud records found')) {
+      showToast('No cloud backups created yet for your account. Click "BACKUP NOW" to upload one.', 'info');
+    } else {
+      showToast('Error checking cloud backups: ' + err.message, 'error');
+    }
+  }
+}
+
+async function handleApplyRestore(mode = 'merge') {
+  if (!pendingRestoreBackup) return;
+
+  const modal = document.getElementById('restore-backup-modal');
+  if (modal) modal.classList.add('hidden');
+
+  try {
+    // If replacing, save emergency safety rollback in localStorage
+    if (mode === 'replace') {
+      const rollbackKey = `nexus_emergency_rollback_${Date.now()}`;
+      localStorage.setItem(rollbackKey, JSON.stringify({
+        products: appData.products,
+        categories: appData.categories,
+        clients: appData.clients,
+        invoices: appData.invoices,
+        bills: appData.bills
+      }));
+      console.log('Saved emergency rollback copy:', rollbackKey);
+    }
+
+    const res = await api.restoreBackup({ backupId: pendingRestoreBackup.backupId, mode });
+    if (res && res.success && res.restoredData) {
+      const data = res.restoredData;
+
+      if (mode === 'replace') {
+        appData.products = data.products || [];
+        appData.categories = data.categories || [];
+        appData.clients = data.clients || [];
+        appData.invoices = data.invoices || [];
+        appData.bills = data.bills || [];
+      } else {
+        // Merge mode
+        const existingPrdIds = new Set((appData.products || []).map(p => p.id));
+        (data.products || []).forEach(p => { if (!existingPrdIds.has(p.id)) appData.products.push(p); });
+
+        const existingCatIds = new Set((appData.categories || []).map(c => c.id));
+        (data.categories || []).forEach(c => { if (!existingCatIds.has(c.id)) appData.categories.push(c); });
+
+        const existingClientIds = new Set((appData.clients || []).map(c => c.id));
+        (data.clients || []).forEach(c => { if (!existingClientIds.has(c.id)) appData.clients.push(c); });
+
+        const existingInvIds = new Set((appData.invoices || []).map(i => i.id));
+        (data.invoices || []).forEach(i => { if (!existingInvIds.has(i.id)) appData.invoices.unshift(i); });
+
+        const existingBillIds = new Set((appData.bills || []).map(b => b.id));
+        (data.bills || []).forEach(b => { if (!existingBillIds.has(b.id)) appData.bills.push(b); });
+      }
+
+      // Persist to local storage
+      localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
+      localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
+      localStorage.setItem('nexus_custom_clients', JSON.stringify(appData.clients));
+
+      showToast(`📥 Backup restored successfully (${mode} mode)!`, 'success');
+      await loadBusinessData();
+      renderOverview();
+    } else {
+      showToast(res.message || 'Restore failed.', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to restore backup: ' + err.message, 'error');
+  } finally {
+    pendingRestoreBackup = null;
+  }
+}
+
+async function runMultiDeviceSyncEngine() {
+  const autoSyncEnabled = localStorage.getItem('nexus_auto_sync_enabled') !== 'false';
+  if (!autoSyncEnabled || !navigator.onLine || isSyncingMultiDevice) return;
+
+  isSyncingMultiDevice = true;
+  updateSyncStatusBadge('syncing');
+
+  try {
+    // 1. Push local changes if queue has items
+    const queue = getOfflineSyncQueue();
+    if (queue && queue.length > 0) {
+      const changesToPush = queue.map(q => ({
+        changeId: `chg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        entityType: (q.type || '').replace('DELETE_', '').replace('UPDATE_', ''),
+        action: q.type.startsWith('DELETE_') ? 'DELETE' : q.type.startsWith('UPDATE_') ? 'UPDATE' : 'CREATE',
+        entityId: q.payload?.id || q.payload?._id || q.payload || '',
+        payload: q.payload,
+        timestamp: q.timestamp || new Date()
+      }));
+
+      await api.pushSyncChanges(changesToPush);
+      saveOfflineSyncQueue([]);
+    }
+
+    // 2. Pull remote changes & merge cloud snapshot from other devices
+    const pullRes = await api.pullSyncChanges(lastSyncTimestamp);
+    if (pullRes && pullRes.success && Array.isArray(pullRes.changes) && pullRes.changes.length > 0) {
+      console.log(`[Multi-Device Sync] Received ${pullRes.changes.length} remote change(s)`);
+      await loadBusinessData();
+    }
+    await syncLatestCloudBackupData(false);
+
+    lastSyncTimestamp = new Date().toISOString();
+    localStorage.setItem('nexus_last_sync_time', lastSyncTimestamp);
+    updateSyncStatusBadge('synced');
+  } catch (err) {
+    console.warn('[Multi-Device Sync] Sync pass notice:', err.message);
+    if (!err.status || err.status === 404 || err.status === 408) {
+      updateSyncStatusBadge('synced');
+    } else {
+      updateSyncStatusBadge('failed');
+    }
+  } finally {
+    isSyncingMultiDevice = false;
+  }
+}
+
+async function syncLatestCloudBackupData(showNotification = false) {
+  if (!navigator.onLine) return;
+  try {
+    const res = await api.getLatestBackup();
+    if (res && res.success && res.backup && res.backup.snapshotData) {
+      const snap = res.backup.snapshotData;
+      let mergedAny = false;
+
+      // 1. Reconcile Products across devices (Add remote additions & remove remote deletions)
+      if (Array.isArray(snap.products)) {
+        const cloudPrdKeys = new Set(snap.products.map(p => (p.id || p.name || '').trim().toLowerCase()));
+        const cloudNames = new Set(snap.products.map(p => (p.name || '').trim().toLowerCase()));
+        const initialLength = (appData.products || []).length;
+
+        // Filter local products to remove items deleted remotely
+        let updatedProducts = (appData.products || []).filter(lp => {
+          if (isEntityDeleted('PRODUCT', lp.id, lp.name)) return false;
+          const keyId = (lp.id || '').trim().toLowerCase();
+          const keyName = (lp.name || '').trim().toLowerCase();
+          if (snap.products.length > 0 && keyId && !cloudPrdKeys.has(keyId) && !cloudNames.has(keyName)) {
+            return false; // Deleted on remote device
+          }
+          return true;
+        });
+
+        // Add remote new products from cloud snapshot
+        snap.products.forEach(p => {
+          if (p && p.name && !isEntityDeleted('PRODUCT', p.id, p.name)) {
+            const keyId = (p.id || '').trim().toLowerCase();
+            const keyName = (p.name || '').trim().toLowerCase();
+            const exists = updatedProducts.some(lp => {
+              const lpId = (lp.id || '').trim().toLowerCase();
+              const lpName = (lp.name || '').trim().toLowerCase();
+              return (keyId && lpId === keyId) || (keyName && lpName === keyName);
+            });
+            if (!exists) {
+              updatedProducts.push(p);
+            }
+          }
+        });
+
+        appData.products = sortProductsBySku(updatedProducts);
+        localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
+        if (appData.products.length !== initialLength) mergedAny = true;
+      }
+
+      // 2. Reconcile Categories across devices
+      if (Array.isArray(snap.categories)) {
+        const cloudCatNames = new Set(snap.categories.map(c => (c.name || '').trim().toLowerCase()));
+        const initialCatLength = (appData.categories || []).length;
+
+        let updatedCats = (appData.categories || []).filter(lc => {
+          if (isEntityDeleted('CATEGORY', lc.id, lc.name)) return false;
+          const keyName = (lc.name || '').trim().toLowerCase();
+          if (snap.categories.length > 0 && keyName && !cloudCatNames.has(keyName)) {
+            return false;
+          }
+          return true;
+        });
+
+        snap.categories.forEach(c => {
+          if (c && c.name && !isEntityDeleted('CATEGORY', c.id, c.name)) {
+            const keyName = (c.name || '').trim().toLowerCase();
+            const exists = updatedCats.some(lc => (lc.name || '').trim().toLowerCase() === keyName);
+            if (!exists) updatedCats.push(c);
+          }
+        });
+
+        appData.categories = updatedCats;
+        localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
+        if (appData.categories.length !== initialCatLength) mergedAny = true;
+      }
+
+      // 3. Reconcile Clients across devices
+      if (Array.isArray(snap.clients)) {
+        const cloudClientKeys = new Set(snap.clients.map(c => (c.id || c.name || '').trim().toLowerCase()));
+        const initialClientLength = (appData.clients || []).length;
+
+        let updatedClients = (appData.clients || []).filter(lc => {
+          if (isEntityDeleted('CLIENT', lc.id, lc.name)) return false;
+          const key = (lc.id || lc.name || '').trim().toLowerCase();
+          if (snap.clients.length > 0 && key && !cloudClientKeys.has(key)) {
+            return false;
+          }
+          return true;
+        });
+
+        snap.clients.forEach(c => {
+          if (c && (c.id || c.name) && !isEntityDeleted('CLIENT', c.id, c.name)) {
+            const key = (c.id || c.name).trim().toLowerCase();
+            const exists = updatedClients.some(lc => (lc.id || lc.name || '').trim().toLowerCase() === key);
+            if (!exists) updatedClients.push(c);
+          }
+        });
+
+        appData.clients = updatedClients;
+        localStorage.setItem('nexus_custom_clients', JSON.stringify(appData.clients));
+        if (appData.clients.length !== initialClientLength) mergedAny = true;
+      }
+
+      if (mergedAny) {
+        console.log('⚡ Synchronized latest cloud changes (additions & deletions) into local UI!');
+        renderOverview();
+        if (typeof renderProductsTable === 'function') renderProductsTable();
+        if (typeof renderCategories === 'function') renderCategories();
+        if (typeof renderCustomers === 'function') renderCustomers();
+        if (typeof renderInvoices === 'function') renderInvoices();
+        if (showNotification) {
+          showToast('⚡ Multi-device sync complete! Deletions & additions updated across all devices.', 'success');
+        }
+      } else if (showNotification) {
+        showToast('⚡ Data is already up-to-date across all devices!', 'info');
+      }
+    }
+  } catch (err) {
+    console.warn('syncLatestCloudBackupData error:', err.message);
+  }
+}
+
+// Bind Backup & Sync UI Event Listeners
+function bindDataSyncEventListeners() {
+  const backupBtn = document.getElementById('backup-now-btn');
+  if (backupBtn) backupBtn.addEventListener('click', triggerManualBackup);
+
+  const syncDevicesBtn = document.getElementById('sync-all-devices-btn');
+  if (syncDevicesBtn) {
+    syncDevicesBtn.addEventListener('click', async () => {
+      syncDevicesBtn.disabled = true;
+      syncDevicesBtn.textContent = '⏳ Syncing...';
+      await syncLatestCloudBackupData(true);
+      await renderDataSyncDashboard();
+      syncDevicesBtn.disabled = false;
+      syncDevicesBtn.textContent = '🔄 SYNC DEVICES';
+    });
+  }
+
+  const restoreBtn = document.getElementById('restore-backup-btn');
+  if (restoreBtn) restoreBtn.addEventListener('click', triggerRestoreBackup);
+
+  const autoSyncToggle = document.getElementById('auto-sync-toggle');
+  if (autoSyncToggle) {
+    autoSyncToggle.addEventListener('change', () => {
+      localStorage.setItem('nexus_auto_sync_enabled', autoSyncToggle.checked ? 'true' : 'false');
+      showToast(`Auto Sync turned ${autoSyncToggle.checked ? 'ON' : 'OFF'}`, 'info');
+      if (autoSyncToggle.checked) runMultiDeviceSyncEngine();
+    });
+  }
+
+  const confirmMergeBtn = document.getElementById('confirm-merge-restore-btn');
+  if (confirmMergeBtn) confirmMergeBtn.addEventListener('click', () => handleApplyRestore('merge'));
+
+  const confirmReplaceBtn = document.getElementById('confirm-replace-restore-btn');
+  if (confirmReplaceBtn) confirmReplaceBtn.addEventListener('click', () => handleApplyRestore('replace'));
+
+  const closeRestoreModalBtn = document.getElementById('close-restore-modal-btn');
+  const cancelRestoreBtn = document.getElementById('cancel-restore-btn');
+  const closeFn = () => {
+    const modal = document.getElementById('restore-backup-modal');
+    if (modal) modal.classList.add('hidden');
+    pendingRestoreBackup = null;
+  };
+
+  if (closeRestoreModalBtn) closeRestoreModalBtn.addEventListener('click', closeFn);
+  if (cancelRestoreBtn) cancelRestoreBtn.addEventListener('click', closeFn);
+}
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initAllInvoiceRowAutocompletes);
+  document.addEventListener('DOMContentLoaded', () => {
+    initAllInvoiceRowAutocompletes();
+    bindDataSyncEventListeners();
+  });
 } else {
   initAllInvoiceRowAutocompletes();
+  bindDataSyncEventListeners();
 }
+
+// Run Multi-Device Sync Engine every 10 seconds
+setInterval(runMultiDeviceSyncEngine, 10000);
 
 initSession();

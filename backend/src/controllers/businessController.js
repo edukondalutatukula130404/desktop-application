@@ -3,7 +3,8 @@ const dataStore = require('../db/dataStore');
 const businessController = {
   getInvoices: async (req, res) => {
     try {
-      const invoices = await dataStore.getInvoices();
+      const userId = req.user?.id;
+      const invoices = await dataStore.getInvoices(userId);
       res.json({ success: true, invoices });
     } catch (error) {
       console.error('getInvoices error:', error);
@@ -13,12 +14,12 @@ const businessController = {
 
   createInvoice: async (req, res) => {
     try {
+      const userId = req.user?.id;
       const { clientName, clientEmail, amount, dueDate, category, paymentMode } = req.body;
       if (!clientName || !amount) {
         return res.status(400).json({ success: false, message: 'Client name and amount are required' });
       }
-
-      const invoice = await dataStore.createInvoice({ clientName, clientEmail, amount, dueDate, category, paymentMode });
+      const invoice = await dataStore.createInvoice({ clientName, clientEmail, amount, dueDate, category, paymentMode }, userId);
       res.status(201).json({ success: true, invoice, message: 'Invoice created successfully' });
     } catch (error) {
       console.error('createInvoice error:', error);
@@ -43,7 +44,8 @@ const businessController = {
 
   getBills: async (req, res) => {
     try {
-      const bills = await dataStore.getBills();
+      const userId = req.user?.id;
+      const bills = await dataStore.getBills(userId);
       res.json({ success: true, bills });
     } catch (error) {
       console.error('getBills error:', error);
@@ -53,19 +55,18 @@ const businessController = {
 
   createBill: async (req, res) => {
     try {
+      const userId = req.user?.id;
       const { vendor, category, amount, dueDate, autoPay } = req.body;
       if (!vendor || !amount) {
         return res.status(400).json({ success: false, message: 'Vendor name and amount are required' });
       }
-
-      const bill = await dataStore.createBill({ vendor, category, amount, dueDate, autoPay });
+      const bill = await dataStore.createBill({ vendor, category, amount, dueDate, autoPay }, userId);
       res.status(201).json({ success: true, bill, message: 'Vendor bill added successfully' });
     } catch (error) {
       console.error('createBill error:', error);
       res.status(500).json({ success: false, message: 'Failed to create bill' });
     }
   },
-
 
   payBill: async (req, res) => {
     try {
@@ -111,7 +112,8 @@ const businessController = {
 
   getClients: async (req, res) => {
     try {
-      const clients = await dataStore.getClients();
+      const userId = req.user?.id;
+      const clients = await dataStore.getClients(userId);
       res.json({ success: true, clients });
     } catch (error) {
       console.error('getClients error:', error);
@@ -121,7 +123,8 @@ const businessController = {
 
   createClient: async (req, res) => {
     try {
-      const client = await dataStore.createClient(req.body);
+      const userId = req.user?.id;
+      const client = await dataStore.createClient(req.body, userId);
       res.status(201).json({ success: true, client, message: 'Customer created successfully' });
     } catch (error) {
       console.error('createClient error:', error);
@@ -146,7 +149,8 @@ const businessController = {
 
   getProducts: async (req, res) => {
     try {
-      const products = await dataStore.getProducts();
+      const userId = req.user?.id;
+      const products = await dataStore.getProducts(userId);
       res.json({ success: true, products });
     } catch (error) {
       console.error('getProducts error:', error);
@@ -156,11 +160,12 @@ const businessController = {
 
   createProduct: async (req, res) => {
     try {
+      const userId = req.user?.id;
       const { id, name, category, subCategory, color, size, price, count } = req.body;
       if (!name || price === undefined || price === null) {
         return res.status(400).json({ success: false, message: 'Product name and price are required' });
       }
-      const product = await dataStore.createProduct({ id, name, category, subCategory, color, size, price, count });
+      const product = await dataStore.createProduct({ id, name, category, subCategory, color, size, price, count }, userId);
       res.status(201).json({ success: true, product, message: 'Product created successfully' });
     } catch (error) {
       console.error('createProduct error:', error);
@@ -170,9 +175,13 @@ const businessController = {
 
   deleteProduct: async (req, res) => {
     try {
+      const userId = req.user?.id;
       const { id } = req.params;
       const { name } = req.query;
-      const result = await dataStore.deleteProduct(id, name);
+      const result = await dataStore.deleteProduct(id, name, userId);
+      if (result && result.success === false) {
+        return res.status(500).json({ success: false, message: result.error || 'Failed to delete product from database' });
+      }
       res.json({ success: true, message: 'Product deleted successfully', ...result });
     } catch (error) {
       console.error('deleteProduct error:', error);
@@ -182,9 +191,10 @@ const businessController = {
 
   updateProduct: async (req, res) => {
     try {
+      const userId = req.user?.id;
       const { id } = req.params;
       const { name, category, subCategory, color, size, price, count, stock } = req.body;
-      const updated = await dataStore.updateProduct(id, { name, category, subCategory, color, size, price, count, stock });
+      const updated = await dataStore.updateProduct(id, { name, category, subCategory, color, size, price, count, stock }, userId);
       if (!updated) {
         return res.status(404).json({ success: false, message: 'Product not found' });
       }
@@ -212,7 +222,8 @@ const businessController = {
 
   getCategories: async (req, res) => {
     try {
-      const categories = await dataStore.getCategories();
+      const userId = req.user?.id;
+      const categories = await dataStore.getCategories(userId);
       res.json({ success: true, categories });
     } catch (error) {
       console.error('getCategories error:', error);
@@ -222,11 +233,12 @@ const businessController = {
 
   createCategory: async (req, res) => {
     try {
+      const userId = req.user?.id;
       const { name, subCategories, genderType, seasonTag, itemCounts, status } = req.body;
       if (!name) {
         return res.status(400).json({ success: false, message: 'Category name is required' });
       }
-      const category = await dataStore.createCategory({ name, subCategories, genderType, seasonTag, itemCounts, status });
+      const category = await dataStore.createCategory({ name, subCategories, genderType, seasonTag, itemCounts, status }, userId);
       res.status(201).json({ success: true, category, message: 'Category created successfully' });
     } catch (error) {
       console.error('createCategory error:', error);
@@ -251,6 +263,9 @@ const businessController = {
       const { id } = req.params;
       const { name } = req.query;
       const result = await dataStore.deleteCategory(id, name);
+      if (result && result.success === false) {
+        return res.status(500).json({ success: false, message: result.error || 'Failed to delete category from database' });
+      }
       res.json({ success: true, message: 'Category deleted successfully', ...result });
     } catch (error) {
       console.error('deleteCategory error:', error);
@@ -274,8 +289,9 @@ const businessController = {
 
   getClientRelated: async (req, res) => {
     try {
+      const userId = req.user?.id;
       const { id } = req.params;
-      const data = await dataStore.getClientRelatedData(id);
+      const data = await dataStore.getClientRelatedData(id, userId);
       if (!data) {
         return res.status(404).json({ success: false, message: 'Client not found' });
       }
@@ -288,8 +304,9 @@ const businessController = {
 
   getCategoryRelated: async (req, res) => {
     try {
+      const userId = req.user?.id;
       const { id } = req.params;
-      const data = await dataStore.getCategoryRelatedData(id);
+      const data = await dataStore.getCategoryRelatedData(id, userId);
       if (!data) {
         return res.status(404).json({ success: false, message: 'Category not found' });
       }
@@ -302,7 +319,8 @@ const businessController = {
 
   getRelationalSummary: async (req, res) => {
     try {
-      const summary = await dataStore.getRelationalSummary();
+      const userId = req.user?.id;
+      const summary = await dataStore.getRelationalSummary(userId);
       res.json({ success: true, summary });
     } catch (error) {
       console.error('getRelationalSummary error:', error);
@@ -312,8 +330,9 @@ const businessController = {
 
   backupAllData: async (req, res) => {
     try {
+      const userId = req.user?.id;
       const { invoices, products, categories, clients, bills } = req.body || {};
-      const result = await dataStore.backupAllData({ invoices, products, categories, clients, bills });
+      const result = await dataStore.backupAllData({ invoices, products, categories, clients, bills }, userId);
       res.json({
         success: true,
         message: 'All business data successfully backed up to cloud database!',

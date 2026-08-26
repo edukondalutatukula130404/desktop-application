@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const categorySchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
+  userId: { type: String, required: false, index: true, default: null },
   name: { type: String, required: true },
   description: { type: String, default: '' },
   subCategories: { type: [String], default: [] },

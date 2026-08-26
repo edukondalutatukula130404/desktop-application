@@ -98,10 +98,20 @@ const authController = {
 
       const token = generateToken(user);
 
+      // Trigger userId migration on login (async, non-blocking)
+      const dataStore = require('../db/dataStore');
+      dataStore.seedInitialDataIfNeeded(user.id).catch(e => console.warn('Migration notice:', e.message));
+
+      // Check if cloud DB has data for this user
+      const Product = require('../models/Product');
+      const cloudCount = await Product.countDocuments({ userId: user.id });
+      const hasCloudData = cloudCount > 0;
+
       return res.status(200).json({
         success: true,
         message: 'Login successful!',
         token,
+        hasCloudData,
         user: {
           id: user.id,
           name: user.name,

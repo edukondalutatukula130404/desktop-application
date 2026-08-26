@@ -3,6 +3,20 @@
 const API_BASE_URL = (typeof window !== 'undefined' && window.location.protocol === 'file:') ? 'http://127.0.0.1:5050/api' : '/api';
 
 const TOKEN_KEY = 'nexus_auth_jwt_token';
+const DEVICE_KEY = 'nexus_device_id';
+
+export function getDeviceId() {
+  if (typeof window === 'undefined') return 'DEV_SERVER';
+  let deviceId = localStorage.getItem(DEVICE_KEY);
+  if (!deviceId) {
+    deviceId = `DEV_${Date.now()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    localStorage.setItem(DEVICE_KEY, deviceId);
+    // On fresh system installation / new device creation, clear any stale session tokens so login screen is required
+    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+  }
+  return deviceId;
+}
 
 export const tokenStorage = {
   get: () => localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY),
@@ -24,6 +38,7 @@ let ACTIVE_PORT = 5050;
 async function request(endpoint, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
+    'X-Device-Id': getDeviceId(),
     ...options.headers
   };
 
@@ -32,8 +47,9 @@ async function request(endpoint, options = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  const timeoutMs = options.timeout || (endpoint.includes('/backup') || endpoint.includes('/sync') ? 60000 : 30000);
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   const getUrl = (port) => (typeof window !== 'undefined' && window.location.protocol === 'file:') ? `http://127.0.0.1:${port}/api` : '/api';
 
@@ -47,7 +63,7 @@ async function request(endpoint, options = {}) {
 
     const data = await response.json().catch(() => ({
       success: false,
-      message: 'Server returned an invalid JSON response.'
+      message: response.status === 404 ? 'No cloud records found' : `HTTP Error ${response.status}`
     }));
 
     if (!response.ok) {
@@ -63,21 +79,31 @@ async function request(endpoint, options = {}) {
   } catch (error) {
     clearTimeout(timeoutId);
 
-    if (typeof window !== 'undefined' && window.location.protocol === 'file:' && ACTIVE_PORT === 5050) {
-      ACTIVE_PORT = 5051;
-      try {
-        const retryController = new AbortController();
-        const retryTimeout = setTimeout(() => retryController.abort(), 10000);
-        const retryRes = await fetch(`${getUrl(ACTIVE_PORT)}${endpoint}`, {
-          ...options,
-          headers,
-          signal: retryController.signal
-        });
-        clearTimeout(retryTimeout);
-        if (retryRes.ok) {
-          return await retryRes.json();
-        }
-      } catch (e2) {}
+    if (error.name === 'AbortError') {
+      const err = new Error('Server request timed out. Please check internet connection.');
+      err.status = 408;
+      throw err;
+    }
+
+    if (typeof window !== 'undefined' && window.location.protocol === 'file:') {
+      const portsToTry = [5051, 50501, 5052];
+      for (const fallbackPort of portsToTry) {
+        if (fallbackPort === ACTIVE_PORT) continue;
+        try {
+          const retryController = new AbortController();
+          const retryTimeout = setTimeout(() => retryController.abort(), Math.min(timeoutMs, 5000));
+          const retryRes = await fetch(`${getUrl(fallbackPort)}${endpoint}`, {
+            ...options,
+            headers,
+            signal: retryController.signal
+          });
+          clearTimeout(retryTimeout);
+          if (retryRes.ok) {
+            ACTIVE_PORT = fallbackPort;
+            return await retryRes.json();
+          }
+        } catch (e2) {}
+      }
     }
 
     console.warn(`API Request [${endpoint}] error:`, error.message);
@@ -126,7 +152,6 @@ export const api = {
   }),
 
   payBill: (id) => request(`/business/bills/${id}/pay`, { method: 'POST' }),
-
 
   toggleBillStatus: (id) => request(`/business/bills/${id}/status`, { method: 'PATCH' }),
 
@@ -182,15 +207,45 @@ export const api = {
 
   getRelationalSummary: () => request('/business/summary/relational', { method: 'GET' }),
 
-  backupDatabase: (payload) => request('/business/backup', {
+  // Backup Endpoints
+  createBackup: (payload) => request('/business/backup', {
     method: 'POST',
     body: JSON.stringify(payload)
   }),
 
+  getLatestBackup: () => request('/business/backup/latest', { method: 'GET' }),
+
+  getBackupList: () => request('/business/backup/list', { method: 'GET' }),
+
+  restoreBackup: (payload) => request('/business/backup/restore', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+
+  // Multi-Device Sync Endpoints
+  pushSyncChanges: (changes) => request('/business/sync/push', {
+    method: 'POST',
+    body: JSON.stringify({ changes })
+  }),
+
+  pullSyncChanges: (since) => request(`/business/sync/pull?since=${encodeURIComponent(since || '')}`, {
+    method: 'GET'
+  }),
+
+  // Device Management Endpoints
+  registerDevice: (deviceName) => request('/business/devices/register', {
+    method: 'POST',
+    body: JSON.stringify({ deviceName })
+  }),
+
+  getDevices: () => request('/business/devices', { method: 'GET' }),
+
+  revokeDevice: (deviceId) => request(`/business/devices/${encodeURIComponent(deviceId)}`, { method: 'DELETE' }),
+
   checkHealth: async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/health`);
-      return res.ok;
+      const data = await request('/health', { method: 'GET' });
+      return !!(data && data.status === 'online' && data.database === 'connected');
     } catch {
       return false;
     }
