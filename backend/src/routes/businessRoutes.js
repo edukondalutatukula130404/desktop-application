@@ -1,10 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const businessController = require('../controllers/businessController');
+const backupController = require('../controllers/backupController');
+const syncController = require('../controllers/syncController');
 const authMiddleware = require('../middleware/authMiddleware');
+const deviceMiddleware = require('../middleware/deviceMiddleware');
 
-// Protect all business endpoints with JWT auth
+// Protect all business endpoints with JWT auth & Device identification
 router.use(authMiddleware);
+router.use(deviceMiddleware);
 
 // Invoice Routes
 router.get('/invoices', businessController.getInvoices);
@@ -17,7 +21,6 @@ router.post('/bills', businessController.createBill);
 router.post('/bills/:id/pay', businessController.payBill);
 router.patch('/bills/:id/status', businessController.toggleBillStatus);
 router.patch('/bills/:id/autopay', businessController.toggleBillAutoPay);
-
 
 // Client Routes
 router.get('/clients', businessController.getClients);
@@ -43,7 +46,19 @@ router.patch('/categories/:id/status', businessController.toggleCategoryStatus);
 // Relational Summary Route
 router.get('/summary/relational', businessController.getRelationalSummary);
 
-// Full System Backup Route
-router.post('/backup', businessController.backupAllData);
+// Full System Backup Routes
+router.post('/backup', backupController.createBackup);
+router.get('/backup/latest', backupController.getLatestBackup);
+router.get('/backup/list', backupController.getBackupList);
+router.post('/backup/restore', backupController.restoreBackup);
+
+// Multi-Device Synchronization Routes
+router.post('/sync/push', syncController.pushSyncChanges);
+router.get('/sync/pull', syncController.pullSyncChanges);
+
+// Device Management Routes
+router.post('/devices/register', syncController.registerDevice);
+router.get('/devices', syncController.getDevices);
+router.delete('/devices/:deviceId', syncController.revokeDevice);
 
 module.exports = router;

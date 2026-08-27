@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Invoice = require('../models/Invoice');
 const Bill = require('../models/Bill');
 const Client = require('../models/Client');
@@ -213,8 +214,8 @@ const initialData = {
     {
       id: 'CAT-06',
       name: 'Winterwear & Outerwear',
-      description: 'Jackets, Sweaters, Hoodies, and Overcoats.',
-      subCategories: ['Jackets & Coats', 'Sweaters & Cardigans', 'Fleece Hoodies', 'Thermals'],
+      description: 'Jackets, Sweaters, Hoodies, Overcoats, and Rainwear.',
+      subCategories: ['Jackets & Coats', 'Sweaters & Cardigans', 'Fleece Hoodies', 'Thermals', 'Rainwear'],
       genderType: 'Unisex',
       seasonTag: 'Winter Special',
       itemCounts: 8,
@@ -225,6 +226,23 @@ const initialData = {
 };
 
 let isSeedingPromise = null;
+
+// Migrate unscoped documents (userId = null) to a specific user on first login
+async function migrateUnscopedDataToUser(userId) {
+  if (!userId || userId === 'usr_default') return;
+  try {
+    const filter = { $or: [{ userId: null }, { userId: { $exists: false } }] };
+    await Promise.all([
+      Product.updateMany(filter, { $set: { userId } }),
+      Invoice.updateMany(filter, { $set: { userId } }),
+      Bill.updateMany(filter, { $set: { userId } }),
+      Category.updateMany(filter, { $set: { userId } }),
+      Client.updateMany(filter, { $set: { userId } })
+    ]);
+  } catch (err) {
+    console.warn('[Migration] migrateUnscopedDataToUser error:', err.message);
+  }
+}
 
 // Seed initial data if MongoDB collections are empty
 async function removeDuplicateDatabaseDocuments() {
@@ -335,72 +353,90 @@ async function removeDuplicateDatabaseDocuments() {
   }
 }
 
-async function seedInitialDataIfNeeded() {
-  if (isSeedingPromise) return isSeedingPromise;
+let hasCompletedInitialSeed = false;
+const migratedUsers = new Set();
 
-  isSeedingPromise = (async () => {
-    try {
-      const invoiceCount = await Invoice.countDocuments();
-      if (invoiceCount === 0) {
-        await Invoice.insertMany(initialData.invoices);
+async function seedInitialDataIfNeeded(userId = null) {
+  if (!hasCompletedInitialSeed || (userId && !migratedUsers.has(userId))) {
+    if (isSeedingPromise) return isSeedingPromise;
+
+    isSeedingPromise = (async () => {
+      try {
+        const invoiceCount = await Invoice.countDocuments();
+        const billCount = await Bill.countDocuments();
+        const clientCount = await Client.countDocuments();
+        const categoryCount = await Category.countDocuments();
+        const productCount = await Product.countDocuments();
+
+        const isDatabaseEmpty = (invoiceCount === 0 && billCount === 0 && clientCount === 0 && categoryCount === 0 && productCount === 0);
+
+        if (isDatabaseEmpty) {
+          console.log('[DataStore] MongoDB is empty. Performing one-time initial seed...');
+          const seedDocs = (arr, uid) => arr.map(d => ({ ...d, userId: uid || null }));
+          await Invoice.insertMany(seedDocs(initialData.invoices, userId));
+          await Bill.insertMany(seedDocs(initialData.bills, userId));
+          await Client.insertMany(seedDocs(initialData.clients, userId));
+          await Category.insertMany(seedDocs(initialData.categories, userId));
+          await Product.insertMany(seedDocs(initialData.products, userId));
+        }
+
+        await removeDuplicateDatabaseDocuments();
+        hasCompletedInitialSeed = true;
+
+        // Migrate any unscoped data to this user
+        if (userId) {
+          await migrateUnscopedDataToUser(userId);
+          migratedUsers.add(userId);
+        }
+      } catch (error) {
+        console.error('Error seeding initial MongoDB data:', error.message);
+      } finally {
+        isSeedingPromise = null;
       }
+    })();
 
-      const billCount = await Bill.countDocuments();
-      if (billCount === 0) {
-        await Bill.insertMany(initialData.bills);
-      }
-
-      for (const client of initialData.clients) {
-        await Client.updateOne(
-          { id: client.id },
-          { $setOnInsert: client },
-          { upsert: true }
-        );
-      }
-
-      const categoryCount = await Category.countDocuments();
-      if (categoryCount === 0) {
-        await Category.insertMany(initialData.categories);
-      }
-
-      for (const prd of initialData.products) {
-        await Product.updateOne(
-          { id: prd.id },
-          { $setOnInsert: prd },
-          { upsert: true }
-        );
-      }
-
-      await removeDuplicateDatabaseDocuments();
-    } catch (error) {
-      console.error('Error seeding initial MongoDB data:', error.message);
-    } finally {
-      isSeedingPromise = null;
-    }
-  })();
-
-  return isSeedingPromise;
+    return isSeedingPromise;
+  }
 }
 
 const dataStore = {
   seedInitialDataIfNeeded,
 
-  getInvoices: async () => {
-    await seedInitialDataIfNeeded();
-    let invoices = await Invoice.find().sort({ createdAt: -1 }).lean().exec();
-    if (!invoices.length) {
+  getInvoices: async (userId) => {
+    await seedInitialDataIfNeeded(userId);
+    const filter = userId ? { userId } : {};
+    let invoices = await Invoice.find(filter).sort({ createdAt: -1 }).lean().exec();
+
+    // Auto-deduplicate invoices by normalized ID
+    const uniqueMap = new Map();
+    const duplicateIds = [];
+
+    (invoices || []).forEach(inv => {
+      if (inv && inv.id) {
+        const key = String(inv.id).replace(/-/g, '').toLowerCase().trim();
+        if (!uniqueMap.has(key)) {
+          uniqueMap.set(key, inv);
+        } else {
+          duplicateIds.push(inv._id);
+        }
+      }
+    });
+
+    if (duplicateIds.length > 0) {
       try {
-        await Invoice.insertMany(initialData.invoices);
-        invoices = await Invoice.find().sort({ createdAt: -1 }).lean().exec();
-      } catch (err) {
-        invoices = initialData.invoices;
+        await Invoice.deleteMany({ _id: { $in: duplicateIds } });
+        console.log(`🧹 Auto-removed ${duplicateIds.length} duplicate invoice record(s)`);
+      } catch (e) {
+        console.warn('Dedup invoice cleanup error:', e.message);
       }
     }
-    return invoices;
+
+    return Array.from(uniqueMap.values());
   },
 
-  createInvoice: async (invoiceData) => {
-    const count = await Invoice.countDocuments();
+  createInvoice: async (invoiceData, userId = null) => {
+    const filter = userId ? { userId } : {};
+    const count = await Invoice.countDocuments(filter);
     const d = invoiceData.issueDate ? new Date(invoiceData.issueDate) : (invoiceData.dueDate ? new Date(invoiceData.dueDate) : new Date());
     const year = d.getFullYear();
     const day = String(d.getDate()).padStart(2, '0');
@@ -412,7 +448,8 @@ const dataStore = {
     const amount = parseFloat(invoiceData.amount) || 0;
     const dateStr = `${year}-${month}-${day}`;
 
-    let existingInv = await Invoice.findOne({ id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
+    const idFilter = { id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }, ...filter };
+    let existingInv = await Invoice.findOne(idFilter).exec();
     if (existingInv) {
       existingInv.clientName = clientName;
       existingInv.amount = amount;
@@ -430,6 +467,7 @@ const dataStore = {
     // Backend Deduplication Guard: Check if an identical invoice was created in the last 60 seconds
     const sixtySecAgo = new Date(Date.now() - 60000);
     const recentDuplicate = await Invoice.findOne({
+      ...filter,
       clientName: { $regex: new RegExp(`^${clientName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
       amount: amount,
       issueDate: invoiceData.issueDate || dateStr,
@@ -443,6 +481,7 @@ const dataStore = {
 
     const newInvoice = new Invoice({
       id: customId,
+      userId: userId || null,
       clientId: invoiceData.clientId || `CUST-${dateMerged}001`,
       clientName: clientName,
       clientEmail: invoiceData.clientEmail || 'billing@client.com',
@@ -461,28 +500,8 @@ const dataStore = {
 
     const savedInvoice = await newInvoice.save();
 
-    // Auto-create or update Client record in MongoDB
-    try {
-      let client = await Client.findOne({ name: { $regex: new RegExp(`^${clientName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
-      if (!client) {
-        const clientCount = await Client.countDocuments();
-        const custSeq = String(clientCount + 1).padStart(2, '0');
-        client = new Client({
-          id: `CUST-${dateMerged}${String(custSeq).padStart(3, '0')}`,
-          name: clientName,
-          email: invoiceData.clientEmail || 'orders@client.com',
-          phone: '+91 98765 43210',
-          totalBilled: amount,
-          status: 'Active'
-        });
-        await client.save();
-      } else {
-        client.totalBilled = (Number(client.totalBilled) || 0) + amount;
-        await client.save();
-      }
-    } catch (err) {
-      console.warn('Auto-client creation error:', err);
-    }
+    // NOTE: Client creation is handled by the frontend (getOrCreateCustomer) before calling createInvoice.
+    // Do NOT auto-create a client here — it causes duplicate customer records.
 
     return savedInvoice;
   },
@@ -504,24 +523,18 @@ const dataStore = {
     return invoice;
   },
 
-  getBills: async () => {
-    await seedInitialDataIfNeeded();
-    let bills = await Bill.find().sort({ createdAt: -1 }).lean().exec();
-    if (!bills.length) {
-      try {
-        await Bill.insertMany(initialData.bills);
-        bills = await Bill.find().sort({ createdAt: -1 }).lean().exec();
-      } catch (err) {
-        bills = initialData.bills;
-      }
-    }
-    return bills;
+  getBills: async (userId) => {
+    await seedInitialDataIfNeeded(userId);
+    const filter = userId ? { userId } : {};
+    let bills = await Bill.find(filter).sort({ createdAt: -1 }).lean().exec();
+    return bills || [];
   },
 
-  createBill: async (billData) => {
-    const count = await Bill.countDocuments();
+  createBill: async (billData, userId = null) => {
+    const filter = userId ? { userId } : {};
+    const count = await Bill.countDocuments(filter);
     const customId = billData.id || ('BILL-' + (100 + count + 1));
-    let existingBill = await Bill.findOne({ id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
+    let existingBill = await Bill.findOne({ ...filter, id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
     if (existingBill) {
       if (billData.vendor) existingBill.vendor = billData.vendor;
       if (billData.category) existingBill.category = billData.category;
@@ -534,6 +547,7 @@ const dataStore = {
 
     const newBill = new Bill({
       id: customId,
+      userId: userId || null,
       vendor: billData.vendor,
       category: billData.category || 'General Expenses',
       dueDate: billData.dueDate || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
@@ -567,30 +581,57 @@ const dataStore = {
     return await bill.save();
   },
 
-  getClients: async () => {
-    await seedInitialDataIfNeeded();
-    let clients = await Client.find().lean().exec();
-    if (!clients.length) {
+  getClients: async (userId) => {
+    await seedInitialDataIfNeeded(userId);
+    const filter = userId ? { userId } : {};
+    let clients = await Client.find(filter).lean().exec();
+
+    // Auto-deduplicate clients by name (keep the one with highest totalBilled, delete the rest)
+    const uniqueMap = new Map();
+    const duplicateIds = [];
+
+    (clients || []).forEach(c => {
+      if (c && c.name) {
+        const key = c.name.trim().toLowerCase();
+        if (!uniqueMap.has(key)) {
+          uniqueMap.set(key, c);
+        } else {
+          // Keep the record with higher totalBilled, discard the other
+          const existing = uniqueMap.get(key);
+          if ((c.totalBilled || 0) > (existing.totalBilled || 0)) {
+            duplicateIds.push(existing._id);
+            uniqueMap.set(key, c);
+          } else {
+            duplicateIds.push(c._id);
+          }
+        }
+      }
+    });
+
+    if (duplicateIds.length > 0) {
       try {
-        await Client.insertMany(initialData.clients);
-        clients = await Client.find().lean().exec();
-      } catch (err) {
-        clients = initialData.clients;
+        await Client.deleteMany({ _id: { $in: duplicateIds } });
+        console.log(`🧹 Auto-removed ${duplicateIds.length} duplicate client record(s)`);
+      } catch (e) {
+        console.warn('Dedup client cleanup error:', e.message);
       }
     }
-    return clients || [];
+
+    return Array.from(uniqueMap.values());
   },
 
-  createClient: async (clientData) => {
+
+  createClient: async (clientData, userId = null) => {
+    const filter = userId ? { userId } : {};
     let customId = clientData.id ? clientData.id.trim() : '';
     const cleanName = (clientData.name || 'New Customer').trim();
 
     let existing = null;
     if (customId) {
-      existing = await Client.findOne({ id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
+      existing = await Client.findOne({ ...filter, id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
     }
     if (!existing) {
-      existing = await Client.findOne({ name: { $regex: new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
+      existing = await Client.findOne({ ...filter, name: { $regex: new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
     }
 
     if (existing) {
@@ -603,7 +644,7 @@ const dataStore = {
 
     if (!customId) {
       const todayStr = new Date().toISOString().split('T')[0];
-      const allClients = await Client.find().lean().exec();
+      const allClients = await Client.find(filter).lean().exec();
       let maxNum = 0;
       (allClients || []).forEach(c => {
         const match = c.id && c.id.match(/^CUST-.*-(\d+)$/i);
@@ -617,6 +658,7 @@ const dataStore = {
 
     const newClient = new Client({
       id: customId,
+      userId: userId || null,
       name: cleanName,
       contact: clientData.contact || 'contact@client.com',
       status: clientData.status || 'Active',
@@ -635,17 +677,10 @@ const dataStore = {
     return await client.save();
   },
 
-  getProducts: async () => {
-    await seedInitialDataIfNeeded();
-    let products = await Product.find().lean().exec();
-    if (!products || !products.length) {
-      try {
-        await Product.insertMany(initialData.products);
-        products = await Product.find().lean().exec();
-      } catch (err) {
-        products = initialData.products;
-      }
-    }
+  getProducts: async (userId) => {
+    await seedInitialDataIfNeeded(userId);
+    const filter = userId ? { userId } : {};
+    let products = await Product.find(filter).lean().exec();
     const sorted = [...(products || [])].sort((a, b) => {
       const numA = parseInt((a.id || '').replace(/\D/g, ''), 10) || 99999;
       const numB = parseInt((b.id || '').replace(/\D/g, ''), 10) || 99999;
@@ -655,8 +690,9 @@ const dataStore = {
     return sorted;
   },
 
-  createProduct: async (productData) => {
-    await seedInitialDataIfNeeded();
+  createProduct: async (productData, userId = null) => {
+    await seedInitialDataIfNeeded(userId);
+    const filter = userId ? { userId } : {};
     const cleanName = (productData.name || '').trim();
     if (!cleanName) return null;
 
@@ -666,7 +702,7 @@ const dataStore = {
 
     const safeRegexName = new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
 
-    let existingByName = await Product.findOne({ name: safeRegexName }).exec();
+    let existingByName = await Product.findOne({ ...filter, name: safeRegexName }).exec();
     if (existingByName) {
       existingByName.name = cleanName;
       existingByName.category = productData.category || existingByName.category || "Men's Apparel";
@@ -679,7 +715,7 @@ const dataStore = {
       return await existingByName.save();
     }
 
-    const allProducts = await Product.find().lean().exec();
+    const allProducts = await Product.find(filter).lean().exec();
     const usedIds = new Set(allProducts.map(p => (p.id || '').toUpperCase()));
 
     let nextNum = allProducts.length + 1;
@@ -695,6 +731,7 @@ const dataStore = {
     try {
       const newPrd = new Product({
         id: candidateId,
+        userId: userId || null,
         name: cleanName,
         category: productData.category || "Men's Apparel",
         subCategory: productData.subCategory || '',
@@ -711,6 +748,7 @@ const dataStore = {
         const fallbackId = `SKU-PRD-${Date.now().toString().slice(-5)}`;
         const fallbackPrd = new Product({
           id: fallbackId,
+          userId: userId || null,
           name: cleanName,
           category: productData.category || "Men's Apparel",
           subCategory: productData.subCategory || '',
@@ -726,15 +764,22 @@ const dataStore = {
     }
   },
 
-  deleteProduct: async (id, name = '') => {
+  deleteProduct: async (id, name = '', userId = null) => {
     try {
-      await seedInitialDataIfNeeded();
+      await seedInitialDataIfNeeded(userId);
+      const filter = userId ? { userId } : {};
       const queries = [];
-      if (id && String(id).trim()) {
-        queries.push({ id: { $regex: new RegExp(`^${String(id).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+      const idStr = id ? String(id).trim() : '';
+      const nameStr = name ? String(name).trim() : '';
+
+      if (idStr) {
+        queries.push({ ...filter, id: { $regex: new RegExp(`^${idStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+        if (mongoose.Types.ObjectId.isValid(idStr)) {
+          queries.push({ ...filter, _id: idStr });
+        }
       }
-      if (name && String(name).trim()) {
-        queries.push({ name: { $regex: new RegExp(`^${String(name).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+      if (nameStr) {
+        queries.push({ ...filter, name: { $regex: new RegExp(`^${nameStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
       }
       if (queries.length > 0) {
         await Product.deleteMany({ $or: queries }).exec();
@@ -746,8 +791,9 @@ const dataStore = {
     }
   },
 
-  updateProduct: async (id, productData) => {
-    await seedInitialDataIfNeeded();
+  updateProduct: async (id, productData, userId = null) => {
+    await seedInitialDataIfNeeded(userId);
+    const filter = userId ? { userId } : {};
     const priceNum = parseFloat(productData.price) || 0;
     const countNum = parseInt(productData.count, 10) || 0;
     const stockStatus = productData.stock || (countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock'));
@@ -758,10 +804,10 @@ const dataStore = {
 
     let existingPrd = null;
     if (safeRegexId) {
-      existingPrd = await Product.findOne({ id: safeRegexId }).exec();
+      existingPrd = await Product.findOne({ ...filter, id: safeRegexId }).exec();
     }
     if (!existingPrd && safeRegexName) {
-      existingPrd = await Product.findOne({ name: safeRegexName }).exec();
+      existingPrd = await Product.findOne({ ...filter, name: safeRegexName }).exec();
     }
 
     if (existingPrd) {
@@ -775,7 +821,7 @@ const dataStore = {
       existingPrd.stock = stockStatus;
       return await existingPrd.save();
     } else {
-      return await dataStore.createProduct({ id, ...productData });
+      return await dataStore.createProduct({ id, ...productData }, userId);
     }
   },
 
@@ -799,17 +845,10 @@ const dataStore = {
     return product;
   },
 
-  getCategories: async () => {
-    await seedInitialDataIfNeeded();
-    let categories = await Category.find().lean().exec();
-    if (!categories || !categories.length) {
-      try {
-        await Category.insertMany(initialData.categories);
-        categories = await Category.find().lean().exec();
-      } catch (err) {
-        categories = initialData.categories;
-      }
-    }
+  getCategories: async (userId) => {
+    await seedInitialDataIfNeeded(userId);
+    const filter = userId ? { userId } : {};
+    let categories = await Category.find(filter).lean().exec();
 
     // Auto-cleanup duplicates from MongoDB
     const uniqueMap = new Map();
@@ -839,7 +878,8 @@ const dataStore = {
     return Array.from(uniqueMap.values());
   },
 
-  createCategory: async (catData) => {
+  createCategory: async (catData, userId = null) => {
+    const filter = userId ? { userId } : {};
     const nameClean = (catData.name || '').trim();
     if (!nameClean) return null;
 
@@ -851,6 +891,7 @@ const dataStore = {
     }
 
     let existing = await Category.findOne({
+      ...filter,
       name: { $regex: new RegExp(`^${nameClean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
     }).exec();
 
@@ -864,7 +905,7 @@ const dataStore = {
       return await existing.save();
     }
 
-    const allCats = await Category.find().lean().exec();
+    const allCats = await Category.find(filter).lean().exec();
     let maxNum = 0;
     allCats.forEach(c => {
       const match = (c.id || '').match(/CAT-(\d+)/i);
@@ -878,6 +919,7 @@ const dataStore = {
 
     const newCat = new Category({
       id: newId,
+      userId: userId || null,
       name: nameClean,
       description: catData.description || '',
       subCategories: subs,
@@ -916,12 +958,22 @@ const dataStore = {
   deleteCategory: async (id, name = '') => {
     try {
       await seedInitialDataIfNeeded();
-      const queries = [{ id: id }];
-      if (name && name.trim()) {
-        const safeRegex = new RegExp(`^${name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-        queries.push({ name: safeRegex });
+      const queries = [];
+      const idStr = id ? String(id).trim() : '';
+      const nameStr = name ? String(name).trim() : '';
+
+      if (idStr) {
+        queries.push({ id: { $regex: new RegExp(`^${idStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+        if (mongoose.Types.ObjectId.isValid(idStr)) {
+          queries.push({ _id: idStr });
+        }
       }
-      await Category.deleteMany({ $or: queries }).exec();
+      if (nameStr) {
+        queries.push({ name: { $regex: new RegExp(`^${nameStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+      }
+      if (queries.length > 0) {
+        await Category.deleteMany({ $or: queries }).exec();
+      }
       return { success: true };
     } catch (err) {
       console.error('deleteCategory error:', err.message);
@@ -936,9 +988,10 @@ const dataStore = {
     return await cat.save();
   },
 
-  getClientRelatedData: async (clientId) => {
-    let clients = await Client.find().lean().exec();
-    const invoices = await Invoice.find().lean().exec();
+  getClientRelatedData: async (clientId, userId = null) => {
+    const filter = userId ? { userId } : {};
+    let clients = await Client.find(filter).lean().exec();
+    const invoices = await Invoice.find(filter).lean().exec();
 
     const searchKey = (clientId || '').toLowerCase().trim();
 
@@ -993,10 +1046,11 @@ const dataStore = {
     };
   },
 
-  getCategoryRelatedData: async (categoryIdOrName) => {
-    const categories = await Category.find().lean().exec();
-    const products = await Product.find().lean().exec();
-    const invoices = await Invoice.find().lean().exec();
+  getCategoryRelatedData: async (categoryIdOrName, userId = null) => {
+    const filter = userId ? { userId } : {};
+    const categories = await Category.find(filter).lean().exec();
+    const products = await Product.find(filter).lean().exec();
+    const invoices = await Invoice.find(filter).lean().exec();
 
     const category = categories.find(c =>
       c.id.toLowerCase() === categoryIdOrName.toLowerCase() ||
@@ -1029,12 +1083,13 @@ const dataStore = {
     };
   },
 
-  getRelationalSummary: async () => {
-    const clients = await Client.find().lean().exec();
-    const invoices = await Invoice.find().lean().exec();
-    const products = await Product.find().lean().exec();
-    const categories = await Category.find().lean().exec();
-    const bills = await Bill.find().lean().exec();
+  getRelationalSummary: async (userId = null) => {
+    const filter = userId ? { userId } : {};
+    const clients = await Client.find(filter).lean().exec();
+    const invoices = await Invoice.find(filter).lean().exec();
+    const products = await Product.find(filter).lean().exec();
+    const categories = await Category.find(filter).lean().exec();
+    const bills = await Bill.find(filter).lean().exec();
 
     const totalInvoicedAmount = invoices.reduce((sum, i) => sum + (i.amount || 0), 0);
     const totalPaidInvoices = invoices.filter(i => i.status === 'Paid').reduce((sum, i) => sum + (i.amount || 0), 0);
@@ -1091,7 +1146,7 @@ const dataStore = {
     };
   },
 
-  backupAllData: async ({ invoices = [], products = [], categories = [], clients = [], bills = [] }) => {
+  backupAllData: async ({ invoices = [], products = [], categories = [], clients = [], bills = [] }, userId = null) => {
     let syncedInvoices = 0;
     let syncedProducts = 0;
     let syncedCategories = 0;
@@ -1103,7 +1158,7 @@ const dataStore = {
       for (const inv of invoices) {
         try {
           if (inv && (inv.clientName || inv.amount)) {
-            await dataStore.createInvoice(inv);
+            await dataStore.createInvoice(inv, userId);
             syncedInvoices++;
           }
         } catch (e) {
@@ -1117,7 +1172,7 @@ const dataStore = {
       for (const prd of products) {
         try {
           if (prd && prd.name) {
-            await dataStore.createProduct(prd);
+            await dataStore.createProduct(prd, userId);
             syncedProducts++;
           }
         } catch (e) {
@@ -1131,7 +1186,7 @@ const dataStore = {
       for (const cat of categories) {
         try {
           if (cat && cat.name) {
-            await dataStore.createCategory(cat);
+            await dataStore.createCategory(cat, userId);
             syncedCategories++;
           }
         } catch (e) {
@@ -1145,7 +1200,7 @@ const dataStore = {
       for (const cl of clients) {
         try {
           if (cl && cl.name) {
-            await dataStore.createClient(cl);
+            await dataStore.createClient(cl, userId);
             syncedClients++;
           }
         } catch (e) {
@@ -1159,7 +1214,7 @@ const dataStore = {
       for (const b of bills) {
         try {
           if (b && (b.vendor || b.amount)) {
-            await dataStore.createBill(b);
+            await dataStore.createBill(b, userId);
             syncedBills++;
           }
         } catch (e) {
@@ -1180,3 +1235,4 @@ const dataStore = {
 };
 
 module.exports = dataStore;
+

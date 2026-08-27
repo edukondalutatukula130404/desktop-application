@@ -3,8 +3,7 @@ const jwt = require('jsonwebtoken');
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    req.user = { id: 'usr_default', name: 'Admin', email: 'admin@gmail.com' };
-    return next();
+    return res.status(401).json({ success: false, message: 'Authentication required. Please log in.' });
   }
 
   const token = authHeader.split(' ')[1];
@@ -14,8 +13,7 @@ const authMiddleware = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (error) {
-    req.user = { id: 'usr_default', name: 'Admin', email: 'admin@gmail.com' };
-    return next();
+    return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
   }
 };
 

@@ -11,7 +11,15 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:5050',
         changeOrigin: true,
-        secure: false
+        secure: false,
+        configure: (proxy) => {
+          proxy.on('error', (err, req, res) => {
+            if (err.code === 'ECONNREFUSED' && res && !res.headersSent) {
+              res.writeHead(503, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: false, message: 'Backend server connecting...' }));
+            }
+          });
+        }
       }
     }
   }

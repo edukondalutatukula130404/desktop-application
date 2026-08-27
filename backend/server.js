@@ -121,20 +121,23 @@ async function startServer(port = PORT) {
   // Start background 2-way sync engine
   startSyncEngine(5000);
   const HOST = '127.0.0.1';
+  const initialPort = parseInt(port || '5050', 10);
 
   const createServer = (p) => {
+    const currentPort = parseInt(p, 10);
     return new Promise((resolve) => {
-      const s = app.listen(p, HOST, () => {
+      const s = app.listen(currentPort, HOST, () => {
         console.log(`=================================`);
-        console.log(`🚀 Backend Auth Server running on http://${HOST}:${p}`);
+        console.log(`🚀 Backend Auth Server running on http://${HOST}:${currentPort}`);
         console.log(`=================================`);
         resolve(s);
       });
 
       s.on('error', async (err) => {
         if (err.code === 'EADDRINUSE') {
-          console.warn(`⚠️ Port ${p} in use, trying port ${p + 1}...`);
-          const fallbackServer = await createServer(p + 1);
+          const nextPort = currentPort + 1;
+          console.warn(`⚠️ Port ${currentPort} in use, trying port ${nextPort}...`);
+          const fallbackServer = await createServer(nextPort);
           resolve(fallbackServer);
         } else {
           console.error('Server error:', err);
@@ -144,7 +147,7 @@ async function startServer(port = PORT) {
     });
   };
 
-  return await createServer(port);
+  return await createServer(initialPort);
 }
 
 if (require.main === module) {

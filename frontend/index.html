@@ -728,43 +728,75 @@
               </form>
             </div>
 
-            <!-- Panel 2: Data Backup & Cloud Sync Card -->
+            <!-- Panel 2: Data Management, Backup & Multi-Device Sync Card -->
             <div class="panel-card" style="background: #ffffff; border-radius: 20px; padding: 32px 36px; border: 1px solid var(--border-light); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);">
               <div style="margin-bottom: 24px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
                 <div>
-                  <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Data Backup & Cloud Sync</h3>
-                  <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Save all business data directly to MongoDB database for instant multi-device access</p>
+                  <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Data Management & Multi-Device Sync</h3>
+                  <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Manage local data, cloud backups, and multi-device cross-system synchronization.</p>
                 </div>
-                <span style="padding: 6px 14px; background: #ecfdf5; color: #059669; border-radius: 20px; font-size: 0.78rem; font-weight: 700; border: 1px solid #a7f3d0; display: inline-flex; align-items: center; gap: 6px;">
-                  <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span> Auto-Sync Active
-                </span>
+                <div id="sync-status-badge" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; padding: 6px 14px; border-radius: 20px; background: rgba(34, 197, 94, 0.1); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.2);">
+                  ● Synced
+                </div>
               </div>
 
-              <div style="width: 100%;">
-                <!-- Single Backup Option Card -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
-                  <div>
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                      <div style="width: 38px; height: 38px; border-radius: 10px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                          <polyline points="7 10 12 15 17 10"></polyline>
-                          <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
-                      </div>
-                      <h4 style="font-size: 1.05rem; font-weight: 700; color: #0f172a; margin: 0;">Save All Records directly to Database</h4>
-                    </div>
-                    <p style="font-size: 0.85rem; color: #64748b; margin: 0; line-height: 1.5;">Directly sync and store all invoices, products, categories, clients, and bills into MongoDB database so your data is available on any device upon login.</p>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+                <!-- Card 1: Cloud Backup & Disaster Recovery -->
+                <div style="background: #f8fafc; border-radius: 16px; padding: 20px; border: 1px solid var(--border-light);">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                    <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">Cloud Backup & Disaster Recovery</h4>
+                    <span style="font-size: 0.75rem; background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 6px; font-weight: 700;">USER ACCOUNT BACKUP</span>
                   </div>
-                  <div style="display: flex; justify-content: flex-end;">
-                    <button type="button" onclick="backupDatabaseData()" style="padding: 10px 24px; font-size: 0.88rem; font-weight: 700; border-radius: 10px; cursor: pointer; background: #0284c7; color: #ffffff; border: none; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2); transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                      </svg>
-                      <span>Backup</span>
+                  <p style="font-size: 0.84rem; color: var(--text-subtle); margin-top: 0; margin-bottom: 14px;">
+                    Create a full cloud backup snapshot of your products, categories, customers, invoices, and bills to recover anytime.
+                  </p>
+
+                  <div style="background: #ffffff; border-radius: 12px; padding: 14px; margin-bottom: 18px; border: 1px solid var(--border-light);">
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-subtle); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 4px;">LAST CLOUD BACKUP</div>
+                    <div id="last-backup-timestamp-text" style="font-size: 1rem; font-weight: 700; color: var(--text-main);">No cloud backup created yet</div>
+                    <div id="last-backup-details-text" style="font-size: 0.83rem; color: var(--text-subtle); margin-top: 6px;">
+                      Click "BACKUP NOW" to upload a complete cloud snapshot.
+                    </div>
+                  </div>
+
+                  <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+                    <button type="button" id="backup-now-btn" class="primary-action-btn" style="flex: 1; min-width: 130px; padding: 12px; border-radius: 12px; font-size: 0.88rem; justify-content: center; font-weight: 700;">
+                      ☁️ BACKUP NOW
                     </button>
+                    <button type="button" id="sync-all-devices-btn" class="secondary-btn" style="flex: 1; min-width: 140px; padding: 12px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; border: 1px solid #2563eb; color: #2563eb; background: #eff6ff; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                      🔄 SYNC DEVICES
+                    </button>
+                    <button type="button" id="restore-backup-btn" class="secondary-btn" style="flex: 1; min-width: 130px; padding: 12px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; border: 1px solid var(--primary-accent); color: var(--primary-accent); background: #f5f3ff; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                      📥 RESTORE BACKUP
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Card 2: Multi-Device Synchronization & Registration -->
+                <div style="background: #f8fafc; border-radius: 16px; padding: 20px; border: 1px solid var(--border-light);">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                    <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">Multi-Device Synchronization</h4>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 700;">
+                      <span>Auto Sync</span>
+                      <input type="checkbox" id="auto-sync-toggle" checked style="width: 18px; height: 18px; accent-color: var(--primary-accent); cursor: pointer;" />
+                    </label>
+                  </div>
+
+                  <div style="background: #ffffff; border-radius: 12px; padding: 14px; margin-bottom: 14px; border: 1px solid var(--border-light);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                      <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-subtle);">CURRENT DEVICE ID</span>
+                      <span id="current-device-id-badge" style="font-family: monospace; font-size: 0.78rem; background: #f1f5f9; padding: 3px 8px; border-radius: 6px; color: var(--primary-accent); font-weight: 700;">
+                        DEV_LOADING
+                      </span>
+                    </div>
+                    <div style="font-size: 0.82rem; color: var(--text-subtle);">
+                      User Account: <strong id="device-user-email-text">user@example.com</strong>
+                    </div>
+                  </div>
+
+                  <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-subtle); margin-bottom: 8px; text-transform: uppercase;">MY REGISTERED DEVICES</div>
+                  <div id="registered-devices-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto;">
+                    <div style="padding: 10px; font-size: 0.85rem; color: var(--text-subtle); text-align: center;">Loading registered devices...</div>
                   </div>
                 </div>
               </div>
@@ -1229,6 +1261,79 @@
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+
+        <!-- VIEW 11: DATA MANAGEMENT & BACKUP & SYNC -->
+        <div id="view-datasync" class="view-panel">
+          <div class="panel-card" style="padding: 24px; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); margin-bottom: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <div>
+                <h2 style="margin: 0; font-size: 1.3rem; font-weight: 800; color: var(--text-main);">Data Management & Multi-Device Sync</h2>
+                <p style="margin: 4px 0 0 0; font-size: 0.88rem; color: var(--text-subtle);">Manage local data, cloud backups, and multi-device cross-system synchronization.</p>
+              </div>
+              <div id="sync-status-badge" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; padding: 6px 14px; border-radius: 20px; background: rgba(34, 197, 94, 0.1); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.2);">
+                ● Synced
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+              <!-- Card 1: Cloud Backup & Disaster Recovery -->
+              <div style="background: #f8fafc; border-radius: 16px; padding: 20px; border: 1px solid var(--border-light);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                  <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">Cloud Backup & Disaster Recovery</h3>
+                  <span style="font-size: 0.75rem; background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 6px; font-weight: 700;">USER ACCOUNT BACKUP</span>
+                </div>
+                <p style="font-size: 0.84rem; color: var(--text-subtle); margin-top: 0; margin-bottom: 14px;">
+                  Create a full cloud backup snapshot of your products, categories, customers, invoices, and bills to recover anytime.
+                </p>
+
+                <div style="background: #ffffff; border-radius: 12px; padding: 14px; margin-bottom: 18px; border: 1px solid var(--border-light);">
+                  <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-subtle); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 4px;">LAST CLOUD BACKUP</div>
+                  <div id="last-backup-timestamp-text" style="font-size: 1rem; font-weight: 700; color: var(--text-main);">No cloud backup created yet</div>
+                  <div id="last-backup-details-text" style="font-size: 0.83rem; color: var(--text-subtle); margin-top: 6px;">
+                    Click "BACKUP NOW" to upload a complete cloud snapshot.
+                  </div>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                  <button type="button" id="backup-now-btn" class="primary-action-btn" style="flex: 1; padding: 12px; border-radius: 12px; font-size: 0.9rem; justify-content: center; font-weight: 700;">
+                    ☁️ BACKUP NOW
+                  </button>
+                  <button type="button" id="restore-backup-btn" class="secondary-btn" style="flex: 1; padding: 12px; border-radius: 12px; font-size: 0.9rem; font-weight: 700; border: 1px solid var(--primary-accent); color: var(--primary-accent); background: #f5f3ff;">
+                    📥 RESTORE BACKUP
+                  </button>
+                </div>
+              </div>
+
+              <!-- Card 2: Multi-Device Synchronization & Registration -->
+              <div style="background: #f8fafc; border-radius: 16px; padding: 20px; border: 1px solid var(--border-light);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                  <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">Multi-Device Synchronization</h3>
+                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 700;">
+                    <span>Auto Sync</span>
+                    <input type="checkbox" id="auto-sync-toggle" checked style="width: 18px; height: 18px; accent-color: var(--primary-accent); cursor: pointer;" />
+                  </label>
+                </div>
+
+                <div style="background: #ffffff; border-radius: 12px; padding: 14px; margin-bottom: 14px; border: 1px solid var(--border-light);">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-subtle);">CURRENT DEVICE ID</span>
+                    <span id="current-device-id-badge" style="font-family: monospace; font-size: 0.78rem; background: #f1f5f9; padding: 3px 8px; border-radius: 6px; color: var(--primary-accent); font-weight: 700;">
+                      DEV_LOADING
+                    </span>
+                  </div>
+                  <div style="font-size: 0.82rem; color: var(--text-subtle);">
+                    User Account: <strong id="device-user-email-text">user@example.com</strong>
+                  </div>
+                </div>
+
+                <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-subtle); margin-bottom: 8px; text-transform: uppercase;">MY REGISTERED DEVICES</div>
+                <div id="registered-devices-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto;">
+                  <div style="padding: 10px; font-size: 0.85rem; color: var(--text-subtle); text-align: center;">Loading registered devices...</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1730,6 +1835,48 @@
     window.closeSidebarMenu = closeSidebarMenu;
     window.toggleSidebarMenu = toggleSidebarMenu;
   </script>
+  <!-- RESTORE BACKUP MODAL -->
+  <div id="restore-backup-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 520px; border-radius: 20px; padding: 28px;">
+      <button id="close-restore-modal-btn" class="modal-close-btn">&times;</button>
+      <div style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: rgba(124, 58, 237, 0.1); color: var(--primary-accent); border-radius: 14px; margin-bottom: 16px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+      </div>
+      <h2 class="modal-title" style="margin-bottom: 6px;">Cloud Backup Found</h2>
+      <p class="modal-subtitle" style="margin-bottom: 20px;">A cloud backup is available for your account.</p>
+
+      <div style="background: #f8fafc; border-radius: 14px; padding: 16px; margin-bottom: 20px; border: 1px solid var(--border-light);">
+        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-subtle); margin-bottom: 2px;">BACKUP TIMESTAMP</div>
+        <div id="restore-modal-backup-date" style="font-weight: 700; font-size: 1rem; color: var(--text-main); margin-bottom: 12px;">--</div>
+        
+        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-subtle); margin-bottom: 6px;">RECORDS INCLUDED</div>
+        <div id="restore-modal-counts-grid" style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <!-- Counts rendered here -->
+        </div>
+      </div>
+
+      <p style="font-size: 0.85rem; color: #b45309; background: #fffbeb; padding: 12px 14px; border-radius: 10px; border: 1px solid #fef3c7; margin-bottom: 20px;">
+        Choose how to apply this backup to your current device:
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button type="button" id="confirm-merge-restore-btn" class="primary-action-btn" style="padding: 12px; border-radius: 12px; font-weight: 700; justify-content: center;">
+          🔀 Merge with Existing Local Data (Recommended)
+        </button>
+        <button type="button" id="confirm-replace-restore-btn" style="padding: 12px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 12px; font-weight: 700; cursor: pointer;">
+          ⚠️ Replace Local Data (Overwrites with Cloud Backup)
+        </button>
+        <button type="button" id="cancel-restore-btn" class="secondary-btn" style="padding: 10px; border-radius: 12px; text-align: center;">
+          Skip / Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="/src/js/app.js"></script>
 </body>
 </html>
