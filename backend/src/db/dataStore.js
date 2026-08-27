@@ -427,12 +427,13 @@ const dataStore = {
       return await existingInv.save();
     }
 
-    // Backend Deduplication Guard: Check if an identical invoice was created in the last 10 seconds
-    const tenSecAgo = new Date(Date.now() - 10000);
+    // Backend Deduplication Guard: Check if an identical invoice was created in the last 60 seconds
+    const sixtySecAgo = new Date(Date.now() - 60000);
     const recentDuplicate = await Invoice.findOne({
       clientName: { $regex: new RegExp(`^${clientName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
       amount: amount,
-      createdAt: { $gte: tenSecAgo }
+      issueDate: invoiceData.issueDate || dateStr,
+      createdAt: { $gte: sixtySecAgo }
     }).exec();
 
     if (recentDuplicate) {

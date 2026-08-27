@@ -16,12 +16,11 @@
     "dist:installer": "npm run frontend:build && npx electron-builder --win nsis"
   },
   "build": {
-    "appId": "com.invoicepro.desktop",
-    "productName": "InvoicePro Desktop",
+    "appId": "com.nexussuite.desktop",
+    "productName": "NexusSuite",
     "icon": "electron/icon.ico",
-    "forceCodeSigning": false,
     "directories": {
-      "output": "release"
+      "output": "dist-installer"
     },
     "files": [
       "electron/**/*",
@@ -29,25 +28,27 @@
       "frontend/dist/**/*",
       "package.json"
     ],
-    "asar": true,
-    "asarUnpack": [
-      "**/node_modules/mongodb-memory-server/**",
-      "**/node_modules/mongodb-memory-server-core/**"
+    "extraFiles": [
+      {
+        "from": "backend/node_modules",
+        "to": "backend/node_modules",
+        "filter": ["**/*"]
+      }
     ],
+    "asar": false,
     "win": {
       "icon": "electron/icon.ico",
+      "publisherName": "NexusSuite",
       "target": [
-        "nsis"
-      ],
-      "forceCodeSigning": false
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
     },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "InvoicePro Desktop",
-      "artifactName": "InvoicePro-Setup-1.0.0.exe"
+    "portable": {
+      "artifactName": "NexusSuite-Setup.exe",
+      "unpackDirName": "NexusSuite"
     }
   },
   "dependencies": {

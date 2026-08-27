@@ -2,7 +2,10 @@ node_modules/
 .env
 dist/
 dist-desktop/
+dist-installer/
 release/
 mongo-data/
+*.db
 .DS_Store
 *.log
+

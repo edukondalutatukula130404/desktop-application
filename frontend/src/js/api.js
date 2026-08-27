@@ -187,9 +187,14 @@ export const api = {
     body: JSON.stringify(payload)
   }),
 
+  // Sync Status API Endpoints
+  getSyncStatus: () => request('/sync/status', { method: 'GET' }),
+  triggerSync: () => request('/sync/trigger', { method: 'POST' }),
+
   checkHealth: async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/health`);
+      const getUrl = (port) => (typeof window !== 'undefined' && window.location.protocol === 'file:') ? `http://127.0.0.1:${port}/api` : '/api';
+      const res = await fetch(`${getUrl(ACTIVE_PORT)}/health`);
       return res.ok;
     } catch {
       return false;

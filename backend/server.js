@@ -4,8 +4,11 @@ const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const { connectDB, getDBStatus } = require('./src/db/connect');
+const { initSQLiteDB } = require('./src/db/sqliteDB');
+const { startSyncEngine } = require('./src/services/syncEngine');
 const authRoutes = require('./src/routes/authRoutes');
 const businessRoutes = require('./src/routes/businessRoutes');
+const syncRoutes = require('./src/routes/syncRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -27,7 +30,7 @@ app.get('/api/health', (req, res) => {
     status: 'online',
     database: getDBStatus(),
     timestamp: new Date().toISOString(),
-    service: 'Authentication & Business Management API (Local / Cloud)'
+    service: 'Authentication & Business Management API (Offline-First / Cloud Sync)'
   });
 });
 
@@ -73,9 +76,10 @@ app.get('/api/business/invoices/download-pdf/:invoiceId', (req, res) => {
   }
 });
 
-// Authentication & Business Routes
+// Authentication, Business & Sync Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/business', businessRoutes);
+app.use('/api/sync', syncRoutes);
 
 // Serve Frontend Static Dist Assets (Production Desktop App)
 const frontendDist = path.join(__dirname, '../frontend/dist');
@@ -100,7 +104,22 @@ app.use((err, req, res, next) => {
 
 // Start Server helper function
 async function startServer(port = PORT) {
-  await connectDB();
+  try {
+    console.log('[Express Server] Initializing offline-first local SQLite database...');
+    await initSQLiteDB();
+  } catch (sqlErr) {
+    console.error('[Express Server] SQLite initialization warning:', sqlErr.message);
+  }
+
+  try {
+    console.log('[Express Server] Connecting background DB connections...');
+    await connectDB();
+  } catch (dbErr) {
+    console.warn('[Express Server] MongoDB Atlas offline mode active:', dbErr.message);
+  }
+
+  // Start background 2-way sync engine
+  startSyncEngine(5000);
   const HOST = '127.0.0.1';
 
   const createServer = (p) => {

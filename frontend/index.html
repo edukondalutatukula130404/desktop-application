@@ -231,7 +231,7 @@
     <div class="main-content-wrapper">
       
       <!-- TOP HEADER BAR -->
-      <header class="top-header">
+      <header class="top-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
         <div style="display: flex; align-items: center; gap: 14px;">
           <button id="topbar-sidebar-toggle-btn" onclick="toggleSidebarMenu()" class="secondary-btn" style="width: 48px; height: 48px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 14px; cursor: pointer; background: #ffffff; border: 1px solid var(--border-light); color: var(--primary-accent); transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.04);" title="Toggle Sidebar Menu">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
@@ -245,6 +245,7 @@
             <p id="header-page-subtitle" class="text-muted" style="display: none;"></p>
           </div>
         </div>
+
       </header>
 
       <!-- DYNAMIC CONTENT VIEWS CONTAINER -->
@@ -1095,7 +1096,7 @@
               </button>
             </div>
 
-            <form id="create-product-page-form" class="modal-form" style="display: flex; flex-direction: column; gap: 12px;">
+            <form id="create-product-page-form" onsubmit="handleSaveProductForm(event)" class="modal-form" style="display: flex; flex-direction: column; gap: 12px;">
               <input type="hidden" id="page-prd-edit-id" value="" />
               <!-- 1. Product Name -->
               <div class="input-group" style="margin-bottom: 0;">
@@ -1195,7 +1196,7 @@
               </button>
             </div>
 
-            <form id="create-category-page-form" class="modal-form" style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
+            <form id="create-category-page-form" onsubmit="handleSaveCategoryForm(event)" class="modal-form" style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
               <input type="hidden" id="page-cat-edit-id" value="" />
               <!-- 1. Category Name -->
               <div class="form-group" style="display: flex; flex-direction: column; gap: 8px; width: 100%;">

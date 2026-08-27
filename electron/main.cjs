@@ -150,32 +150,28 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  // 1. Open Electron window immediately (under 1 second startup)
-  const windowPromise = createWindow();
+  // 1. Start Backend & Database services so API server is ready on port 5050
+  try {
+    console.log('[Electron Main] Starting MongoDB database...');
+    const mongoUri = await startMongo();
+    process.env.MONGO_URI = mongoUri;
 
-  // 2. Start Backend & Database services asynchronously
-  (async () => {
+    console.log('[Electron Main] Starting Express API Server...');
     try {
-      console.log('[Electron Main] Starting MongoDB database...');
-      const mongoUri = await startMongo();
-      process.env.MONGO_URI = mongoUri;
-
-      console.log('[Electron Main] Starting Express API Server...');
-      try {
-        const backendModule = require('../backend/server');
-        if (backendModule && typeof backendModule.startServer === 'function') {
-          PORT = backendModule.PORT || 5050;
-          backendServer = await backendModule.startServer(PORT);
-        }
-      } catch (srvErr) {
-        console.error('[Electron Main] Express server launch error:', srvErr.message);
+      const backendModule = require('../backend/server');
+      if (backendModule && typeof backendModule.startServer === 'function') {
+        PORT = backendModule.PORT || 5050;
+        backendServer = await backendModule.startServer(PORT);
       }
-    } catch (err) {
-      console.error('[Electron Main] Error initializing backend services:', err.message);
+    } catch (srvErr) {
+      console.error('[Electron Main] Express server launch error:', srvErr.message);
     }
-  })();
+  } catch (err) {
+    console.error('[Electron Main] Error initializing backend services:', err.message);
+  }
 
-  await windowPromise;
+  // 2. Open Electron window once backend is ready
+  await createWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

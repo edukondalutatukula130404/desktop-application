@@ -712,90 +712,113 @@ async function loadBusinessData() {
   );
 
   // 1. Invoices from Backend API + local custom invoices
+  // 1. Invoices from Backend API (Fallback to localStorage ONLY when offline)
   const fetchedInvoices = invRes.invoices || [];
   const invMap = new Map();
-  fetchedInvoices.forEach(inv => {
-    if (inv) {
-      const idNorm = normalizeInvoiceId(inv);
-      invMap.set(idNorm.toLowerCase(), { ...inv, id: idNorm });
+
+  if (Array.isArray(fetchedInvoices) && fetchedInvoices.length > 0) {
+    fetchedInvoices.forEach(inv => {
+      if (inv) {
+        const idNorm = normalizeInvoiceId(inv);
+        invMap.set(idNorm.toLowerCase(), { ...inv, id: idNorm });
+      }
+    });
+  } else {
+    const savedInvoices = localStorage.getItem('nexus_custom_invoices');
+    if (savedInvoices) {
+      try {
+        const parsedInv = JSON.parse(savedInvoices);
+        if (Array.isArray(parsedInv)) {
+          parsedInv.forEach(inv => {
+            if (inv) {
+              const idNorm = normalizeInvoiceId(inv);
+              const key = idNorm.toLowerCase();
+              if (!invMap.has(key) && !isEntityDeleted('INVOICE', inv.id, idNorm)) {
+                invMap.set(key, { ...inv, id: idNorm });
+              }
+            }
+          });
+        }
+      } catch (e) {}
+    }
+  }
+
+  // Deduplicate invoices by unique invoice ID only
+  const seenInvIds = new Set();
+  const cleanInvoices = [];
+  Array.from(invMap.values()).forEach(inv => {
+    if (!inv) return;
+    const invId = (inv.id || '').trim().toLowerCase();
+    if (invId && !seenInvIds.has(invId)) {
+      seenInvIds.add(invId);
+      cleanInvoices.push(inv);
+    } else if (!invId) {
+      cleanInvoices.push(inv);
     }
   });
 
-  const savedInvoices = localStorage.getItem('nexus_custom_invoices');
-  if (savedInvoices) {
-    try {
-      const parsedInv = JSON.parse(savedInvoices);
-      if (Array.isArray(parsedInv)) {
-        parsedInv.forEach(inv => {
-          if (inv) {
-            const idNorm = normalizeInvoiceId(inv);
-            const key = idNorm.toLowerCase();
-            if (!invMap.has(key) && !isEntityDeleted('INVOICE', inv.id, idNorm)) {
-              invMap.set(key, { ...inv, id: idNorm });
-            }
-          }
-        });
-      }
-    } catch (e) {}
-  }
-  appData.invoices = Array.from(invMap.values());
+  appData.invoices = cleanInvoices;
   try {
     localStorage.setItem('nexus_custom_invoices', JSON.stringify(appData.invoices));
   } catch (e) {}
 
-  // 2. Bills from Backend API + local custom bills
+  // 2. Bills from Backend API
   const fetchedBills = billRes.bills || [];
   const billMap = new Map();
-  fetchedBills.forEach(b => {
-    if (b && b.id) billMap.set(b.id.toLowerCase(), { ...b });
-  });
-
-  const savedBills = localStorage.getItem('nexus_custom_bills');
-  if (savedBills) {
-    try {
-      const parsedBills = JSON.parse(savedBills);
-      if (Array.isArray(parsedBills)) {
-        parsedBills.forEach(b => {
-          if (b && b.id) {
-            const key = b.id.toLowerCase();
-            if (!billMap.has(key) && !isEntityDeleted('BILL', b.id, b.vendor)) {
-              billMap.set(key, { ...b });
+  if (Array.isArray(fetchedBills) && fetchedBills.length > 0) {
+    fetchedBills.forEach(b => {
+      if (b && b.id) billMap.set(b.id.toLowerCase(), { ...b });
+    });
+  } else {
+    const savedBills = localStorage.getItem('nexus_custom_bills');
+    if (savedBills) {
+      try {
+        const parsedBills = JSON.parse(savedBills);
+        if (Array.isArray(parsedBills)) {
+          parsedBills.forEach(b => {
+            if (b && b.id) {
+              const key = b.id.toLowerCase();
+              if (!billMap.has(key) && !isEntityDeleted('BILL', b.id, b.vendor)) {
+                billMap.set(key, { ...b });
+              }
             }
-          }
-        });
-      }
-    } catch (e) {}
+          });
+        }
+      } catch (e) {}
+    }
   }
   appData.bills = Array.from(billMap.values());
   try {
     localStorage.setItem('nexus_custom_bills', JSON.stringify(appData.bills));
   } catch (e) {}
 
-  // 3. Clients from Backend API + local custom clients
+  // 3. Clients from Backend API (Fallback to localStorage ONLY when offline)
   const fetchedClients = clientRes.clients || [];
   const clientMap = new Map();
-  fetchedClients.forEach(c => {
-    if (c && (c.id || c.name)) {
-      const key = (c.id || c.name).trim().toLowerCase();
-      clientMap.set(key, { ...c });
-    }
-  });
-
-  const savedClients = localStorage.getItem('nexus_custom_clients');
-  if (savedClients) {
-    try {
-      const parsedClients = JSON.parse(savedClients);
-      if (Array.isArray(parsedClients)) {
-        parsedClients.forEach(c => {
-          if (c && (c.id || c.name)) {
-            const key = (c.id || c.name).trim().toLowerCase();
-            if (!clientMap.has(key) && !isEntityDeleted('CLIENT', c.id, c.name)) {
-              clientMap.set(key, { ...c });
-            }
-          }
-        });
+  if (Array.isArray(fetchedClients) && fetchedClients.length > 0) {
+    fetchedClients.forEach(c => {
+      if (c && (c.id || c.name)) {
+        const key = (c.id || c.name).trim().toLowerCase();
+        clientMap.set(key, { ...c });
       }
-    } catch (e) {}
+    });
+  } else {
+    const savedClients = localStorage.getItem('nexus_custom_clients');
+    if (savedClients) {
+      try {
+        const parsedClients = JSON.parse(savedClients);
+        if (Array.isArray(parsedClients)) {
+          parsedClients.forEach(c => {
+            if (c && (c.id || c.name)) {
+              const key = (c.id || c.name).trim().toLowerCase();
+              if (!clientMap.has(key) && !isEntityDeleted('CLIENT', c.id, c.name)) {
+                clientMap.set(key, { ...c });
+              }
+            }
+          });
+        }
+      } catch (e) {}
+    }
   }
   appData.clients = Array.from(clientMap.values());
   try {
@@ -1115,6 +1138,10 @@ function switchView(viewKey) {
     }
   }
 
+  if (viewKey === 'overview' || viewKey === 'dashboard') {
+    renderOverview();
+  }
+
   if (viewKey === 'add_product') {
     populatePageProductCategoryOptions();
   }
@@ -1178,6 +1205,47 @@ document.querySelectorAll('.link-btn').forEach(btn => {
 
 // ================= VIEW RENDERERS =================
 
+function getCustomersDirectoryTotal() {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const targetDate = currentCustomerSelectedDate || todayStr;
+  const targetIso = normalizeDateToIso(targetDate);
+
+  let rawList = [];
+  if (appData.invoices && appData.invoices.length > 0) {
+    rawList = [...appData.invoices];
+  } else if (appData.clients && appData.clients.length > 0) {
+    rawList = [...appData.clients];
+  }
+
+  let txs = rawList.map((item, idx) => {
+    const invDate = item.issueDate || item.date || todayStr;
+    const isoDate = normalizeDateToIso(invDate);
+    const amount = Number(item.amount !== undefined ? item.amount : item.totalBilled) || 0;
+    const paymentMode = item.paymentMode || item.paymentMethod || 'Cash';
+    return {
+      invId: (item.id || `INV-${idx}`).trim().toLowerCase(),
+      clientName: item.clientName || item.name || 'Walk-in Retail Customer',
+      amount,
+      isoDate,
+      paymentMode
+    };
+  }).filter(item => item.amount > 0);
+
+  if (targetIso) {
+    txs = txs.filter(item => item.isoDate === targetIso);
+  }
+
+  // Deduplicate strictly by unique invoice ID (never drop valid transactions with same amount)
+  const seenIds = new Set();
+  txs = txs.filter(item => {
+    if (item.invId && seenIds.has(item.invId)) return false;
+    if (item.invId) seenIds.add(item.invId);
+    return true;
+  });
+
+  return txs.reduce((sum, item) => sum + item.amount, 0);
+}
+
 function renderOverview() {
   // Compute Stats
   const todayStr = new Date().toISOString().split('T')[0];
@@ -1186,25 +1254,22 @@ function renderOverview() {
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
 
-  const totalRevenue = appData.invoices.reduce((sum, i) => sum + i.amount, 0);
+  const totalRevenue = appData.invoices.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
 
-  const todayInvoices = appData.invoices.filter(i => (i.issueDate === todayStr || i.date === todayStr));
-  const rawTodayTotal = todayInvoices.reduce((sum, i) => sum + i.amount, 0);
-  const todayTotal = rawTodayTotal > 0 ? rawTodayTotal : Math.round(totalRevenue * 0.25);
+  // Today's Revenue ALWAYS matches Customers Directory Total Amount
+  const todayTotal = getCustomersDirectoryTotal();
 
   const weeklyInvoices = appData.invoices.filter(i => {
     const d = new Date(i.issueDate || i.date);
     return !isNaN(d.getTime()) && d >= sevenDaysAgo;
   });
-  const rawWeeklyTotal = weeklyInvoices.reduce((sum, i) => sum + i.amount, 0);
-  const weeklyTotal = rawWeeklyTotal > 0 ? rawWeeklyTotal : Math.round(totalRevenue * 0.65);
+  const weeklyTotal = weeklyInvoices.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
 
   const monthlyInvoices = appData.invoices.filter(i => {
     const d = new Date(i.issueDate || i.date);
     return !isNaN(d.getTime()) && d.getFullYear() === currentYear && d.getMonth() === currentMonth;
   });
-  const rawMonthlyTotal = monthlyInvoices.reduce((sum, i) => sum + i.amount, 0);
-  const monthlyTotal = rawMonthlyTotal > 0 ? rawMonthlyTotal : totalRevenue;
+  const monthlyTotal = monthlyInvoices.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
 
   const todayElem = document.getElementById('stat-today-revenue');
   if (todayElem) todayElem.textContent = formatCurrency(todayTotal);
@@ -1354,7 +1419,9 @@ function getInvoiceSubCategory(inv) {
 function renderInvoicesTable(filterStatus = 'all', searchQuery = '') {
   const tbody = document.getElementById('invoices-table-tbody');
   
-  let list = appData.invoices;
+  let list = [...(appData.invoices || [])];
+  list.sort((a, b) => new Date(b.issueDate || b.createdAt || b.created_at || b.updated_at || 0).getTime() - new Date(a.issueDate || a.createdAt || a.created_at || a.updated_at || 0).getTime());
+
   if (filterStatus !== 'all') {
     list = list.filter(i => i.status === filterStatus);
   }
@@ -1871,21 +1938,32 @@ function renderInventoryView() {
       const prdId = btn.getAttribute('data-id');
       const prdName = btn.getAttribute('data-name');
 
-      appData.products = (appData.products || []).filter(p => p.id !== prdId && p.name !== prdName);
-      try {
-        localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
-      } catch (e) {}
+      if (confirm(`Are you sure you want to delete product "${prdName}"?`)) {
+        markEntityAsDeleted('PRODUCT', prdId, prdName);
+        appData.products = sortProductsBySku((appData.products || []).filter(p => p.id !== prdId && p.name !== prdName));
 
-      try {
-        await api.deleteProduct(prdId);
-      } catch (e) {
-        console.warn('api.deleteProduct:', e);
+        try {
+          localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
+        } catch (e) {}
+
+        const deletePayload = { id: prdId, name: prdName };
+
+        if (!navigator.onLine) {
+          enqueueOfflineSync('DELETE_PRODUCT', deletePayload);
+        } else {
+          try {
+            await api.deleteProduct(prdId, prdName);
+          } catch (e) {
+            console.warn('api.deleteProduct error, queuing sync:', e);
+            enqueueOfflineSync('DELETE_PRODUCT', deletePayload);
+          }
+        }
+
+        renderProductsTable();
+        renderInventoryView();
+        updateInvoiceProductSelectOptions();
+        showToast(`Product "${prdName}" removed from Inventory!`, 'success');
       }
-
-      renderProductsTable();
-      renderInventoryView();
-      updateInvoiceProductSelectOptions();
-      showToast(`Product "${prdName}" removed from Inventory!`, 'success');
     });
   });
 
@@ -2297,41 +2375,55 @@ function renderClientsGrid(filterDateStr = null) {
   const targetIso = selectedDate ? normalizeDateToIso(selectedDate) : '';
 
   // Build customer transaction list from all invoices & client records
-  let customerTransactions = [];
-
+  let rawList = [];
   if (appData.invoices && appData.invoices.length > 0) {
-    customerTransactions = appData.invoices.map((inv, idx) => {
-      const invDate = inv.issueDate || inv.date || '2026-08-13';
-      const isoDate = normalizeDateToIso(invDate);
-      const amount = Number(inv.amount) || 0;
-      const paymentMode = inv.paymentMode || inv.paymentMethod || 'Cash';
-      return {
-        invId: inv.id,
-        clientId: inv.clientId,
-        clientName: inv.clientName || 'Walk-in Retail Customer',
-        invDate,
-        isoDate,
-        amount,
-        paymentMode
-      };
+    rawList = [...appData.invoices].sort((a, b) => {
+      const timeA = new Date(a.issueDate || a.createdAt || a.created_at || a.updated_at || 0).getTime();
+      const timeB = new Date(b.issueDate || b.createdAt || b.created_at || b.updated_at || 0).getTime();
+      if (timeA !== timeB) return timeA - timeB;
+      return (a.id || '').localeCompare(b.id || '');
     });
   } else if (appData.clients && appData.clients.length > 0) {
-    customerTransactions = appData.clients.map((c, idx) => {
-      const cDate = c.date || '2026-08-13';
-      return {
-        invId: `INV-${idx}`,
-        clientId: c.id,
-        clientName: c.name,
-        invDate: cDate,
-        isoDate: normalizeDateToIso(cDate),
-        amount: Number(c.totalBilled) || 0,
-        paymentMode: c.paymentMode || 'Cash'
-      };
-    });
+    rawList = [...appData.clients];
   }
+
+  const dayCounters = {};
+  let customerTransactions = rawList.map((item, idx) => {
+    const invDate = item.issueDate || item.date || '2026-08-13';
+    const isoDate = normalizeDateToIso(invDate);
+    const amount = Number(item.amount !== undefined ? item.amount : item.totalBilled) || 0;
+    const paymentMode = item.paymentMode || item.paymentMethod || 'Cash';
+
+    if (!dayCounters[isoDate]) {
+      dayCounters[isoDate] = 0;
+    }
+    dayCounters[isoDate]++;
+    const daySeq = dayCounters[isoDate];
+
+    return {
+      invId: item.id || `INV-${idx}`,
+      clientId: item.clientId || item.id,
+      clientName: item.clientName || item.name || 'Walk-in Retail Customer',
+      invDate,
+      isoDate,
+      amount,
+      paymentMode,
+      daySeq,
+      sortTime: new Date(item.issueDate || item.createdAt || item.created_at || item.updated_at || Date.now()).getTime()
+    };
+  });
 
   // Filter strictly for valid customer amounts
   customerTransactions = customerTransactions.filter(item => item.amount > 0);
+
+  // Deduplicate customer transactions strictly by unique invoice ID
+  const seenCustIds = new Set();
+  customerTransactions = customerTransactions.filter(item => {
+    const idKey = (item.invId || item.clientId || '').toLowerCase().trim();
+    if (idKey && seenCustIds.has(idKey)) return false;
+    if (idKey) seenCustIds.add(idKey);
+    return true;
+  });
 
   // Filter strictly by selected date when targetIso date is selected via Search
   if (targetIso) {
@@ -2349,6 +2441,12 @@ function renderClientsGrid(filterDateStr = null) {
     });
   }
 
+  // Sort customerTransactions in ASCENDING sequence order (CUST-...001, CUST-...002, CUST-...003...)
+  customerTransactions.sort((a, b) => {
+    if (a.sortTime !== b.sortTime) return a.sortTime - b.sortTime;
+    return a.daySeq - b.daySeq;
+  });
+
   if (customerTransactions.length === 0) {
     tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-subtle); padding: 32px; font-weight: 500;">No customer records found.</td></tr>`;
     const totalValEl = document.getElementById('customer-total-amount-val');
@@ -2358,20 +2456,11 @@ function renderClientsGrid(filterDateStr = null) {
 
   let totalCustAmount = 0;
   const rowsHtml = [];
-  const dayCounters = {};
 
-  customerTransactions.forEach((item) => {
-
-    const isoKey = item.isoDate || normalizeDateToIso(item.invDate);
-    if (!dayCounters[isoKey]) {
-      dayCounters[isoKey] = 0;
-    }
-    dayCounters[isoKey]++;
-    const daySeq = dayCounters[isoKey];
-
+  customerTransactions.forEach((item, idx) => {
     totalCustAmount += item.amount;
     const displayDateStr = formatDisplayDate(item.invDate) || '14-08-2026';
-    const displayId = formatCustomerId(item.clientId, daySeq, item.invDate);
+    const displayId = formatCustomerId(item.clientId, idx + 1, item.invDate);
     const paymentModeStr = item.paymentMode || 'Cash';
 
     rowsHtml.push(`
@@ -2398,6 +2487,11 @@ function renderClientsGrid(filterDateStr = null) {
   const totalValEl = document.getElementById('customer-total-amount-val');
   if (totalValEl) {
     totalValEl.textContent = formatCurrency(totalCustAmount);
+  }
+
+  const todayElem = document.getElementById('stat-today-revenue');
+  if (todayElem) {
+    todayElem.textContent = formatCurrency(totalCustAmount);
   }
 }
 
@@ -3820,7 +3914,7 @@ function setupSearchAutocomplete(row) {
           }
         }
       },
-      false
+      true
     );
   }
 
@@ -3847,7 +3941,7 @@ function setupSearchAutocomplete(row) {
       (itemEl, val) => {
         catInput.value = val;
       },
-      false
+      true
     );
   }
 
@@ -3916,7 +4010,7 @@ function setupSearchAutocomplete(row) {
         }
         autoFillProductDetails(val, matched);
       },
-      false
+      true
     );
   }
 
@@ -4378,30 +4472,8 @@ function bindPageInvoicePaymentModeListener() {
     modeSelect.dataset.bound = 'true';
     modeSelect.addEventListener('change', () => {
       const selectedMode = modeSelect.value;
-      const dateStr = new Date().toISOString().split('T')[0];
-      const curId = pendingInvoiceDraft?.previewInvId || formatInvoiceIdWithDate(dateStr);
-
       if (pendingInvoiceDraft) {
         pendingInvoiceDraft.paymentMode = selectedMode;
-      }
-
-      if (appData.invoices) {
-        const inv = appData.invoices.find(i => i.id === curId);
-        if (inv) {
-          inv.paymentMode = selectedMode;
-        } else {
-          appData.invoices.push({
-            id: curId,
-            clientId: `CUST-${dateStr.replace(/-/g, '')}001`,
-            clientName: document.getElementById('page-inv-client-name')?.value.trim() || 'Walk-in Retail Customer',
-            issueDate: dateStr,
-            dueDate: dateStr,
-            amount: parseFloat((document.getElementById('page-inv-total-display')?.textContent || '0').replace(/[^0-9.]/g, '')) || 0,
-            status: 'Paid',
-            category: 'Retail Sale',
-            paymentMode: selectedMode
-          });
-        }
       }
       renderClientsGrid(currentCustomerSelectedDate);
     });
@@ -4457,8 +4529,13 @@ function openInvoicePreviewModal() {
 
   const gstAmount = subtotal * (gstRate / 100);
   const totalAmount = subtotal + gstAmount;
+
+  if (totalAmount <= 0) {
+    showToast('Please select a product or enter a unit price to preview the invoice.', 'info');
+    return;
+  }
+
   const dateStr = new Date().toISOString().split('T')[0];
-  const previewInvId = formatInvoiceIdWithDate(dateStr);
 
   pendingInvoiceDraft = {
     shopName,
@@ -4468,32 +4545,9 @@ function openInvoicePreviewModal() {
     gstAmount,
     totalAmount,
     dateStr,
-    previewInvId,
     paymentMode,
     clientPhone
   };
-
-  // Live update invoice record in appData.invoices so Customers Directory reflects Payment Mode instantly
-  const invRecord = {
-    id: previewInvId,
-    clientId: `CUST-${dateStr.replace(/-/g, '')}001`,
-    clientName: shopName,
-    issueDate: dateStr,
-    dueDate: dateStr,
-    amount: totalAmount,
-    status: 'Paid',
-    category: items.map(i => i.category || i.name).join(', ') || 'Retail Sale',
-    paymentMode: paymentMode
-  };
-
-  if (!appData.invoices) appData.invoices = [];
-  const existingIdx = appData.invoices.findIndex(i => i.id === previewInvId);
-  if (existingIdx >= 0) {
-    appData.invoices[existingIdx] = { ...appData.invoices[existingIdx], ...invRecord };
-  } else {
-    appData.invoices.push(invRecord);
-  }
-  renderClientsGrid(currentCustomerSelectedDate);
 
   const previewHTML = renderInvoicePreviewHTML(pendingInvoiceDraft);
 
@@ -4859,44 +4913,52 @@ async function handleConfirmDownloadPDF() {
   if (!pendingInvoiceDraft || isProcessingInvoiceCreation) return;
   isProcessingInvoiceCreation = true;
 
+  const currentDraft = pendingInvoiceDraft;
+  pendingInvoiceDraft = null; // Instantly consume draft to prevent duplicate invoice submission
+
   try {
-    const { shopName, items, totalAmount, dateStr } = pendingInvoiceDraft;
-  const dateMerged = (dateStr ? dateStr.replace(/-/g, '') : new Date().toISOString().split('T')[0].replace(/-/g, ''));
-  const seqNum = incrementDailyInvoiceSequence(dateMerged);
-  const finalInvId = formatInvoiceIdWithDate(dateStr, seqNum);
+    const { shopName, items, totalAmount, dateStr } = currentDraft;
+    const dateMerged = (dateStr ? dateStr.replace(/-/g, '') : new Date().toISOString().split('T')[0].replace(/-/g, ''));
+    const seqNum = incrementDailyInvoiceSequence(dateMerged);
+    const finalInvId = formatInvoiceIdWithDate(dateStr, seqNum);
 
-  const categorySummary = items.map(i => i.name).join(', ') || 'Retail Sale';
+    const categorySummary = items.map(i => i.name).join(', ') || 'Retail Sale';
 
-  // Ensure unique Customer record without duplicates
-  const customer = await getOrCreateCustomer(shopName);
+    // Ensure unique Customer record without duplicates
+    const customer = await getOrCreateCustomer(shopName);
 
-  const invoicePayload = {
-    id: finalInvId,
-    clientName: shopName,
-    clientId: customer.id,
-    clientEmail: '',
-    amount: totalAmount,
-    dueDate: dateStr,
-    category: categorySummary,
-    paymentMode: (pendingInvoiceDraft && pendingInvoiceDraft.paymentMode) ? pendingInvoiceDraft.paymentMode : 'Cash'
-  };
+    const invoicePayload = {
+      id: finalInvId,
+      clientName: shopName,
+      clientId: customer.id,
+      clientEmail: '',
+      amount: totalAmount,
+      subtotal: currentDraft.subtotal || totalAmount,
+      issueDate: dateStr,
+      dueDate: dateStr,
+      date: dateStr,
+      category: categorySummary,
+      paymentMode: (currentDraft && currentDraft.paymentMode) ? currentDraft.paymentMode : 'Cash',
+      items: items || []
+    };
 
   if (!navigator.onLine) {
     enqueueOfflineSync('INVOICE', invoicePayload);
   } else {
     try {
       await api.createInvoice(invoicePayload);
+      await loadBusinessData();
     } catch (e) {
       console.warn('api.createInvoice failed/offline, queuing sync:', e);
       enqueueOfflineSync('INVOICE', invoicePayload);
     }
   }
 
-  // Push created invoice locally to appData.invoices
+  // Push created invoice locally to appData.invoices only if not already added by loadBusinessData
   if (!appData.invoices) appData.invoices = [];
-  const existingInv = appData.invoices.find(i => i.id === finalInvId);
+  const existingInv = appData.invoices.find(i => (i.id || '').toLowerCase() === finalInvId.toLowerCase());
   if (!existingInv) {
-    appData.invoices.unshift({
+    appData.invoices.push({
       id: finalInvId,
       clientId: customer.id,
       clientName: shopName,
@@ -4940,10 +5002,16 @@ async function handleConfirmDownloadPDF() {
   initPageInvoiceForm();
   pendingInvoiceDraft = null;
 
-  switchView('invoices');
+  switchView('clients');
 
-  // Immediately re-render Customers Directory and all views
-  renderClientsGrid(currentCustomerSelectedDate || dateStr);
+  // Force fresh reload from backend so Customers Directory has latest data
+  try {
+    await loadBusinessData();
+  } catch (e) {
+    // Fallback: at least re-render with current appData
+  }
+  // Re-render Customers Directory for invoice date so new invoice is at the last row with next customer ID
+  renderClientsGrid(dateStr);
   } finally {
     isProcessingInvoiceCreation = false;
   }
@@ -5492,6 +5560,7 @@ createInvoiceForm.addEventListener('submit', async (e) => {
     } else {
       try {
         await api.createInvoice(invoicePayload);
+        await loadBusinessData();
         showToast('Invoice created & PDF downloaded successfully!', 'success');
       } catch (err) {
         console.warn('api.createInvoice offline/failed, queuing sync:', err);
@@ -6198,5 +6267,205 @@ if (document.readyState === 'loading') {
 } else {
   initAllInvoiceRowAutocompletes();
 }
+
+let _isSyncPolling = false;
+async function pollSyncStatus() {
+  if (_isSyncPolling) return; // Prevent overlapping calls
+  _isSyncPolling = true;
+  try {
+    // First trigger a backend sync cycle (push + pull from MongoDB)
+    try {
+      await api.triggerSync();
+    } catch (e) {
+      // offline or backend unavailable — skip sync, just check status
+    }
+    const res = await api.getSyncStatus();
+    if (res && res.success) {
+      updateSyncStatusUI(res);
+    }
+    // Always reload fresh data after sync attempt
+    await loadBusinessData();
+  } catch (err) {
+    updateSyncStatusUI({ status: 'offline', pendingCount: 0 });
+  } finally {
+    _isSyncPolling = false;
+  }
+}
+
+function updateSyncStatusUI({ status, pendingCount = 0 }) {
+  const dot = document.getElementById('sync-status-dot');
+  const text = document.getElementById('sync-status-text');
+  const btn = document.getElementById('sync-status-btn');
+  if (!dot || !text || !btn) return;
+
+  if (status === 'online_synced' || status === 'online') {
+    dot.style.background = '#22c55e';
+    dot.style.boxShadow = '0 0 6px rgba(34, 197, 94, 0.6)';
+    btn.style.background = 'rgba(34, 197, 94, 0.08)';
+    btn.style.color = '#15803d';
+    btn.style.borderColor = 'rgba(34, 197, 94, 0.25)';
+    text.textContent = 'Online';
+  } else if (status === 'syncing') {
+    dot.style.background = '#3b82f6';
+    dot.style.boxShadow = '0 0 6px rgba(59, 130, 246, 0.6)';
+    btn.style.background = 'rgba(59, 130, 246, 0.08)';
+    btn.style.color = '#1d4ed8';
+    btn.style.borderColor = 'rgba(59, 130, 246, 0.25)';
+    text.textContent = pendingCount > 0 ? `Syncing (${pendingCount})...` : 'Syncing...';
+  } else if (status === 'offline') {
+    dot.style.background = '#f97316';
+    dot.style.boxShadow = '0 0 6px rgba(249, 115, 22, 0.6)';
+    btn.style.background = 'rgba(249, 115, 22, 0.08)';
+    btn.style.color = '#c2410c';
+    btn.style.borderColor = 'rgba(249, 115, 22, 0.25)';
+    text.textContent = pendingCount > 0 ? `Offline (${pendingCount})` : 'Offline';
+  } else if (status === 'error') {
+    dot.style.background = '#ef4444';
+    dot.style.boxShadow = '0 0 6px rgba(239, 68, 68, 0.6)';
+    btn.style.background = 'rgba(239, 68, 68, 0.08)';
+    btn.style.color = '#b91c1c';
+    btn.style.borderColor = 'rgba(239, 68, 68, 0.25)';
+    text.textContent = 'Offline';
+  }
+}
+
+async function handleSaveProductForm(e) {
+  if (e) e.preventDefault();
+
+  const editId = document.getElementById('page-prd-edit-id')?.value || '';
+  const nameInput = document.getElementById('page-prd-name');
+  const catInput = document.getElementById('page-prd-category');
+  const subCatInput = document.getElementById('page-prd-subcategory');
+  const colorInput = document.getElementById('page-prd-color');
+  const sizeInput = document.getElementById('page-prd-size');
+  const priceInput = document.getElementById('page-prd-price');
+  const stockInput = document.getElementById('page-prd-stock');
+
+  const name = nameInput ? nameInput.value.trim() : '';
+  const category = catInput ? catInput.value.trim() : "Men's Apparel";
+  const subCategory = subCatInput ? subCatInput.value.trim() : 'Shirts';
+  const color = colorInput ? colorInput.value : 'Black';
+  const size = sizeInput ? sizeInput.value : 'M';
+  const price = priceInput ? parseFloat(priceInput.value) || 0 : 0;
+  const count = stockInput ? parseInt(stockInput.value, 10) || 50 : 50;
+
+  if (!name) {
+    showToast('Please enter a product name', 'error');
+    return;
+  }
+  if (price <= 0) {
+    showToast('Please enter a valid price for the product', 'error');
+    return;
+  }
+
+  const payload = {
+    name,
+    category,
+    subCategory,
+    color,
+    size,
+    price,
+    count,
+    stock: count > 0 ? 'In Stock' : 'Out of Stock'
+  };
+
+  showToast('Saving product...', 'info');
+
+  try {
+    if (editId) {
+      await api.updateProduct(editId, payload);
+      showToast('Product updated successfully!', 'success');
+    } else {
+      await api.createProduct(payload);
+      showToast('Product created & synced successfully!', 'success');
+    }
+
+    await loadBusinessData();
+
+    if (nameInput) nameInput.value = '';
+    if (priceInput) priceInput.value = '';
+    if (stockInput) stockInput.value = '50';
+    if (document.getElementById('page-prd-edit-id')) document.getElementById('page-prd-edit-id').value = '';
+
+    switchView('products');
+  } catch (err) {
+    console.error('Failed to save product:', err);
+    showToast('Failed to save product.', 'error');
+  }
+}
+
+async function handleSaveCategoryForm(e) {
+  if (e) e.preventDefault();
+
+  const editId = document.getElementById('page-cat-edit-id')?.value || '';
+  const nameInput = document.getElementById('page-cat-name');
+  const subCatsInput = document.getElementById('page-cat-subcategories');
+  const statusSelect = document.getElementById('page-cat-status');
+
+  const name = nameInput ? nameInput.value.trim() : '';
+  const rawSubCats = subCatsInput ? subCatsInput.value.trim() : '';
+  const status = statusSelect ? statusSelect.value : 'Active';
+
+  if (!name) {
+    showToast('Please enter a category name', 'error');
+    return;
+  }
+
+  const subCategories = rawSubCats
+    ? rawSubCats.split(',').map(s => s.trim()).filter(Boolean)
+    : ['General'];
+
+  const payload = {
+    name,
+    subCategories,
+    status
+  };
+
+  showToast('Saving category...', 'info');
+
+  try {
+    if (editId) {
+      await api.updateCategory(editId, payload);
+      showToast('Category updated successfully!', 'success');
+    } else {
+      await api.createCategory(payload);
+      showToast('Category created & synced successfully!', 'success');
+    }
+
+    await loadBusinessData();
+
+    if (nameInput) nameInput.value = '';
+    if (subCatsInput) subCatsInput.value = '';
+    if (document.getElementById('page-cat-edit-id')) document.getElementById('page-cat-edit-id').value = '';
+
+    switchView('categories');
+  } catch (err) {
+    console.error('Failed to save category:', err);
+    showToast('Failed to save category.', 'error');
+  }
+}
+
+window.handleManualSyncClick = handleManualSyncClick;
+window.handleSaveProductForm = handleSaveProductForm;
+window.handleSaveCategoryForm = handleSaveCategoryForm;
+
+window.addEventListener('online', async () => {
+  console.log('[NexusSuite] Network connection restored! Triggering automatic MongoDB sync...');
+  showToast('Network restored. Syncing offline data to MongoDB Atlas...', 'info');
+  try {
+    const res = await api.triggerSync();
+    if (res && res.success) {
+      updateSyncStatusUI(res);
+      await loadBusinessData();
+      showToast('Offline invoices & business data synced to MongoDB Atlas!', 'success');
+    }
+  } catch (err) {
+    console.warn('Auto-sync on reconnect error:', err);
+  }
+});
+
+// Poll every 3 seconds — each call triggers a full sync+fetch cycle
+setInterval(pollSyncStatus, 3000);
+pollSyncStatus();
 
 initSession();

@@ -6,29 +6,31 @@ const { startLocalMongoServer } = require('./localMongo');
 let isConnected = false;
 let isAtlasConnected = false;
 
+const DEFAULT_ATLAS_URI = 'mongodb://tatukulaedukondalu_db_user:NEXUSSUITE@ac-73qhkjq-shard-00-00.qdjwbzw.mongodb.net:27017,ac-73qhkjq-shard-00-01.qdjwbzw.mongodb.net:27017,ac-73qhkjq-shard-00-02.qdjwbzw.mongodb.net:27017/test?ssl=true&replicaSet=atlas-ogncp9-shard-0&authSource=admin&appName=Cluster0';
+
 const connectDB = async () => {
   if (isConnected && isAtlasConnected) {
     return;
   }
 
-  let mongoURI = process.env.MONGO_URI;
+  let mongoURI = process.env.MONGO_URI || DEFAULT_ATLAS_URI;
 
   if (mongoURI) {
     try {
-      console.log('🍃 Connecting to MongoDB Atlas Cloud Database (Cluster0)...');
+      console.log('🍃 Connecting to Shared MongoDB Atlas Database...');
       const conn = await mongoose.connect(mongoURI, {
-        serverSelectionTimeoutMS: 30000,
-        connectTimeoutMS: 30000,
-        socketTimeoutMS: 45000
+        serverSelectionTimeoutMS: 8000,
+        connectTimeoutMS: 8000,
+        socketTimeoutMS: 20000
       });
       isConnected = !!conn.connections[0].readyState;
       isAtlasConnected = true;
       console.log(`=================================`);
-      console.log(`🍃 MongoDB Connected to Cloud Atlas Database: ${conn.connection.host} (Database: ${conn.connection.name})`);
+      console.log(`🍃 Shared MongoDB Atlas Connected: ${conn.connection.host} (Database: ${conn.connection.name})`);
       console.log(`=================================`);
       return;
     } catch (error) {
-      console.warn('⚠️ Could not connect to MONGO_URI, falling back to local storage:', error.message);
+      console.warn('⚠️ Could not connect to MongoDB Atlas, falling back to local database:', error.message);
     }
   }
 
