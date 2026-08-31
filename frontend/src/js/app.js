@@ -443,6 +443,118 @@ function initPaperSizeCards() {
   });
 }
 
+function getOrCreateDeviceId() {
+  let devId = localStorage.getItem('nexus_device_id');
+  if (!devId) {
+    const rand = Math.random().toString(36).substring(2, 7).toUpperCase();
+    devId = `DEV_${Date.now().toString(36).toUpperCase()}_${rand}`;
+    localStorage.setItem('nexus_device_id', devId);
+  }
+  return devId;
+}
+
+async function autoRegisterCurrentDevice() {
+  try {
+    const deviceId = getOrCreateDeviceId();
+    const email = appData.user?.email || localStorage.getItem('userEmail') || 'owner@shop.com';
+    const companyId = appData.user?.companyId || 'shop_default';
+
+    // Update UI elements for Current Device ID and User Account Email
+    document.querySelectorAll('.current-device-id-badge, #current-device-id-badge, #current-device-id-badge-2').forEach(el => {
+      el.textContent = deviceId;
+    });
+    document.querySelectorAll('.device-user-email-text, #device-user-email-text, #device-user-email-text-2').forEach(el => {
+      el.textContent = email;
+    });
+
+    const isWin = typeof navigator !== 'undefined' && navigator.platform ? navigator.platform.includes('Win') : true;
+    const deviceName = `${isWin ? 'Windows Desktop' : 'Desktop App'} (${deviceId.slice(-5)})`;
+
+    await api.registerDevice({
+      deviceId,
+      deviceName,
+      companyId,
+      userId: appData.user?.id || 'usr_offline',
+      email
+    });
+
+    await renderRegisteredDevices();
+  } catch (err) {
+    console.warn('autoRegisterCurrentDevice notice:', err);
+    renderRegisteredDevices();
+  }
+}
+
+async function renderRegisteredDevices() {
+  const currentDeviceId = getOrCreateDeviceId();
+  const containers = document.querySelectorAll('.registered-devices-list, #registered-devices-list, #registered-devices-list-2');
+  if (!containers || containers.length === 0) return;
+
+  try {
+    const res = await api.getRegisteredDevices();
+    const devices = (res && Array.isArray(res.devices)) ? res.devices : [];
+
+    if (devices.length === 0) {
+      containers.forEach(c => {
+        c.innerHTML = `
+          <div style="padding: 12px; font-size: 0.82rem; color: var(--text-subtle); text-align: center; background: #f8fafc; border-radius: 8px; border: 1px dashed var(--border-light);">
+            💻 1 Active Device (${currentDeviceId})
+          </div>
+        `;
+      });
+      return;
+    }
+
+    const html = devices.map(dev => {
+      const isCurrent = dev.deviceId === currentDeviceId;
+      const devName = dev.deviceName || 'Windows Desktop';
+      const lastSeen = dev.lastSync ? new Date(dev.lastSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active now';
+      const statusColor = isCurrent || dev.status === 'Online' ? '#10b981' : '#6b7280';
+      const badgeBg = isCurrent ? '#f3e8ff' : '#f1f5f9';
+      const badgeColor = isCurrent ? 'var(--primary-accent)' : '#475569';
+
+      return `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #ffffff; border-radius: 10px; border: 1px solid ${isCurrent ? 'var(--primary-accent)' : 'var(--border-light)'}; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+          <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+            <div style="width: 32px; height: 32px; border-radius: 8px; background: ${badgeBg}; color: ${badgeColor}; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0;">
+              💻
+            </div>
+            <div style="min-width: 0;">
+              <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <span>${devName}</span>
+                ${isCurrent ? `<span style="font-size: 0.68rem; background: var(--primary-accent); color: #ffffff; padding: 1px 6px; border-radius: 4px; font-weight: 800;">THIS DEVICE</span>` : ''}
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-subtle); display: flex; align-items: center; gap: 6px;">
+                <span style="width: 6px; height: 6px; border-radius: 50%; background: ${statusColor}; display: inline-block;"></span>
+                <span>${dev.email || 'user@shop.com'} • ${lastSeen}</span>
+              </div>
+            </div>
+          </div>
+          ${!isCurrent ? `
+            <button type="button" class="revoke-device-btn" data-device-id="${dev.deviceId}" style="background: none; border: 1px solid #fca5a5; color: #ef4444; font-size: 0.75rem; cursor: pointer; padding: 3px 8px; border-radius: 6px; font-weight: 700;" title="Disconnect Device">
+              Disconnect
+            </button>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+
+    containers.forEach(c => {
+      c.innerHTML = html;
+    });
+
+  } catch (err) {
+    console.warn('renderRegisteredDevices error:', err);
+    containers.forEach(c => {
+      c.innerHTML = `
+        <div style="padding: 10px; font-size: 0.82rem; color: var(--text-subtle); text-align: center;">
+          💻 Current Device: <strong>${currentDeviceId}</strong>
+        </div>
+      `;
+    });
+  }
+}
+
 async function enterWorkspace() {
   if (authViewport) authViewport.classList.add('hidden');
   if (saasDashboard) saasDashboard.classList.remove('hidden');
@@ -499,6 +611,7 @@ async function enterWorkspace() {
     // Load Business Data
     await loadBusinessData();
     processOfflineSyncQueue();
+    await autoRegisterCurrentDevice();
 
     // Initialize Real-Time Socket.IO multi-device cloud synchronization
     const userCompanyId = (appData.user && appData.user.companyId) || (appData.user && appData.user.id ? `shop_${appData.user.id}` : 'shop_default');
@@ -507,6 +620,15 @@ async function enterWorkspace() {
     // Setup Real-Time Listeners for Multi-Device Auto-Updates
     if (!window.__hasBoundSocketListeners) {
       window.__hasBoundSocketListeners = true;
+
+      subscribeToRealtimeEvent('device:registered', async (data) => {
+        showToast(`💻 Device "${data.device?.deviceName || 'New Desktop'}" connected!`, 'info');
+        await renderRegisteredDevices();
+      });
+
+      subscribeToRealtimeEvent('device:revoked', async () => {
+        await renderRegisteredDevices();
+      });
 
       subscribeToRealtimeEvent('invoice:created', async (data) => {
         showToast(`⚡ Real-Time: New Invoice #${data.invoice?.id || ''} created!`, 'success');
@@ -6627,7 +6749,23 @@ async function handleRestoreBackupNow() {
   }
 }
 
-document.addEventListener('click', (e) => {
+document.addEventListener('click', async (e) => {
+  const revokeBtn = e.target?.closest ? e.target.closest('.revoke-device-btn') : null;
+  if (revokeBtn) {
+    e.preventDefault();
+    const devId = revokeBtn.getAttribute('data-device-id');
+    if (devId && confirm(`Disconnect device ${devId} from your cloud account?`)) {
+      try {
+        await api.revokeDevice(devId);
+        showToast(`Device ${devId} disconnected.`, 'info');
+        renderRegisteredDevices();
+      } catch (err) {
+        showToast('Failed to disconnect device', 'error');
+      }
+    }
+    return;
+  }
+
   const btn = e.target?.closest ? e.target.closest('.backup-now-btn, .sync-all-devices-btn, .restore-backup-btn, #backup-now-btn, #sync-all-devices-btn, #restore-backup-btn') : null;
   if (!btn) return;
 

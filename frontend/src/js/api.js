@@ -56,8 +56,10 @@ function getApiBaseUrl(port) {
 }
 
 async function request(endpoint, options = {}) {
+  const devId = (typeof localStorage !== 'undefined' && localStorage.getItem('nexus_device_id')) ? localStorage.getItem('nexus_device_id') : 'DEV_DEFAULT';
   const headers = {
     'Content-Type': 'application/json',
+    'x-device-id': devId,
     ...options.headers
   };
 
@@ -222,9 +224,12 @@ export const api = {
   getBackupList: () => request('/business/backup/list', { method: 'GET' }),
   restoreBackup: (backupId = null) => request('/business/backup/restore', { method: 'POST', body: JSON.stringify({ backupId }) }),
 
-  // Sync Status API Endpoints
+  // Sync Status & Device API Endpoints
   getSyncStatus: () => request('/sync/status', { method: 'GET' }),
   triggerSync: () => request('/sync/trigger', { method: 'POST' }),
+  getRegisteredDevices: () => request('/business/devices', { method: 'GET' }),
+  registerDevice: (payload) => request('/business/devices/register', { method: 'POST', body: JSON.stringify(payload) }),
+  revokeDevice: (deviceId) => request(`/business/devices/${encodeURIComponent(deviceId)}`, { method: 'DELETE' }),
 
   checkHealth: async () => {
     try {
