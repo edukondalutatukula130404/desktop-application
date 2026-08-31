@@ -19,7 +19,41 @@ export const tokenStorage = {
   }
 };
 
-let ACTIVE_PORT = 5050;
+let ACTIVE_PORT = 5000;
+let PRODUCTION_API_URL = typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env.VITE_API_URL || '') : '';
+
+async function detectActivePort() {
+  if (PRODUCTION_API_URL) return PRODUCTION_API_URL;
+
+  const ports = [5000, 5050, 5051, 5052];
+  for (const p of ports) {
+    try {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 600);
+      const res = await fetch(`http://127.0.0.1:${p}/api/health`, { method: 'GET', signal: controller.signal });
+      clearTimeout(t);
+      if (res.ok) {
+        ACTIVE_PORT = p;
+        return p;
+      }
+    } catch (e) {}
+  }
+  return ACTIVE_PORT;
+}
+
+detectActivePort();
+
+function getApiBaseUrl(port) {
+  if (PRODUCTION_API_URL) {
+    return PRODUCTION_API_URL.endsWith('/api') ? PRODUCTION_API_URL : `${PRODUCTION_API_URL}/api`;
+  }
+  if (typeof window !== 'undefined') {
+    if (window.location.protocol === 'file:' || window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') {
+      return `http://127.0.0.1:${port}/api`;
+    }
+  }
+  return '/api';
+}
 
 async function request(endpoint, options = {}) {
   const headers = {
@@ -33,12 +67,10 @@ async function request(endpoint, options = {}) {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-  const getUrl = (port) => (typeof window !== 'undefined' && window.location.protocol === 'file:') ? `http://127.0.0.1:${port}/api` : '/api';
+  const timeoutId = setTimeout(() => controller.abort(), 4000);
 
   try {
-    const response = await fetch(`${getUrl(ACTIVE_PORT)}${endpoint}`, {
+    const response = await fetch(`${getApiBaseUrl(ACTIVE_PORT)}${endpoint}`, {
       ...options,
       headers,
       signal: controller.signal
@@ -51,9 +83,6 @@ async function request(endpoint, options = {}) {
     }));
 
     if (!response.ok) {
-      if (response.status === 401) {
-        tokenStorage.clear();
-      }
       const err = new Error(data.message || `HTTP Error ${response.status}`);
       err.status = response.status;
       throw err;
@@ -63,12 +92,13 @@ async function request(endpoint, options = {}) {
   } catch (error) {
     clearTimeout(timeoutId);
 
-    if (typeof window !== 'undefined' && window.location.protocol === 'file:' && ACTIVE_PORT === 5050) {
-      ACTIVE_PORT = 5051;
+    const detectedPort = await detectActivePort();
+    if (detectedPort !== ACTIVE_PORT) {
+      ACTIVE_PORT = detectedPort;
       try {
         const retryController = new AbortController();
-        const retryTimeout = setTimeout(() => retryController.abort(), 10000);
-        const retryRes = await fetch(`${getUrl(ACTIVE_PORT)}${endpoint}`, {
+        const retryTimeout = setTimeout(() => retryController.abort(), 4000);
+        const retryRes = await fetch(`${getApiBaseUrl(ACTIVE_PORT)}${endpoint}`, {
           ...options,
           headers,
           signal: retryController.signal
@@ -186,6 +216,11 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(payload)
   }),
+
+  createBackup: () => request('/business/backup', { method: 'POST' }),
+  getLatestBackup: () => request('/business/backup/latest', { method: 'GET' }),
+  getBackupList: () => request('/business/backup/list', { method: 'GET' }),
+  restoreBackup: (backupId = null) => request('/business/backup/restore', { method: 'POST', body: JSON.stringify({ backupId }) }),
 
   // Sync Status API Endpoints
   getSyncStatus: () => request('/sync/status', { method: 'GET' }),

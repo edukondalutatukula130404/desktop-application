@@ -2,9 +2,10 @@ const mongoose = require('mongoose');
 
 const backupSchema = new mongoose.Schema({
   backupId: { type: String, required: true, unique: true },
-  userId: { type: String, required: true, index: true },
-  email: { type: String, required: true, index: true },
-  deviceId: { type: String, required: true, index: true },
+  companyId: { type: String, default: 'shop_default', index: true },
+  userId: { type: String, default: 'usr_offline', index: true },
+  email: { type: String, default: 'owner@shop.com', index: true },
+  deviceId: { type: String, default: 'DEV_DEFAULT', index: true },
   version: { type: Number, default: 1 },
   recordCounts: {
     products: { type: Number, default: 0 },

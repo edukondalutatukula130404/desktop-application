@@ -24,11 +24,23 @@ const connectDB = async () => {
         socketTimeoutMS: 20000
       });
       isConnected = !!conn.connections[0].readyState;
-      isAtlasConnected = true;
       console.log(`=================================`);
       console.log(`🍃 Shared MongoDB Atlas Connected: ${conn.connection.host} (Database: ${conn.connection.name})`);
       console.log(`=================================`);
+
+      try {
+        const Invoice = require('../models/Invoice');
+        await Invoice.collection.dropIndex('id_1');
+      } catch (dropErr) {}
+
+      try {
+        const Client = require('../models/Client');
+        await Client.collection.dropIndex('id_1');
+        console.log('🍃 [MongoDB Atlas] Legacy unique index id_1 on clients dropped.');
+      } catch (dropErr) {}
+
       return;
+
     } catch (error) {
       console.warn('⚠️ Could not connect to MongoDB Atlas, falling back to local database:', error.message);
     }

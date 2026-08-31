@@ -43,6 +43,21 @@ router.put('/categories/:id', businessController.updateCategory);
 router.delete('/categories/:id', businessController.deleteCategory);
 router.patch('/categories/:id/status', businessController.toggleCategoryStatus);
 
+// Brand Routes
+router.get('/brands', businessController.getBrands);
+router.post('/brands', businessController.createBrand);
+router.put('/brands/:id', businessController.updateBrand);
+router.delete('/brands/:id', businessController.deleteBrand);
+
+// Supplier Routes
+router.get('/suppliers', businessController.getSuppliers);
+router.post('/suppliers', businessController.createSupplier);
+router.put('/suppliers/:id', businessController.updateSupplier);
+router.delete('/suppliers/:id', businessController.deleteSupplier);
+
+// Inventory Adjustment Route
+router.post('/inventory/adjust', businessController.adjustStock);
+
 // Relational Summary Route
 router.get('/summary/relational', businessController.getRelationalSummary);
 
@@ -62,3 +77,4 @@ router.get('/devices', syncController.getDevices);
 router.delete('/devices/:deviceId', syncController.revokeDevice);
 
 module.exports = router;
+

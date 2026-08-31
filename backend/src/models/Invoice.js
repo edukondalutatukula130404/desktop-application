@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 
 const invoiceSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+  id: { type: String, required: true, index: true },
+  companyId: { type: String, required: true, index: true, default: 'shop_default' },
+
   userId: { type: String, required: false, index: true, default: null },
   clientId: { type: String, default: '' },
   clientName: { type: String, required: true },
@@ -22,4 +24,8 @@ const invoiceSchema = new mongoose.Schema({
   strict: false
 });
 
+invoiceSchema.index({ companyId: 1, issueDate: -1 });
+invoiceSchema.index({ companyId: 1, id: 1 });
+
 module.exports = mongoose.model('Invoice', invoiceSchema);
+

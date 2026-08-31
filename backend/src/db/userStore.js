@@ -11,12 +11,15 @@ const userStore = {
     return await User.findOne({ id }).exec();
   },
 
-  createUser: async ({ name, email, passwordHash }) => {
+  createUser: async ({ name, email, passwordHash, companyId, shopName }) => {
+    const userId = 'usr_' + Date.now() + Math.random().toString(36).substring(2, 6);
     const newUser = new User({
-      id: 'usr_' + Date.now() + Math.random().toString(36).substring(2, 6),
+      id: userId,
       name: name.trim(),
       email: email.toLowerCase().trim(),
       passwordHash,
+      companyId: companyId || `shop_${userId}`,
+      shopName: shopName || 'My Clothing Shop',
       createdAt: new Date().toISOString()
     });
     return await newUser.save();

@@ -4,6 +4,13 @@ const Bill = require('../models/Bill');
 const Client = require('../models/Client');
 const Product = require('../models/Product');
 const Category = require('../models/Category');
+const Brand = require('../models/Brand');
+const Supplier = require('../models/Supplier');
+const Sale = require('../models/Sale');
+const InventoryLog = require('../models/InventoryLog');
+const sqliteStore = require('./sqliteStore');
+const syncEngine = require('../services/syncEngine');
+
 
 const initialData = {
   invoices: [
@@ -403,107 +410,112 @@ const dataStore = {
   seedInitialDataIfNeeded,
 
   getInvoices: async (userId) => {
-    await seedInitialDataIfNeeded(userId);
-    const filter = userId ? { userId } : {};
-    let invoices = await Invoice.find(filter).sort({ createdAt: -1 }).lean().exec();
-
-    // Auto-deduplicate invoices by normalized ID
-    const uniqueMap = new Map();
-    const duplicateIds = [];
-
-    (invoices || []).forEach(inv => {
-      if (inv && inv.id) {
-        const key = String(inv.id).replace(/-/g, '').toLowerCase().trim();
-        if (!uniqueMap.has(key)) {
-          uniqueMap.set(key, inv);
-        } else {
-          duplicateIds.push(inv._id);
-        }
-      }
-    });
-
-    if (duplicateIds.length > 0) {
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
       try {
-        await Invoice.deleteMany({ _id: { $in: duplicateIds } });
-        console.log(`🧹 Auto-removed ${duplicateIds.length} duplicate invoice record(s)`);
+        await seedInitialDataIfNeeded(userId);
+        const filter = userId ? { userId } : {};
+        let invoices = await Invoice.find(filter).sort({ createdAt: -1 }).lean().exec();
+
+        // Auto-deduplicate invoices by normalized ID
+        const uniqueMap = new Map();
+        const duplicateIds = [];
+
+        (invoices || []).forEach(inv => {
+          if (inv && inv.id) {
+            const key = String(inv.id).replace(/-/g, '').toLowerCase().trim();
+            if (!uniqueMap.has(key)) {
+              uniqueMap.set(key, inv);
+            } else {
+              duplicateIds.push(inv._id);
+            }
+          }
+        });
+
+        if (duplicateIds.length > 0) {
+          try {
+            await Invoice.deleteMany({ _id: { $in: duplicateIds } });
+          } catch (e) {}
+        }
+
+        if (uniqueMap.size > 0) return Array.from(uniqueMap.values());
       } catch (e) {
-        console.warn('Dedup invoice cleanup error:', e.message);
+        console.warn('MongoDB getInvoices notice, falling back to local storage:', e.message);
       }
     }
-
-    return Array.from(uniqueMap.values());
+    try {
+      return await sqliteStore.getInvoices();
+    } catch (e) {
+      return [];
+    }
   },
 
   createInvoice: async (invoiceData, userId = null) => {
-    const filter = userId ? { userId } : {};
-    const count = await Invoice.countDocuments(filter);
-    const d = invoiceData.issueDate ? new Date(invoiceData.issueDate) : (invoiceData.dueDate ? new Date(invoiceData.dueDate) : new Date());
-    const year = d.getFullYear();
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const dateMerged = `${year}${month}${day}`;
-    const seq = String(count + 1).padStart(3, '0');
-    const customId = invoiceData.id || `INV-${dateMerged}-${seq}`;
-    const clientName = (invoiceData.clientName || 'Walk-in Retail Customer').trim();
-    const amount = parseFloat(invoiceData.amount) || 0;
-    const dateStr = `${year}-${month}-${day}`;
-
-    const idFilter = { id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }, ...filter };
-    let existingInv = await Invoice.findOne(idFilter).exec();
-    if (existingInv) {
-      existingInv.clientName = clientName;
-      existingInv.amount = amount;
-      if (invoiceData.category) existingInv.category = invoiceData.category;
-      if (invoiceData.paymentMode) existingInv.paymentMode = invoiceData.paymentMode;
-      if (invoiceData.status) existingInv.status = invoiceData.status;
-      if (invoiceData.items) existingInv.items = invoiceData.items;
-      if (invoiceData.subtotal !== undefined) existingInv.subtotal = parseFloat(invoiceData.subtotal) || amount;
-      if (invoiceData.tax !== undefined) existingInv.tax = parseFloat(invoiceData.tax) || 0;
-      if (invoiceData.discount !== undefined) existingInv.discount = parseFloat(invoiceData.discount) || 0;
-      if (invoiceData.notes) existingInv.notes = invoiceData.notes;
-      return await existingInv.save();
+    // 1. Save to local SQLite database & enqueue sync item
+    let sqliteResult = null;
+    try {
+      sqliteResult = await sqliteStore.createInvoice(invoiceData);
+    } catch (e) {
+      console.warn('SQLite createInvoice warning:', e.message);
     }
 
-    // Backend Deduplication Guard: Check if an identical invoice was created in the last 60 seconds
-    const sixtySecAgo = new Date(Date.now() - 60000);
-    const recentDuplicate = await Invoice.findOne({
-      ...filter,
-      clientName: { $regex: new RegExp(`^${clientName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
-      amount: amount,
-      issueDate: invoiceData.issueDate || dateStr,
-      createdAt: { $gte: sixtySecAgo }
-    }).exec();
+    // 2. Save directly to MongoDB Atlas if connected
+    let mongoResult = null;
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      try {
+        const filter = userId ? { userId } : {};
+        const d = invoiceData.issueDate ? new Date(invoiceData.issueDate) : (invoiceData.dueDate ? new Date(invoiceData.dueDate) : new Date());
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const dateMerged = `${year}${month}${day}`;
+        const customId = invoiceData.id || `INV-${dateMerged}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-    if (recentDuplicate) {
-      console.log(`[Deduplication Guard] Blocked duplicate invoice creation for "${clientName}" (Rs. ${amount}). Returning existing ID: ${recentDuplicate.id}`);
-      return recentDuplicate;
+        const clientName = (invoiceData.clientName || 'Walk-in Retail Customer').trim();
+        const amount = parseFloat(invoiceData.amount) || 0;
+        const dateStr = `${year}-${month}-${day}`;
+
+        const idFilter = { id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }, ...filter };
+        let existingInv = await Invoice.findOne(idFilter).exec();
+        if (existingInv) {
+          existingInv.clientName = clientName;
+          existingInv.amount = amount;
+          if (invoiceData.category) existingInv.category = invoiceData.category;
+          if (invoiceData.paymentMode) existingInv.paymentMode = invoiceData.paymentMode;
+          if (invoiceData.status) existingInv.status = invoiceData.status;
+          if (invoiceData.items) existingInv.items = invoiceData.items;
+          mongoResult = await existingInv.save();
+        } else {
+          const newInvoice = new Invoice({
+            id: customId,
+            userId: userId || null,
+            clientId: invoiceData.clientId || `CUST-${dateMerged}001`,
+            clientName: clientName,
+            clientEmail: invoiceData.clientEmail || 'billing@client.com',
+            issueDate: invoiceData.issueDate || dateStr,
+            dueDate: invoiceData.dueDate || dateStr,
+            amount: amount,
+            subtotal: parseFloat(invoiceData.subtotal) || amount,
+            tax: parseFloat(invoiceData.tax) || 0,
+            discount: parseFloat(invoiceData.discount) || 0,
+            status: invoiceData.status || 'Paid',
+            category: invoiceData.category || 'General Service',
+            paymentMode: invoiceData.paymentMode || 'Cash',
+            items: Array.isArray(invoiceData.items) ? invoiceData.items : [],
+            notes: invoiceData.notes || ''
+          });
+          mongoResult = await newInvoice.save();
+        }
+      } catch (err) {
+        console.warn('MongoDB invoice save warning:', err.message);
+      }
     }
 
-    const newInvoice = new Invoice({
-      id: customId,
-      userId: userId || null,
-      clientId: invoiceData.clientId || `CUST-${dateMerged}001`,
-      clientName: clientName,
-      clientEmail: invoiceData.clientEmail || 'billing@client.com',
-      issueDate: invoiceData.issueDate || dateStr,
-      dueDate: invoiceData.dueDate || dateStr,
-      amount: amount,
-      subtotal: parseFloat(invoiceData.subtotal) || amount,
-      tax: parseFloat(invoiceData.tax) || 0,
-      discount: parseFloat(invoiceData.discount) || 0,
-      status: invoiceData.status || 'Paid',
-      category: invoiceData.category || 'General Service',
-      paymentMode: invoiceData.paymentMode || 'Cash',
-      items: Array.isArray(invoiceData.items) ? invoiceData.items : [],
-      notes: invoiceData.notes || ''
-    });
+    // 3. Trigger immediate sync cycle to push pending items to MongoDB Atlas
+    try {
+      syncEngine.runSyncCycle();
+    } catch (e) {}
 
-    const savedInvoice = await newInvoice.save();
-
-    // NOTE: Client creation is handled by the frontend (getOrCreateCustomer) before calling createInvoice.
-    // Do NOT auto-create a client here — it causes duplicate customer records.
-
-    return savedInvoice;
+    return mongoResult || sqliteResult || { id: invoiceData.id || `INV-${Date.now()}`, ...invoiceData };
   },
 
   updateInvoiceStatus: async (id, status) => {
@@ -524,10 +536,21 @@ const dataStore = {
   },
 
   getBills: async (userId) => {
-    await seedInitialDataIfNeeded(userId);
-    const filter = userId ? { userId } : {};
-    let bills = await Bill.find(filter).sort({ createdAt: -1 }).lean().exec();
-    return bills || [];
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      try {
+        await seedInitialDataIfNeeded(userId);
+        const filter = userId ? { userId } : {};
+        let bills = await Bill.find(filter).sort({ createdAt: -1 }).lean().exec();
+        if (bills && bills.length > 0) return bills;
+      } catch (e) {
+        console.warn('MongoDB getBills notice, falling back to local storage:', e.message);
+      }
+    }
+    try {
+      return await sqliteStore.getBills();
+    } catch (e) {
+      return [];
+    }
   },
 
   createBill: async (billData, userId = null) => {
@@ -581,92 +604,88 @@ const dataStore = {
     return await bill.save();
   },
 
-  getClients: async (userId) => {
-    await seedInitialDataIfNeeded(userId);
-    const filter = userId ? { userId } : {};
-    let clients = await Client.find(filter).lean().exec();
-
-    // Auto-deduplicate clients by name (keep the one with highest totalBilled, delete the rest)
-    const uniqueMap = new Map();
-    const duplicateIds = [];
-
-    (clients || []).forEach(c => {
-      if (c && c.name) {
-        const key = c.name.trim().toLowerCase();
-        if (!uniqueMap.has(key)) {
-          uniqueMap.set(key, c);
-        } else {
-          // Keep the record with higher totalBilled, discard the other
-          const existing = uniqueMap.get(key);
-          if ((c.totalBilled || 0) > (existing.totalBilled || 0)) {
-            duplicateIds.push(existing._id);
-            uniqueMap.set(key, c);
-          } else {
-            duplicateIds.push(c._id);
-          }
-        }
-      }
-    });
-
-    if (duplicateIds.length > 0) {
+  getClients: async (companyId = null) => {
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
       try {
-        await Client.deleteMany({ _id: { $in: duplicateIds } });
-        console.log(`🧹 Auto-removed ${duplicateIds.length} duplicate client record(s)`);
+        const filter = companyId ? { $or: [{ companyId }, { userId: companyId }] } : {};
+        let clients = await Client.find(filter).sort({ createdAt: -1 }).lean().exec();
+        if (clients && clients.length > 0) return clients;
       } catch (e) {
-        console.warn('Dedup client cleanup error:', e.message);
+        console.warn('MongoDB getClients notice, falling back to local storage:', e.message);
       }
     }
-
-    return Array.from(uniqueMap.values());
+    try {
+      return await sqliteStore.getClients();
+    } catch (e) {
+      return [];
+    }
   },
+
 
 
   createClient: async (clientData, userId = null) => {
-    const filter = userId ? { userId } : {};
-    let customId = clientData.id ? clientData.id.trim() : '';
-    const cleanName = (clientData.name || 'New Customer').trim();
-
-    let existing = null;
-    if (customId) {
-      existing = await Client.findOne({ ...filter, id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
-    }
-    if (!existing) {
-      existing = await Client.findOne({ ...filter, name: { $regex: new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
+    // 1. Save to local SQLite database & enqueue sync item
+    let sqliteResult = null;
+    try {
+      sqliteResult = await sqliteStore.createClient(clientData);
+    } catch (e) {
+      console.warn('SQLite createClient warning:', e.message);
     }
 
-    if (existing) {
-      existing.name = cleanName;
-      if (clientData.contact) existing.contact = clientData.contact;
-      if (clientData.status) existing.status = clientData.status;
-      if (clientData.totalBilled !== undefined) existing.totalBilled = parseFloat(clientData.totalBilled) || 0;
-      return await existing.save();
-    }
+    // 2. Save directly to MongoDB Atlas if connected
+    let mongoResult = null;
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      try {
+        const filter = userId ? { userId } : {};
+        let customId = clientData.id ? clientData.id.trim() : '';
+        const cleanName = (clientData.name || 'New Customer').trim();
 
-    if (!customId) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const allClients = await Client.find(filter).lean().exec();
-      let maxNum = 0;
-      (allClients || []).forEach(c => {
-        const match = c.id && c.id.match(/^CUST-.*-(\d+)$/i);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > maxNum) maxNum = num;
+        let existing = null;
+        if (customId) {
+          existing = await Client.findOne({ ...filter, id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
         }
-      });
-      customId = `CUST-${todayStr.replace(/-/g, '')}${(maxNum + 1).toString().padStart(3, '0')}`;
+        if (!existing) {
+          existing = await Client.findOne({ ...filter, name: { $regex: new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
+        }
+
+        if (existing) {
+          existing.name = cleanName;
+          if (clientData.contact) existing.contact = clientData.contact;
+          if (clientData.status) existing.status = clientData.status;
+          if (clientData.totalBilled !== undefined) existing.totalBilled = parseFloat(clientData.totalBilled) || 0;
+          mongoResult = await existing.save();
+        } else {
+          if (!customId) {
+            const todayStr = new Date().toISOString().split('T')[0];
+            customId = `CUST-${todayStr.replace(/-/g, '')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+          }
+
+          const cid = clientData.companyId || (userId ? `shop_${userId}` : 'shop_default');
+          const newClient = new Client({
+            id: customId,
+            companyId: cid,
+            userId: userId || null,
+            name: cleanName,
+            contact: clientData.contact || 'contact@client.com',
+            status: clientData.status || 'Active',
+            totalBilled: parseFloat(clientData.totalBilled) || 0
+          });
+
+          mongoResult = await newClient.save();
+        }
+      } catch (err) {
+        console.warn('MongoDB client save warning:', err.message);
+      }
     }
 
-    const newClient = new Client({
-      id: customId,
-      userId: userId || null,
-      name: cleanName,
-      contact: clientData.contact || 'contact@client.com',
-      status: clientData.status || 'Active',
-      totalBilled: parseFloat(clientData.totalBilled) || 0
-    });
+    // 3. Trigger immediate sync cycle to push changes to MongoDB Atlas
+    try {
+      syncEngine.runSyncCycle();
+    } catch (e) {}
 
-    return await newClient.save();
+    return mongoResult || sqliteResult || { id: clientData.id || `CUST-${Date.now()}`, ...clientData };
   },
+
 
   toggleClientStatus: async (id) => {
     const client = await Client.findOne({ id }).exec();
@@ -678,91 +697,98 @@ const dataStore = {
   },
 
   getProducts: async (userId) => {
-    await seedInitialDataIfNeeded(userId);
-    const filter = userId ? { userId } : {};
-    let products = await Product.find(filter).lean().exec();
-    const sorted = [...(products || [])].sort((a, b) => {
-      const numA = parseInt((a.id || '').replace(/\D/g, ''), 10) || 99999;
-      const numB = parseInt((b.id || '').replace(/\D/g, ''), 10) || 99999;
-      return numA - numB;
-    });
-
-    return sorted;
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      try {
+        await seedInitialDataIfNeeded(userId);
+        const filter = userId ? { userId } : {};
+        let products = await Product.find(filter).lean().exec();
+        if (products && products.length > 0) {
+          return [...products].sort((a, b) => {
+            const numA = parseInt((a.id || '').replace(/\D/g, ''), 10) || 99999;
+            const numB = parseInt((b.id || '').replace(/\D/g, ''), 10) || 99999;
+            return numA - numB;
+          });
+        }
+      } catch (e) {
+        console.warn('MongoDB getProducts notice, falling back to local storage:', e.message);
+      }
+    }
+    try {
+      return await sqliteStore.getProducts();
+    } catch (e) {
+      return [];
+    }
   },
 
   createProduct: async (productData, userId = null) => {
-    await seedInitialDataIfNeeded(userId);
-    const filter = userId ? { userId } : {};
-    const cleanName = (productData.name || '').trim();
-    if (!cleanName) return null;
-
-    const countNum = parseInt(productData.count, 10) || 50;
-    const priceNum = parseFloat(productData.price) || 0;
-    const stockStatus = productData.stock || (countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock'));
-
-    const safeRegexName = new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-
-    let existingByName = await Product.findOne({ ...filter, name: safeRegexName }).exec();
-    if (existingByName) {
-      existingByName.name = cleanName;
-      existingByName.category = productData.category || existingByName.category || "Men's Apparel";
-      existingByName.subCategory = productData.subCategory || existingByName.subCategory || '';
-      existingByName.color = productData.color || existingByName.color || '';
-      existingByName.size = productData.size || existingByName.size || '';
-      existingByName.price = priceNum;
-      existingByName.count = countNum;
-      existingByName.stock = stockStatus;
-      return await existingByName.save();
-    }
-
-    const allProducts = await Product.find(filter).lean().exec();
-    const usedIds = new Set(allProducts.map(p => (p.id || '').toUpperCase()));
-
-    let nextNum = allProducts.length + 1;
-    let candidateId = productData.id && !usedIds.has(productData.id.toUpperCase())
-      ? productData.id
-      : `SKU-PRD-${nextNum.toString().padStart(2, '0')}`;
-
-    while (usedIds.has(candidateId.toUpperCase())) {
-      nextNum++;
-      candidateId = `SKU-PRD-${nextNum.toString().padStart(2, '0')}`;
-    }
-
+    // 1. Save to local SQLite database & enqueue sync item
+    let sqliteResult = null;
     try {
-      const newPrd = new Product({
-        id: candidateId,
-        userId: userId || null,
-        name: cleanName,
-        category: productData.category || "Men's Apparel",
-        subCategory: productData.subCategory || '',
-        color: productData.color || '',
-        size: productData.size || '',
-        price: priceNum,
-        count: countNum,
-        stock: stockStatus
-      });
-
-      return await newPrd.save();
-    } catch (err) {
-      if (err.code === 11000) {
-        const fallbackId = `SKU-PRD-${Date.now().toString().slice(-5)}`;
-        const fallbackPrd = new Product({
-          id: fallbackId,
-          userId: userId || null,
-          name: cleanName,
-          category: productData.category || "Men's Apparel",
-          subCategory: productData.subCategory || '',
-          color: productData.color || '',
-          size: productData.size || '',
-          price: priceNum,
-          count: countNum,
-          stock: stockStatus
-        });
-        return await fallbackPrd.save();
-      }
-      throw err;
+      sqliteResult = await sqliteStore.createProduct(productData);
+    } catch (e) {
+      console.warn('SQLite createProduct warning:', e.message);
     }
+
+    // 2. Save directly to MongoDB Atlas if connected
+    let mongoResult = null;
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      try {
+        await seedInitialDataIfNeeded(userId);
+        const filter = userId ? { userId } : {};
+        const cleanName = (productData.name || '').trim();
+        if (cleanName) {
+          const countNum = parseInt(productData.count, 10) || 50;
+          const priceNum = parseFloat(productData.price) || 0;
+          const stockStatus = productData.stock || (countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock'));
+          const safeRegexName = new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+
+          let existingByName = await Product.findOne({ ...filter, name: safeRegexName }).exec();
+          if (existingByName) {
+            existingByName.name = cleanName;
+            existingByName.category = productData.category || existingByName.category || "Men's Apparel";
+            existingByName.subCategory = productData.subCategory || existingByName.subCategory || '';
+            existingByName.color = productData.color || existingByName.color || '';
+            existingByName.size = productData.size || existingByName.size || '';
+            existingByName.price = priceNum;
+            existingByName.count = countNum;
+            existingByName.stock = stockStatus;
+            mongoResult = await existingByName.save();
+          } else {
+            const candidateId = productData.id || (sqliteResult ? sqliteResult.id : `SKU-PRD-${Date.now().toString().slice(-6)}`);
+            const newPrd = new Product({
+              id: candidateId,
+              userId: userId || null,
+              name: cleanName,
+              category: productData.category || "Men's Apparel",
+              subCategory: productData.subCategory || '',
+              color: productData.color || '',
+              size: productData.size || '',
+              price: priceNum,
+              count: countNum,
+              stock: stockStatus
+            });
+            mongoResult = await newPrd.save();
+          }
+        }
+      } catch (err) {
+        console.warn('MongoDB product save error, queued in sync_queue:', err.message);
+      }
+    }
+
+    // 3. Trigger immediate background sync cycle to push changes to MongoDB Atlas
+    try {
+      syncEngine.runSyncCycle();
+    } catch (e) {}
+
+    return mongoResult || sqliteResult || { id: productData.id || `SKU-PRD-${Date.now()}`, ...productData };
   },
+
+  getProductById: async (id, companyId = null) => {
+    if (!id) return null;
+    const filter = companyId ? { id, companyId } : { id };
+    return await Product.findOne(filter).exec();
+  },
+
 
   deleteProduct: async (id, name = '', userId = null) => {
     try {
@@ -1231,8 +1257,117 @@ const dataStore = {
       syncedBills,
       totalCount: syncedInvoices + syncedProducts + syncedCategories + syncedClients + syncedBills
     };
+  },
+
+  // Brand Methods
+  getBrands: async (companyId) => {
+    const filter = companyId ? { companyId } : {};
+    return await Brand.find(filter).sort({ name: 1 }).lean().exec();
+  },
+
+  createBrand: async (brandData, companyId) => {
+    const cid = companyId || brandData.companyId || 'shop_default';
+    const id = brandData.id || `BRD-${Date.now().toString().slice(-6)}`;
+    const brand = new Brand({
+      id,
+      companyId: cid,
+      name: brandData.name,
+      description: brandData.description || '',
+      logo: brandData.logo || '',
+      status: brandData.status || 'Active'
+    });
+    return await brand.save();
+  },
+
+  updateBrand: async (id, brandData, companyId) => {
+    const filter = companyId ? { id, companyId } : { id };
+    return await Brand.findOneAndUpdate(filter, { $set: brandData }, { new: true }).exec();
+  },
+
+  deleteBrand: async (id, companyId) => {
+    const filter = companyId ? { id, companyId } : { id };
+    return await Brand.deleteOne(filter).exec();
+  },
+
+  // Supplier Methods
+  getSuppliers: async (companyId) => {
+    const filter = companyId ? { companyId } : {};
+    return await Supplier.find(filter).sort({ name: 1 }).lean().exec();
+  },
+
+  createSupplier: async (supplierData, companyId) => {
+    const cid = companyId || supplierData.companyId || 'shop_default';
+    const id = supplierData.id || `SUP-${Date.now().toString().slice(-6)}`;
+    const supplier = new Supplier({
+      id,
+      companyId: cid,
+      name: supplierData.name,
+      contactPerson: supplierData.contactPerson || '',
+      email: supplierData.email || '',
+      phone: supplierData.phone || '',
+      address: supplierData.address || '',
+      category: supplierData.category || 'Apparel',
+      status: supplierData.status || 'Active'
+    });
+    return await supplier.save();
+  },
+
+  updateSupplier: async (id, supplierData, companyId) => {
+    const filter = companyId ? { id, companyId } : { id };
+    return await Supplier.findOneAndUpdate(filter, { $set: supplierData }, { new: true }).exec();
+  },
+
+  deleteSupplier: async (id, companyId) => {
+    const filter = companyId ? { id, companyId } : { id };
+    return await Supplier.deleteOne(filter).exec();
+  },
+
+  // Sale Methods
+  recordSale: async (saleData, companyId) => {
+    const cid = companyId || saleData.companyId || 'shop_default';
+    const id = saleData.id || `SALE-${Date.now().toString().slice(-6)}`;
+    const sale = new Sale({
+      id,
+      companyId: cid,
+      invoiceId: saleData.invoiceId,
+      clientName: saleData.clientName || 'Walk-in Customer',
+      amount: parseFloat(saleData.amount) || 0,
+      paymentMode: saleData.paymentMode || 'Cash',
+      itemCount: parseInt(saleData.itemCount, 10) || 1,
+      saleDate: saleData.saleDate || new Date().toISOString().split('T')[0]
+    });
+    return await sale.save();
+  },
+
+  getSales: async (companyId) => {
+    const filter = companyId ? { companyId } : {};
+    return await Sale.find(filter).sort({ saleDate: -1 }).lean().exec();
+  },
+
+  // Inventory Movements Log
+  logInventoryMovement: async (logData, companyId) => {
+    const cid = companyId || logData.companyId || 'shop_default';
+    const id = logData.id || `LOG-${Date.now().toString().slice(-6)}`;
+    const log = new InventoryLog({
+      id,
+      companyId: cid,
+      productId: logData.productId,
+      productName: logData.productName || 'Product',
+      type: logData.type || 'ADJUSTMENT',
+      quantityChanged: parseInt(logData.quantityChanged, 10) || 0,
+      newStockCount: parseInt(logData.newStockCount, 10) || 0,
+      reason: logData.reason || '',
+      referenceId: logData.referenceId || ''
+    });
+    return await log.save();
+  },
+
+  getInventoryLogs: async (companyId) => {
+    const filter = companyId ? { companyId } : {};
+    return await InventoryLog.find(filter).sort({ createdAt: -1 }).limit(100).lean().exec();
   }
 };
 
 module.exports = dataStore;
+
 

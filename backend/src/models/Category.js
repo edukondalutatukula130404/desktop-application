@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const categorySchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
+  companyId: { type: String, required: true, index: true, default: 'shop_default' },
   userId: { type: String, required: false, index: true, default: null },
   name: { type: String, required: true },
   description: { type: String, default: '' },
@@ -15,4 +16,8 @@ const categorySchema = new mongoose.Schema({
   timestamps: true
 });
 
+categorySchema.index({ companyId: 1, name: 1 });
+categorySchema.index({ companyId: 1, id: 1 });
+
 module.exports = mongoose.model('Category', categorySchema);
+

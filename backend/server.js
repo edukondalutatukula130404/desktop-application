@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
+const { connectDatabase } = require('./config/database');
 const { connectDB, getDBStatus } = require('./src/db/connect');
 const { initSQLiteDB } = require('./src/db/sqliteDB');
 const { startSyncEngine } = require('./src/services/syncEngine');
@@ -11,7 +12,7 @@ const businessRoutes = require('./src/routes/businessRoutes');
 const syncRoutes = require('./src/routes/syncRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 5050;
+const PORT = process.env.PORT || 5000;
 
 // Enable CORS for frontend requests
 app.use(cors({
@@ -93,6 +94,9 @@ if (fs.existsSync(frontendDist)) {
   });
 }
 
+const http = require('http');
+const { initSocket } = require('./src/services/socketService');
+
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error('Global Error Handler:', err.stack);
@@ -120,20 +124,24 @@ async function startServer(port = PORT) {
 
   // Start background 2-way sync engine
   startSyncEngine(5000);
-  const HOST = '127.0.0.1';
+  const HOST = '0.0.0.0';
   const initialPort = parseInt(port || '5050', 10);
 
   const createServer = (p) => {
     const currentPort = parseInt(p, 10);
     return new Promise((resolve) => {
-      const s = app.listen(currentPort, HOST, () => {
+      const server = http.createServer(app);
+      initSocket(server);
+
+      server.listen(currentPort, HOST, () => {
         console.log(`=================================`);
-        console.log(`🚀 Backend Auth Server running on http://${HOST}:${currentPort}`);
+        console.log(`🚀 Backend Real-Time Server running on http://${HOST}:${currentPort}`);
+        console.log(`⚡ Socket.IO Cloud Real-Time Sync Active`);
         console.log(`=================================`);
-        resolve(s);
+        resolve(server);
       });
 
-      s.on('error', async (err) => {
+      server.on('error', async (err) => {
         if (err.code === 'EADDRINUSE') {
           const nextPort = currentPort + 1;
           console.warn(`⚠️ Port ${currentPort} in use, trying port ${nextPort}...`);
@@ -155,3 +163,4 @@ if (require.main === module) {
 }
 
 module.exports = { app, startServer, PORT };
+

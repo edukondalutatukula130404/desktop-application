@@ -107,16 +107,24 @@ const sqliteStore = {
     }
 
     // Ensure Customer Record always exists locally (even when pulling remote invoices)
-    let customer = await dbGet(`SELECT * FROM customers WHERE LOWER(name) = LOWER(?)`, [clientName.toLowerCase()]);
+    let customer = null;
+    if (clientId) {
+      customer = await dbGet(`SELECT * FROM customers WHERE id = ?`, [clientId]);
+    }
+    if (!customer && clientName) {
+      customer = await dbGet(`SELECT * FROM customers WHERE LOWER(name) = LOWER(?)`, [clientName.toLowerCase()]);
+    }
+
     if (!customer) {
       // Customer doesn't exist locally — create from invoice data
+      const targetCustId = clientId || `CUST-${dateMerged}-${uuidv4().substring(0, 4).toUpperCase()}`;
       await dbRun(
         `INSERT INTO customers (id, name, email, phone, contact, status, totalBilled, updated_at, device_id, sync_status)
          VALUES (?, ?, ?, ?, ?, 'Active', ?, ?, ?, ?)`,
-        [clientId, clientName, clientEmail, '+91 98765 43210', clientEmail || 'orders@client.com', amount, now, deviceId, initialSyncStatus]
+        [targetCustId, clientName, clientEmail, '+91 98765 43210', clientEmail || 'orders@client.com', amount, now, deviceId, initialSyncStatus]
       );
       if (!skipSyncQueue) {
-        await sqliteStore.enqueueSync('CUSTOMER', clientId, 'CREATE', { id: clientId, name: clientName, email: clientEmail, totalBilled: amount });
+        await sqliteStore.enqueueSync('CUSTOMER', targetCustId, 'CREATE', { id: targetCustId, name: clientName, email: clientEmail, totalBilled: amount });
       }
     } else if (!skipSyncQueue) {
       // Only update stored totalBilled counter when not pulling (local write) — getClients() computes live total from JOIN
@@ -157,8 +165,14 @@ const sqliteStore = {
     const skipSyncQueue = !!options.skipSyncQueue;
     const initialSyncStatus = skipSyncQueue ? 'SYNCED' : 'PENDING';
     const name = (productData.name || 'New Product').trim();
-    const existing = await dbGet(`SELECT * FROM products WHERE LOWER(name) = LOWER(?)`, [name.toLowerCase()]);
-    const id = productData.id || (existing ? existing.id : `SKU-PRD-${uuidv4().substring(0, 6).toUpperCase()}`);
+    let existing = null;
+    if (productData.id) {
+      existing = await dbGet(`SELECT * FROM products WHERE id = ?`, [productData.id]);
+    }
+    if (!existing && name) {
+      existing = await dbGet(`SELECT * FROM products WHERE LOWER(name) = LOWER(?)`, [name.toLowerCase()]);
+    }
+    const id = existing ? existing.id : (productData.id || `SKU-PRD-${uuidv4().substring(0, 6).toUpperCase()}`);
 
     const category = productData.category || "Men's Apparel";
     const subCategory = productData.subCategory || 'Shirts';
@@ -170,9 +184,9 @@ const sqliteStore = {
 
     if (existing) {
       await dbRun(
-        `UPDATE products SET category=?, subCategory=?, color=?, size=?, price=?, stock=?, count=?, updated_at=?, sync_status=?
+        `UPDATE products SET name=?, category=?, subCategory=?, color=?, size=?, price=?, stock=?, count=?, updated_at=?, sync_status=?
          WHERE id=?`,
-        [category, subCategory, color, size, price, stock, count, now, initialSyncStatus, id]
+        [name, category, subCategory, color, size, price, stock, count, now, initialSyncStatus, id]
       );
     } else {
       await dbRun(
@@ -263,8 +277,14 @@ const sqliteStore = {
     const skipSyncQueue = !!options.skipSyncQueue;
     const initialSyncStatus = skipSyncQueue ? 'SYNCED' : 'PENDING';
     const name = (clientData.name || 'New Customer').trim();
-    const existing = await dbGet(`SELECT * FROM customers WHERE LOWER(name) = LOWER(?)`, [name.toLowerCase()]);
-    const id = clientData.id || (existing ? existing.id : `CUST-${now.split('T')[0].replace(/-/g, '')}-${uuidv4().substring(0, 4).toUpperCase()}`);
+    let existing = null;
+    if (clientData.id) {
+      existing = await dbGet(`SELECT * FROM customers WHERE id = ?`, [clientData.id]);
+    }
+    if (!existing && name) {
+      existing = await dbGet(`SELECT * FROM customers WHERE LOWER(name) = LOWER(?)`, [name.toLowerCase()]);
+    }
+    const id = existing ? existing.id : (clientData.id || `CUST-${now.split('T')[0].replace(/-/g, '')}-${uuidv4().substring(0, 4).toUpperCase()}`);
 
     const email = clientData.email || (existing ? existing.email : '');
     const phone = clientData.phone || (existing ? existing.phone : '+91 98765 43210');
@@ -274,9 +294,9 @@ const sqliteStore = {
 
     if (existing) {
       await dbRun(
-        `UPDATE customers SET email=?, phone=?, contact=?, status=?, totalBilled=?, updated_at=?, sync_status=?
+        `UPDATE customers SET name=?, email=?, phone=?, contact=?, status=?, totalBilled=?, updated_at=?, sync_status=?
          WHERE id=?`,
-        [email, phone, contact, status, totalBilled, now, initialSyncStatus, id]
+        [name, email, phone, contact, status, totalBilled, now, initialSyncStatus, id]
       );
     } else {
       await dbRun(
@@ -316,16 +336,22 @@ const sqliteStore = {
     const skipSyncQueue = !!options.skipSyncQueue;
     const initialSyncStatus = skipSyncQueue ? 'SYNCED' : 'PENDING';
     const name = (catData.name || 'New Category').trim();
-    const existing = await dbGet(`SELECT * FROM categories WHERE LOWER(name) = LOWER(?)`, [name.toLowerCase()]);
-    const id = catData.id || (existing ? existing.id : `CAT-${uuidv4().substring(0, 6).toUpperCase()}`);
+    let existing = null;
+    if (catData.id) {
+      existing = await dbGet(`SELECT * FROM categories WHERE id = ?`, [catData.id]);
+    }
+    if (!existing && name) {
+      existing = await dbGet(`SELECT * FROM categories WHERE LOWER(name) = LOWER(?)`, [name.toLowerCase()]);
+    }
+    const id = existing ? existing.id : (catData.id || `CAT-${uuidv4().substring(0, 6).toUpperCase()}`);
     const subCategories = typeof catData.subCategories === 'string' ? catData.subCategories : JSON.stringify(catData.subCategories || []);
     const status = catData.status || 'Active';
     const productCount = catData.productCount || 0;
 
     if (existing) {
       await dbRun(
-        `UPDATE categories SET subCategories=?, status=?, productCount=?, updated_at=?, sync_status=? WHERE id=?`,
-        [subCategories, status, productCount, now, initialSyncStatus, id]
+        `UPDATE categories SET name=?, subCategories=?, status=?, productCount=?, updated_at=?, sync_status=? WHERE id=?`,
+        [name, subCategories, status, productCount, now, initialSyncStatus, id]
       );
     } else {
       await dbRun(
@@ -398,18 +424,29 @@ const sqliteStore = {
     const skipSyncQueue = !!options.skipSyncQueue;
     const initialSyncStatus = skipSyncQueue ? 'SYNCED' : 'PENDING';
     const vendor = (billData.vendor || 'Vendor').trim();
-    const id = billData.id || `BILL-${uuidv4().substring(0, 6).toUpperCase()}`;
+    let existing = null;
+    if (billData.id) {
+      existing = await dbGet(`SELECT * FROM bills WHERE id = ?`, [billData.id]);
+    }
+    const id = existing ? existing.id : (billData.id || `BILL-${uuidv4().substring(0, 6).toUpperCase()}`);
     const category = billData.category || 'General Expense';
     const dueDate = billData.dueDate || now.split('T')[0];
     const amount = parseFloat(billData.amount) || 0;
     const status = billData.status || 'Unpaid';
     const autoPay = billData.autoPay ? 1 : 0;
 
-    await dbRun(
-      `INSERT INTO bills (id, vendor, category, dueDate, amount, status, autoPay, updated_at, device_id, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, vendor, category, dueDate, amount, status, autoPay, now, deviceId, initialSyncStatus]
-    );
+    if (existing) {
+      await dbRun(
+        `UPDATE bills SET vendor=?, category=?, dueDate=?, amount=?, status=?, autoPay=?, updated_at=?, sync_status=? WHERE id=?`,
+        [vendor, category, dueDate, amount, status, autoPay, now, initialSyncStatus, id]
+      );
+    } else {
+      await dbRun(
+        `INSERT INTO bills (id, vendor, category, dueDate, amount, status, autoPay, updated_at, device_id, sync_status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, vendor, category, dueDate, amount, status, autoPay, now, deviceId, initialSyncStatus]
+      );
+    }
 
     const bill = await dbGet(`SELECT * FROM bills WHERE id = ?`, [id]);
     if (!skipSyncQueue) {

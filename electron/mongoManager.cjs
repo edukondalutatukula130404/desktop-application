@@ -57,76 +57,48 @@ async function startMongo() {
     return mongoUri;
   }
 
-  const { MongoMemoryServer } = require('mongodb-memory-server');
-  const binariesDir = path.join(getAppDataDir(), 'mongo-binaries');
-  if (!fs.existsSync(binariesDir)) {
-    fs.mkdirSync(binariesDir, { recursive: true });
-  }
-
-  // Attempt 1: Primary persistent directory
-  const primaryDbPath = path.join(getAppDataDir(), 'mongo-data');
-  if (!fs.existsSync(primaryDbPath)) {
-    fs.mkdirSync(primaryDbPath, { recursive: true });
-  }
-  clearStaleLocks(primaryDbPath);
-
-  try {
-    console.log(`[MongoManager] Initializing local MongoDB daemon at: ${primaryDbPath}`);
-    mongodInstance = await MongoMemoryServer.create({
-      instance: {
-        dbPath: primaryDbPath,
-        storageEngine: 'wiredTiger'
-      },
-      binary: {
-        downloadDir: binariesDir
+  const startMongoInternal = async () => {
+    try {
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      const binariesDir = path.join(getAppDataDir(), 'mongo-binaries');
+      if (!fs.existsSync(binariesDir)) {
+        fs.mkdirSync(binariesDir, { recursive: true });
       }
-    });
-    mongoUri = mongodInstance.getUri();
-    console.log(`[MongoManager] Embedded MongoDB ready at: ${mongoUri}`);
-    return mongoUri;
-  } catch (err) {
-    console.warn('[MongoManager] Primary dbPath launch warning:', err.message);
-    clearStaleLocks(primaryDbPath);
-  }
 
-  // Attempt 2: Secondary persistent store directory
-  const secondaryDbPath = path.join(getAppDataDir(), 'mongo-data-store');
-  if (!fs.existsSync(secondaryDbPath)) {
-    fs.mkdirSync(secondaryDbPath, { recursive: true });
-  }
-  clearStaleLocks(secondaryDbPath);
-
-  try {
-    console.log(`[MongoManager] Initializing secondary local MongoDB daemon at: ${secondaryDbPath}`);
-    mongodInstance = await MongoMemoryServer.create({
-      instance: {
-        dbPath: secondaryDbPath,
-        storageEngine: 'wiredTiger'
-      },
-      binary: {
-        downloadDir: binariesDir
+      const primaryDbPath = path.join(getAppDataDir(), 'mongo-data');
+      if (!fs.existsSync(primaryDbPath)) {
+        fs.mkdirSync(primaryDbPath, { recursive: true });
       }
-    });
-    mongoUri = mongodInstance.getUri();
-    console.log(`[MongoManager] Secondary persistent MongoDB ready at: ${mongoUri}`);
-    return mongoUri;
-  } catch (err2) {
-    console.warn('[MongoManager] Secondary dbPath launch warning:', err2.message);
+      clearStaleLocks(primaryDbPath);
+
+      mongodInstance = await MongoMemoryServer.create({
+        instance: { dbPath: primaryDbPath, storageEngine: 'wiredTiger' },
+        binary: { downloadDir: binariesDir }
+      });
+      mongoUri = mongodInstance.getUri();
+      console.log(`[MongoManager] Embedded MongoDB ready at: ${mongoUri}`);
+      return mongoUri;
+    } catch (err) {
+      console.warn('[MongoManager] Embedded MongoDB launch fallback:', err.message);
+      return process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/login_page_db';
+    }
+  };
+
+  const timeoutPromise = new Promise((resolve) => {
+    setTimeout(() => {
+      resolve('mongodb://127.0.0.1:27017/login_page_db');
+    }, 2500);
+  });
+
+  try {
+    mongoUri = await Promise.race([startMongoInternal(), timeoutPromise]);
+  } catch (e) {
+    mongoUri = 'mongodb://127.0.0.1:27017/login_page_db';
   }
 
-  // Attempt 3: In-memory fallback instance
-  try {
-    console.log('[MongoManager] Starting ephemeral fallback instance...');
-    mongodInstance = await MongoMemoryServer.create();
-    mongoUri = mongodInstance.getUri();
-    console.log(`[MongoManager] Embedded fallback ready at: ${mongoUri}`);
-    return mongoUri;
-  } catch (fallbackErr) {
-    console.error('[MongoManager] Embedded fallback error:', fallbackErr.message);
-    mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/login_page_db';
-    return mongoUri;
-  }
+  return mongoUri;
 }
+
 
 /**
  * Stops local MongoDB instance on application quit

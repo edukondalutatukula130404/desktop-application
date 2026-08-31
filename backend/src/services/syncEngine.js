@@ -207,11 +207,19 @@ async function pullRemoteChangesFromMongo() {
   const lastPull = (await sqliteStore.getSyncMetaData('last_pull_timestamp')) || '1970-01-01T00:00:00.000Z';
   const myDeviceId = getDeviceId();
   const pullOpts = { skipSyncQueue: true };
+  let hasNewPullData = false;
 
   // 1. Pull Products (Shared Catalog)
   const remotePrds = await Product.find().lean().exec();
+  const localPrds = await sqliteStore.getProducts();
+  const localPrdMap = new Map((localPrds || []).map(p => [(p.id || '').toLowerCase(), p]));
+
   for (const p of remotePrds || []) {
     if (p.id) {
+      const existing = localPrdMap.get(String(p.id).toLowerCase());
+      if (!existing || existing.name !== p.name || existing.price !== p.price || existing.stock !== p.stock) {
+        hasNewPullData = true;
+      }
       await sqliteStore.createProduct({
         id: p.id,
         name: p.name,
@@ -228,8 +236,13 @@ async function pullRemoteChangesFromMongo() {
 
   // 2. Pull Categories (Shared Catalog)
   const remoteCats = await Category.find().lean().exec();
+  const localCats = await sqliteStore.getCategories();
+  const localCatMap = new Map((localCats || []).map(c => [(c.id || '').toLowerCase(), c]));
   for (const cat of remoteCats || []) {
     if (cat.id) {
+      if (!localCatMap.has(String(cat.id).toLowerCase())) {
+        hasNewPullData = true;
+      }
       await sqliteStore.createCategory({
         id: cat.id,
         name: cat.name,
@@ -240,10 +253,15 @@ async function pullRemoteChangesFromMongo() {
     }
   }
 
-  // 3. Pull Customers (profile data only — totalBilled is computed dynamically from invoices)
+  // 3. Pull Customers (profile data only)
   const remoteClients = await Client.find().lean().exec();
+  const localClients = await sqliteStore.getClients();
+  const localClientMap = new Map((localClients || []).map(c => [(c.id || '').toLowerCase(), c]));
   for (const c of remoteClients || []) {
     if (c.id) {
+      if (!localClientMap.has(String(c.id).toLowerCase())) {
+        hasNewPullData = true;
+      }
       await sqliteStore.createClient({
         id: c.id,
         name: c.name,
@@ -251,18 +269,18 @@ async function pullRemoteChangesFromMongo() {
         phone: c.phone,
         contact: c.contact,
         status: c.status
-        // Note: totalBilled is NOT synced — it is always computed live from local invoices table
       }, pullOpts);
     }
   }
 
-  // 4. Pull Invoices (Invoices & Transactions Sync)
+  // 4. Pull Invoices
   const remoteInvoices = await Invoice.find().lean().exec();
   for (const inv of remoteInvoices || []) {
     const invId = inv.id || (inv._id ? String(inv._id) : null);
     if (invId) {
       const existingLocal = await sqliteStore.getInvoiceById(invId);
       if (!existingLocal) {
+        hasNewPullData = true;
         await sqliteStore.createInvoice({
           id: invId,
           clientId: inv.clientId || '',
@@ -291,6 +309,7 @@ async function pullRemoteChangesFromMongo() {
       const existingLocal = await sqliteStore.getBills();
       const found = existingLocal.find(x => x.id === b.id);
       if (!found) {
+        hasNewPullData = true;
         await sqliteStore.createBill({
           id: b.id,
           vendor: b.vendor,
@@ -306,9 +325,17 @@ async function pullRemoteChangesFromMongo() {
 
   // Clean up completed/synced items from sync_queue
   await sqliteStore.clearCompletedSyncQueue();
-
   await sqliteStore.setSyncMetaData('last_pull_timestamp', new Date().toISOString());
+
+  if (hasNewPullData) {
+    try {
+      const { emitToCompany } = require('./socketService');
+      console.log(`[Sync Engine] ⚡ Pulled remote changes from cloud. Emitting live real-time sync update.`);
+      emitToCompany('shop_default', 'dashboard:updated', { trigger: 'cloud_pull_sync' });
+    } catch (e) {}
+  }
 }
+
 
 function startSyncEngine(intervalMs = 5000) {
   if (syncInterval) clearInterval(syncInterval);

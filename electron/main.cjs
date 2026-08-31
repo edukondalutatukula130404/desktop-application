@@ -150,11 +150,19 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  // 1. Start Backend & Database services so API server is ready on port 5050
+  // 1. Open Electron Window IMMEDIATELY so app UI displays instantly on any computer
+  createWindow().catch((err) => {
+    console.error('[Electron Main] createWindow error:', err);
+  });
+
+  // 2. Start Backend & Database services asynchronously in background
   try {
     console.log('[Electron Main] Starting MongoDB database...');
-    const mongoUri = await startMongo();
-    process.env.MONGO_URI = mongoUri;
+    startMongo().then((mongoUri) => {
+      if (mongoUri) process.env.MONGO_URI = mongoUri;
+    }).catch((e) => {
+      console.warn('[Electron Main] startMongo non-blocking error:', e.message);
+    });
 
     console.log('[Electron Main] Starting Express API Server...');
     try {
@@ -170,15 +178,13 @@ app.whenReady().then(async () => {
     console.error('[Electron Main] Error initializing backend services:', err.message);
   }
 
-  // 2. Open Electron window once backend is ready
-  await createWindow();
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
   });
 });
+
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
