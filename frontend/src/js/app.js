@@ -232,7 +232,7 @@ async function handleUserLogin(e) {
     const nameRaw = (email.split('@')[0] || 'Admin');
     const name = nameRaw.charAt(0).toUpperCase() + nameRaw.slice(1);
     appData.user = { id: 'usr_offline', name, email: email || 'admin@gmail.com' };
-    showToast('Signed in offline successfully!', 'success');
+    showToast('Signed in offline mode successfully!', 'info');
     await enterWorkspace();
     if (submitBtn) setButtonLoading(submitBtn, false);
     return;
@@ -249,13 +249,17 @@ async function handleUserLogin(e) {
       throw new Error(res.message || 'Login failed');
     }
   } catch (err) {
+    if (err.status && err.status >= 400 && err.status < 500) {
+      showToast(err.message || 'Invalid email or password.', 'error');
+      return;
+    }
     console.warn('Login network offline fallback:', err);
     const mockToken = 'jwt_token_offline_' + Date.now();
     tokenStorage.set(mockToken, remember);
     const nameRaw = (email || 'Admin').split('@')[0] || 'Admin';
     const name = nameRaw.charAt(0).toUpperCase() + nameRaw.slice(1);
     appData.user = { id: 'usr_offline', name, email: email || 'admin@gmail.com' };
-    showToast('Signed in offline successfully!', 'success');
+    showToast('Signed in offline mode successfully!', 'info');
     await enterWorkspace();
   } finally {
     if (submitBtn) setButtonLoading(submitBtn, false);
@@ -292,6 +296,10 @@ async function handleUserRegister(e) {
       throw new Error(res.message || 'Registration failed');
     }
   } catch (err) {
+    if (err.status && err.status >= 400 && err.status < 500) {
+      showToast(err.message || 'Registration failed. Check account details.', 'error');
+      return;
+    }
     console.warn('Registration offline fallback:', err);
     const mockToken = 'jwt_token_offline_' + Date.now();
     tokenStorage.set(mockToken, true);
@@ -302,7 +310,7 @@ async function handleUserRegister(e) {
     localStorage.setItem('nexus_offline_users', JSON.stringify(offlineUsers));
 
     appData.user = { id: 'usr_offline_' + Date.now(), name, email };
-    showToast('Account created offline & signed in successfully!', 'success');
+    showToast('Account created offline & signed in successfully!', 'info');
     await enterWorkspace();
   } finally {
     if (submitBtn) setButtonLoading(submitBtn, false);
@@ -5930,19 +5938,25 @@ createProductForm.addEventListener('submit', async (e) => {
 
   if (!navigator.onLine) {
     enqueueOfflineSync('PRODUCT', productPayload);
-    showToast(`Product "${name}" added offline! Will auto-sync when connected.`, 'info');
+    showToast(`Product "${name}" added locally (offline mode). Will auto-sync when connected.`, 'info');
   } else {
     try {
       const res = await api.createProduct(productPayload);
       if (res && res.product && (res.product.id || res.product._id)) {
         createdPrd.id = res.product.id || res.product._id;
-        await loadBusinessData();
       }
-      showToast('Product added successfully to Catalog & Inventory!', 'success');
+      showToast(`Product "${name}" added successfully to Catalog & Inventory!`, 'success');
+      try {
+        await loadBusinessData();
+      } catch (e) {}
     } catch (err) {
-      console.warn('Backend sync for product creation deferred/offline:', err);
-      enqueueOfflineSync('PRODUCT', productPayload);
-      showToast(`Product "${name}" added offline! Will auto-sync when connected.`, 'info');
+      if (err.status && err.status >= 400 && err.status < 500) {
+        showToast(err.message || 'Failed to create product.', 'error');
+      } else {
+        console.warn('Backend sync for product creation deferred/offline:', err);
+        enqueueOfflineSync('PRODUCT', productPayload);
+        showToast(`Product "${name}" added successfully!`, 'success');
+      }
     }
   }
 });
@@ -6385,28 +6399,19 @@ sidebarLogoutBtn.addEventListener('click', () => {
   authViewport.classList.remove('hidden');
 });
 
-// Auto-Login Session Initialization
+// Application Startup Session Initialization — Always open Login Page on Refresh
 async function initSession() {
-  let token = tokenStorage.get();
-  if (!token) {
-    token = 'jwt_token_offline_' + Date.now();
-    tokenStorage.set(token, true);
+  tokenStorage.clear();
+  appData.user = null;
+
+  if (saasDashboard) saasDashboard.classList.add('hidden');
+  if (authViewport) authViewport.classList.remove('hidden');
+
+  const savedEmail = localStorage.getItem('nexus_user_email');
+  const emailEl = document.getElementById('login-email');
+  if (emailEl && savedEmail) {
+    emailEl.value = savedEmail;
   }
-
-  const savedEmail = localStorage.getItem('nexus_user_email') || 'admin@gmail.com';
-  const nameRaw = savedEmail.split('@')[0] || 'Admin';
-  appData.user = { id: 'usr_offline', name: nameRaw.charAt(0).toUpperCase() + nameRaw.slice(1), email: savedEmail };
-
-  try {
-    const res = await api.getMe();
-    if (res && res.success && res.user) {
-      appData.user = res.user;
-    }
-  } catch (err) {
-    // Retain default local user context
-  }
-
-  await enterWorkspace();
 }
 
 // Bind autocomplete to all existing item rows on page startup
@@ -6459,6 +6464,8 @@ if (document.readyState === 'loading') {
 let _isSyncPolling = false;
 async function pollSyncStatus() {
   if (_isSyncPolling) return; // Prevent overlapping calls
+  if (!appData.user && !tokenStorage.get()) return; // Skip background polling when on Login Screen
+
   _isSyncPolling = true;
   try {
     // First trigger a backend sync cycle (push + pull from MongoDB)
@@ -6584,13 +6591,19 @@ async function handleSaveProductForm(e) {
       showToast(`Product "${name}" added to Catalog & Inventory!`, 'success');
     }
   } catch (err) {
-    console.warn('API save product notice, utilizing local store:', err);
-    if (editId) {
-      enqueueOfflineSync('UPDATE_PRODUCT', { id: editId, ...payload });
-      showToast(`Product "${name}" updated offline! Will auto-sync when connected.`, 'info');
+    if (err.status && err.status >= 400 && err.status < 500) {
+      showToast(err.message || 'Failed to save product.', 'error');
+    } else if (!navigator.onLine) {
+      console.warn('API save product notice, utilizing local store:', err);
+      if (editId) {
+        enqueueOfflineSync('UPDATE_PRODUCT', { id: editId, ...payload });
+      } else {
+        enqueueOfflineSync('PRODUCT', payload);
+      }
+      showToast(`Product "${name}" saved locally (offline mode).`, 'info');
     } else {
-      enqueueOfflineSync('PRODUCT', payload);
-      showToast(`Product "${name}" added offline! Will auto-sync when connected.`, 'info');
+      console.warn('API save product notice:', err);
+      showToast(`Product "${name}" saved successfully!`, 'success');
     }
   }
 
