@@ -25,7 +25,7 @@ let PRODUCTION_API_URL = typeof import.meta !== 'undefined' && import.meta.env ?
 async function detectActivePort() {
   if (PRODUCTION_API_URL) return PRODUCTION_API_URL;
 
-  const ports = [5000, 5050, 5051, 5052];
+  const ports = [5000, 5001, 5002, 5003, 5004, 5005, 5050, 5051, 5052];
   for (const p of ports) {
     try {
       const controller = new AbortController();
@@ -33,15 +33,27 @@ async function detectActivePort() {
       const res = await fetch(`http://127.0.0.1:${p}/api/health`, { method: 'GET', signal: controller.signal });
       clearTimeout(t);
       if (res.ok) {
-        ACTIVE_PORT = p;
-        return p;
+        const data = await res.json().catch(() => ({}));
+        if (data.status === 'online' || data.service) {
+          ACTIVE_PORT = p;
+          return p;
+        }
       }
     } catch (e) {}
   }
   return ACTIVE_PORT;
 }
 
-detectActivePort();
+let initialPortDetected = false;
+
+async function ensurePortDetected() {
+  if (!initialPortDetected && !PRODUCTION_API_URL) {
+    await detectActivePort();
+    initialPortDetected = true;
+  }
+}
+
+detectActivePort().then(() => { initialPortDetected = true; });
 
 function getApiBaseUrl(port) {
   if (PRODUCTION_API_URL) {
@@ -55,7 +67,20 @@ function getApiBaseUrl(port) {
   return '/api';
 }
 
+export function getActiveApiPort() {
+  return ACTIVE_PORT;
+}
+
+export function getSocketBaseUrl() {
+  if (PRODUCTION_API_URL) {
+    return PRODUCTION_API_URL.replace(/\/api\/?$/, '');
+  }
+  const host = (typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost') ? window.location.hostname : '127.0.0.1';
+  return `http://${host}:${ACTIVE_PORT}`;
+}
+
 async function request(endpoint, options = {}) {
+  await ensurePortDetected();
   const devId = (typeof localStorage !== 'undefined' && localStorage.getItem('nexus_device_id')) ? localStorage.getItem('nexus_device_id') : 'DEV_DEFAULT';
   const headers = {
     'Content-Type': 'application/json',
@@ -95,7 +120,7 @@ async function request(endpoint, options = {}) {
     clearTimeout(timeoutId);
 
     const detectedPort = await detectActivePort();
-    if (detectedPort !== ACTIVE_PORT) {
+    if (detectedPort) {
       ACTIVE_PORT = detectedPort;
       try {
         const retryController = new AbortController();
@@ -108,8 +133,15 @@ async function request(endpoint, options = {}) {
         clearTimeout(retryTimeout);
         if (retryRes.ok) {
           return await retryRes.json();
+        } else {
+          const errData = await retryRes.json().catch(() => ({}));
+          const err = new Error(errData.message || `HTTP Error ${retryRes.status}`);
+          err.status = retryRes.status;
+          throw err;
         }
-      } catch (e2) {}
+      } catch (e2) {
+        if (e2.status) throw e2;
+      }
     }
 
     console.warn(`API Request [${endpoint}] error:`, error.message);
@@ -233,8 +265,8 @@ export const api = {
 
   checkHealth: async () => {
     try {
-      const getUrl = (port) => (typeof window !== 'undefined' && window.location.protocol === 'file:') ? `http://127.0.0.1:${port}/api` : '/api';
-      const res = await fetch(`${getUrl(ACTIVE_PORT)}/health`);
+      await ensurePortDetected();
+      const res = await fetch(`${getApiBaseUrl(ACTIVE_PORT)}/health`);
       return res.ok;
     } catch {
       return false;

@@ -139,6 +139,7 @@ async function pushLocalChangesToMongo() {
           if (payload.price !== undefined) productUpdate.price = payload.price;
           if (payload.stock !== undefined) productUpdate.stock = payload.stock;
           if (payload.count !== undefined) productUpdate.count = payload.count;
+          if (payload.companyId) productUpdate.companyId = payload.companyId;
           productUpdate.updatedAt = payload.updated_at || new Date().toISOString();
           productUpdate.deviceId = deviceId;
 

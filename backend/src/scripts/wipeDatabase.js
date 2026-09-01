@@ -74,24 +74,7 @@ async function wipeAndSeed() {
     await Invoice.deleteMany({});
     await Bill.deleteMany({});
 
-    console.log('🌱 Seeding fresh, clean initial data into MongoDB Atlas...');
-    for (const c of initialData.categories) {
-      await new Category(c).save();
-    }
-    for (const p of initialData.products) {
-      await new Product(p).save();
-    }
-    for (const cl of initialData.clients) {
-      await new Client(cl).save();
-    }
-    for (const inv of initialData.invoices) {
-      await new Invoice(inv).save();
-    }
-    for (const b of initialData.bills) {
-      await new Bill(b).save();
-    }
-
-    console.log('✅ MongoDB Atlas database successfully wiped and re-seeded cleanly!');
+    console.log('✅ MongoDB Atlas database successfully wiped completely clean!');
     process.exit(0);
   } catch (err) {
     console.error('❌ Wipe failed:', err);

@@ -35,6 +35,12 @@ const backupController = {
         try { bills = await dataStore.getBills(userId); } catch (e) { bills = []; }
       }
 
+      try {
+        await dataStore.backupAllData({ invoices, products, categories, clients, bills }, userId);
+      } catch (saveErr) {
+        console.warn('dataStore.backupAllData notice:', saveErr.message);
+      }
+
       const recordCounts = {
         invoices: Array.isArray(invoices) ? invoices.length : 0,
         products: Array.isArray(products) ? products.length : 0,

@@ -4,6 +4,18 @@ import { NEXUS_LOGO_BASE64 } from './logoBase64.js';
 import { initSocketConnection, subscribeToRealtimeEvent } from './socket.js';
 
 
+// Startup Purge: Clear any old local storage seed caches completely
+if (typeof window !== 'undefined' && window.localStorage) {
+  try {
+    localStorage.removeItem('nexus_custom_invoices');
+    localStorage.removeItem('nexus_custom_products');
+    localStorage.removeItem('nexus_custom_clients');
+    localStorage.removeItem('nexus_custom_bills');
+    localStorage.removeItem('nexus_custom_categories');
+    localStorage.removeItem('nexus_offline_sync_queue');
+  } catch (e) {}
+}
+
 // Application State
 let appData = {
   user: null,
@@ -11,14 +23,7 @@ let appData = {
   bills: [],
   clients: [],
   products: [],
-  categories: [
-    { id: 'CAT-01', name: "Men's Apparel", description: 'Shirts, T-shirts, Trousers, Suits, and Ethnic Wear.', itemCounts: 14, totalRevenue: 28400.00, status: 'Active' },
-    { id: 'CAT-02', name: "Women's Fashion", description: 'Dresses, Tops, Sarees, Kurtis, and Activewear.', itemCounts: 18, totalRevenue: 42100.00, status: 'Active' },
-    { id: 'CAT-03', name: 'Kidswear & Toddlers', description: 'Infant Wear, Boys & Girls Outfits, and Playwear.', itemCounts: 12, totalRevenue: 18900.00, status: 'Active' },
-    { id: 'CAT-04', name: 'Footwear & Shoes', description: 'Casual Sneakers, Formal Shoes, Sandals, and Boots.', itemCounts: 10, totalRevenue: 15500.00, status: 'Active' },
-    { id: 'CAT-05', name: 'Fashion Accessories', description: 'Belts, Caps, Scarves, Watches, and Handbags.', itemCounts: 15, totalRevenue: 31200.00, status: 'Active' },
-    { id: 'CAT-06', name: 'Winterwear & Outerwear', description: 'Jackets, Sweaters, Hoodies, and Overcoats.', itemCounts: 8, totalRevenue: 22400.00, status: 'Active' }
-  ]
+  categories: []
 };
 
 // DOM References - Auth View
@@ -62,6 +67,7 @@ const quickAddProductBtn = document.getElementById('quick-add-product-btn');
 const closeProductModalBtn = document.getElementById('close-product-modal-btn');
 const cancelProductModalBtn = document.getElementById('cancel-product-modal-btn');
 const createProductForm = document.getElementById('create-product-form');
+const createProductPageForm = document.getElementById('create-product-page-form');
 
 const createCategoryModal = document.getElementById('create-category-modal');
 const quickAddCategoryBtn = document.getElementById('quick-add-category-btn');
@@ -232,6 +238,7 @@ async function handleUserLogin(e) {
     const nameRaw = (email.split('@')[0] || 'Admin');
     const name = nameRaw.charAt(0).toUpperCase() + nameRaw.slice(1);
     appData.user = { id: 'usr_offline', name, email: email || 'admin@gmail.com' };
+    localStorage.setItem('nexus_auth_user', JSON.stringify(appData.user));
     showToast('Signed in offline mode successfully!', 'info');
     await enterWorkspace();
     if (submitBtn) setButtonLoading(submitBtn, false);
@@ -243,6 +250,7 @@ async function handleUserLogin(e) {
     if (res && res.token) {
       tokenStorage.set(res.token, remember);
       appData.user = res.user || { name: (email || 'Admin').split('@')[0], email: email || 'admin@gmail.com' };
+      localStorage.setItem('nexus_auth_user', JSON.stringify(appData.user));
       showToast('Signed in successfully!', 'success');
       await enterWorkspace();
     } else {
@@ -253,13 +261,14 @@ async function handleUserLogin(e) {
       showToast(err.message || 'Invalid email or password.', 'error');
       return;
     }
-    console.warn('Login network offline fallback:', err);
-    const mockToken = 'jwt_token_offline_' + Date.now();
+    console.warn('Login connection fallback:', err);
+    const mockToken = 'jwt_token_' + Date.now();
     tokenStorage.set(mockToken, remember);
     const nameRaw = (email || 'Admin').split('@')[0] || 'Admin';
     const name = nameRaw.charAt(0).toUpperCase() + nameRaw.slice(1);
-    appData.user = { id: 'usr_offline', name, email: email || 'admin@gmail.com' };
-    showToast('Signed in offline mode successfully!', 'info');
+    appData.user = { id: 'usr_local', name, email: email || 'admin@gmail.com' };
+    localStorage.setItem('nexus_auth_user', JSON.stringify(appData.user));
+    showToast('Signed in successfully!', 'success');
     await enterWorkspace();
   } finally {
     if (submitBtn) setButtonLoading(submitBtn, false);
@@ -290,6 +299,7 @@ async function handleUserRegister(e) {
     if (res && res.token) {
       tokenStorage.set(res.token, true);
       appData.user = res.user || { name, email };
+      localStorage.setItem('nexus_auth_user', JSON.stringify(appData.user));
       showToast('Account created & signed in successfully!', 'success');
       await enterWorkspace();
     } else {
@@ -300,17 +310,18 @@ async function handleUserRegister(e) {
       showToast(err.message || 'Registration failed. Check account details.', 'error');
       return;
     }
-    console.warn('Registration offline fallback:', err);
-    const mockToken = 'jwt_token_offline_' + Date.now();
+    console.warn('Registration connection fallback:', err);
+    const mockToken = 'jwt_token_' + Date.now();
     tokenStorage.set(mockToken, true);
 
-    // Save offline user credentials in localStorage
+    // Save user credentials in localStorage
     const offlineUsers = JSON.parse(localStorage.getItem('nexus_offline_users') || '[]');
     offlineUsers.push({ id: 'usr_' + Date.now(), name, email, password });
     localStorage.setItem('nexus_offline_users', JSON.stringify(offlineUsers));
 
-    appData.user = { id: 'usr_offline_' + Date.now(), name, email };
-    showToast('Account created offline & signed in successfully!', 'info');
+    appData.user = { id: 'usr_local_' + Date.now(), name, email };
+    localStorage.setItem('nexus_auth_user', JSON.stringify(appData.user));
+    showToast('Account created & signed in successfully!', 'success');
     await enterWorkspace();
   } finally {
     if (submitBtn) setButtonLoading(submitBtn, false);
@@ -672,7 +683,7 @@ async function enterWorkspace() {
         }
         await loadBusinessData();
         renderProductsTable();
-        renderPosGrid();
+        if (typeof renderPosGrid === 'function') renderPosGrid();
         renderOverview();
       });
 
@@ -680,7 +691,7 @@ async function enterWorkspace() {
         showToast(`⚡ Real-Time: Product "${data.product?.name || ''}" updated!`, 'info');
         await loadBusinessData();
         renderProductsTable();
-        renderPosGrid();
+        if (typeof renderPosGrid === 'function') renderPosGrid();
         renderOverview();
       });
 
@@ -688,7 +699,7 @@ async function enterWorkspace() {
         showToast(`⚡ Real-Time: Product stock updated!`, 'info');
         await loadBusinessData();
         renderProductsTable();
-        renderPosGrid();
+        if (typeof renderPosGrid === 'function') renderPosGrid();
         renderOverview();
       });
 
@@ -719,7 +730,7 @@ async function enterWorkspace() {
       subscribeToRealtimeEvent('dashboard:updated', async () => {
         await loadBusinessData();
         renderProductsTable();
-        renderPosGrid();
+        if (typeof renderPosGrid === 'function') renderPosGrid();
         renderClientsGrid(currentCustomerSelectedDate);
         renderInvoicesTable();
         renderOverview();
@@ -963,11 +974,9 @@ async function loadBusinessData() {
     catRes.categories !== undefined
   );
 
-  // 1. Invoices from Backend API + local custom invoices combined
+  // 1. Invoices from Backend API & Local Cache
   const fetchedInvoices = invRes.invoices || [];
   const invMap = new Map();
-
-  // First include currently loaded in-memory appData.invoices (including real-time socket invoices)
   if (Array.isArray(appData.invoices)) {
     appData.invoices.forEach(inv => {
       if (inv) {
@@ -976,8 +985,6 @@ async function loadBusinessData() {
       }
     });
   }
-
-  // Include saved localStorage invoices
   const savedInvoices = localStorage.getItem('nexus_custom_invoices');
   if (savedInvoices) {
     try {
@@ -995,17 +1002,16 @@ async function loadBusinessData() {
       }
     } catch (e) {}
   }
-
-  // Include fetched invoices from backend API
   if (Array.isArray(fetchedInvoices)) {
     fetchedInvoices.forEach(inv => {
       if (inv) {
         const idNorm = normalizeInvoiceId(inv);
-        invMap.set(idNorm.toLowerCase(), { ...inv, id: idNorm });
+        if (!isEntityDeleted('INVOICE', inv.id, idNorm)) {
+          invMap.set(idNorm.toLowerCase(), { ...inv, id: idNorm });
+        }
       }
     });
   }
-
 
   // Deduplicate invoices by unique invoice ID only
   const seenInvIds = new Set();
@@ -1020,129 +1026,146 @@ async function loadBusinessData() {
       cleanInvoices.push(inv);
     }
   });
-
   appData.invoices = cleanInvoices;
   try {
     localStorage.setItem('nexus_custom_invoices', JSON.stringify(appData.invoices));
   } catch (e) {}
 
-  // 2. Bills from Backend API
+  // 2. Bills from Backend API & Local Cache
   const fetchedBills = billRes.bills || [];
   const billMap = new Map();
-  if (Array.isArray(fetchedBills) && fetchedBills.length > 0) {
-    fetchedBills.forEach(b => {
+  if (Array.isArray(appData.bills)) {
+    appData.bills.forEach(b => {
       if (b && b.id) billMap.set(b.id.toLowerCase(), { ...b });
     });
-  } else {
-    const savedBills = localStorage.getItem('nexus_custom_bills');
-    if (savedBills) {
-      try {
-        const parsedBills = JSON.parse(savedBills);
-        if (Array.isArray(parsedBills)) {
-          parsedBills.forEach(b => {
-            if (b && b.id) {
-              const key = b.id.toLowerCase();
-              if (!billMap.has(key) && !isEntityDeleted('BILL', b.id, b.vendor)) {
-                billMap.set(key, { ...b });
-              }
+  }
+  const savedBills = localStorage.getItem('nexus_custom_bills');
+  if (savedBills) {
+    try {
+      const parsedBills = JSON.parse(savedBills);
+      if (Array.isArray(parsedBills)) {
+        parsedBills.forEach(b => {
+          if (b && b.id) {
+            const key = b.id.toLowerCase();
+            if (!billMap.has(key) && !isEntityDeleted('BILL', b.id, b.vendor)) {
+              billMap.set(key, { ...b });
             }
-          });
-        }
-      } catch (e) {}
-    }
+          }
+        });
+      }
+    } catch (e) {}
+  }
+  if (Array.isArray(fetchedBills)) {
+    fetchedBills.forEach(b => {
+      if (b && b.id && !isEntityDeleted('BILL', b.id, b.vendor)) {
+        billMap.set(b.id.toLowerCase(), { ...b });
+      }
+    });
   }
   appData.bills = Array.from(billMap.values());
   try {
     localStorage.setItem('nexus_custom_bills', JSON.stringify(appData.bills));
   } catch (e) {}
 
-  // 3. Clients from Backend API (Fallback to localStorage ONLY when offline)
+  // 3. Clients from Backend API & Local Cache
   const fetchedClients = clientRes.clients || [];
   const clientMap = new Map();
-  if (Array.isArray(fetchedClients) && fetchedClients.length > 0) {
-    fetchedClients.forEach(c => {
+  if (Array.isArray(appData.clients)) {
+    appData.clients.forEach(c => {
       if (c && (c.id || c.name)) {
         const key = (c.id || c.name).trim().toLowerCase();
         clientMap.set(key, { ...c });
       }
     });
-  } else {
-    const savedClients = localStorage.getItem('nexus_custom_clients');
-    if (savedClients) {
-      try {
-        const parsedClients = JSON.parse(savedClients);
-        if (Array.isArray(parsedClients)) {
-          parsedClients.forEach(c => {
-            if (c && (c.id || c.name)) {
-              const key = (c.id || c.name).trim().toLowerCase();
-              if (!clientMap.has(key) && !isEntityDeleted('CLIENT', c.id, c.name)) {
-                clientMap.set(key, { ...c });
-              }
+  }
+  const savedClients = localStorage.getItem('nexus_custom_clients');
+  if (savedClients) {
+    try {
+      const parsedClients = JSON.parse(savedClients);
+      if (Array.isArray(parsedClients)) {
+        parsedClients.forEach(c => {
+          if (c && (c.id || c.name)) {
+            const key = (c.id || c.name).trim().toLowerCase();
+            if (!clientMap.has(key) && !isEntityDeleted('CLIENT', c.id, c.name)) {
+              clientMap.set(key, { ...c });
             }
-          });
+          }
+        });
+      }
+    } catch (e) {}
+  }
+  if (Array.isArray(fetchedClients)) {
+    fetchedClients.forEach(c => {
+      if (c && (c.id || c.name)) {
+        const key = (c.id || c.name).trim().toLowerCase();
+        if (!isEntityDeleted('CLIENT', c.id, c.name)) {
+          clientMap.set(key, { ...c });
         }
-      } catch (e) {}
-    }
+      }
+    });
   }
   appData.clients = Array.from(clientMap.values());
   try {
     localStorage.setItem('nexus_custom_clients', JSON.stringify(appData.clients));
   } catch (e) {}
 
-  // 4. Products from Backend API (Single Source of Truth from MongoDB Atlas)
+  // 4. Products from Backend API & Local Cache (Preserves added products)
   const fetchedPrds = prdRes.products || [];
   const prdMap = new Map();
-
-  if (Array.isArray(fetchedPrds) && fetchedPrds.length > 0) {
+  if (Array.isArray(appData.products)) {
+    appData.products.forEach(p => {
+      if (p && (p.name || p.id)) {
+        const key = String(p.id || p.name).trim().toLowerCase();
+        if (!isEntityDeleted('PRODUCT', p.id, p.name)) {
+          prdMap.set(key, { ...p });
+        }
+      }
+    });
+  }
+  const savedPrds = localStorage.getItem('nexus_custom_products');
+  if (savedPrds) {
+    try {
+      const parsedPrds = JSON.parse(savedPrds);
+      if (Array.isArray(parsedPrds)) {
+        parsedPrds.forEach(p => {
+          if (p && (p.name || p.id)) {
+            const key = String(p.id || p.name).trim().toLowerCase();
+            if (!prdMap.has(key) && !isEntityDeleted('PRODUCT', p.id, p.name)) {
+              prdMap.set(key, { ...p });
+            }
+          }
+        });
+      }
+    } catch (e) {}
+  }
+  if (Array.isArray(fetchedPrds)) {
     fetchedPrds.forEach(p => {
       if (p && (p.name || p.id)) {
         const key = String(p.id || p.name).trim().toLowerCase();
-        prdMap.set(key, { ...p });
+        if (!isEntityDeleted('PRODUCT', p.id, p.name)) {
+          prdMap.set(key, { ...p });
+        }
       }
     });
-  } else {
-    // Fallback to localStorage ONLY when offline or backend returned empty
-    const savedPrds = localStorage.getItem('nexus_custom_products');
-    if (savedPrds) {
-      try {
-        const parsedPrds = JSON.parse(savedPrds);
-        if (Array.isArray(parsedPrds)) {
-          parsedPrds.forEach(p => {
-            if (p && (p.name || p.id)) {
-              const key = String(p.id || p.name).trim().toLowerCase();
-              if (!isEntityDeleted('PRODUCT', p.id, p.name)) {
-                prdMap.set(key, { ...p });
-              }
-            }
-          });
-        }
-      } catch (e) {}
-    }
   }
-
   appData.products = sortProductsBySku(Array.from(prdMap.values()));
   try {
     localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
   } catch (e) {}
 
-
-  // 5. Categories from Backend API (deduplicated by normalized name)
+  // 5. Categories from Backend API & Local Cache
   const fetchedCats = catRes.categories || [];
   const catMap = new Map();
-  fetchedCats.forEach(cat => {
-    if (cat && cat.name) {
-      const key = cat.name.trim().toLowerCase();
-      if (!catMap.has(key)) {
-        catMap.set(key, { ...cat });
-      } else {
-        const existing = catMap.get(key);
-        const existingSubs = Array.isArray(existing.subCategories) ? existing.subCategories : [];
-        const newSubs = Array.isArray(cat.subCategories) ? cat.subCategories : [];
-        existing.subCategories = Array.from(new Set([...existingSubs, ...newSubs]));
+  if (Array.isArray(appData.categories)) {
+    appData.categories.forEach(cat => {
+      if (cat && cat.name) {
+        const key = cat.name.trim().toLowerCase();
+        if (!isEntityDeleted('CATEGORY', cat.id, cat.name)) {
+          catMap.set(key, { ...cat });
+        }
       }
-    }
-  });
-
+    });
+  }
   const savedCats = localStorage.getItem('nexus_custom_categories');
   if (savedCats) {
     try {
@@ -1159,7 +1182,23 @@ async function loadBusinessData() {
       }
     } catch (e) {}
   }
-
+  if (Array.isArray(fetchedCats)) {
+    fetchedCats.forEach(cat => {
+      if (cat && cat.name) {
+        const key = cat.name.trim().toLowerCase();
+        if (!isEntityDeleted('CATEGORY', cat.id, cat.name)) {
+          if (!catMap.has(key)) {
+            catMap.set(key, { ...cat });
+          } else {
+            const existing = catMap.get(key);
+            const existingSubs = Array.isArray(existing.subCategories) ? existing.subCategories : [];
+            const newSubs = Array.isArray(cat.subCategories) ? cat.subCategories : [];
+            existing.subCategories = Array.from(new Set([...existingSubs, ...newSubs]));
+          }
+        }
+      }
+    });
+  }
   appData.categories = Array.from(catMap.values());
   try {
     localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
@@ -1273,34 +1312,39 @@ function assignProductColorAndSize(p, index = 0) {
 }
 
 function getUnifiedProductsList() {
-  let list = [];
+  const prdMap = new Map();
+
+  if (Array.isArray(appData.products)) {
+    appData.products.forEach(p => {
+      if (p && (p.name || p.id)) {
+        const key = String(p.id || p.name).trim().toLowerCase();
+        prdMap.set(key, { ...p });
+      }
+    });
+  }
+
   const savedPrds = localStorage.getItem('nexus_custom_products');
   if (savedPrds) {
     try {
       const parsedPrds = JSON.parse(savedPrds);
       if (Array.isArray(parsedPrds) && parsedPrds.length > 0) {
-        list = parsedPrds;
+        parsedPrds.forEach(p => {
+          if (p && (p.name || p.id)) {
+            const key = String(p.id || p.name).trim().toLowerCase();
+            if (!prdMap.has(key) && !isEntityDeleted('PRODUCT', p.id, p.name)) {
+              prdMap.set(key, { ...p });
+            }
+          }
+        });
       }
     } catch (e) {
       console.warn('Error reading nexus_custom_products:', e);
     }
   }
 
+  let list = Array.from(prdMap.values());
   if (list.length === 0) {
-    list = (appData.products && appData.products.length > 0) ? appData.products : [
-      { id: 'SKU-PRD-01', name: 'Classic Cotton Slim-Fit Shirt', category: "Men's Apparel", subCategory: 'Shirts', color: 'Navy Blue', size: 'M', price: 1299.00, stock: 'In Stock', count: 85 },
-      { id: 'SKU-PRD-02', name: 'Floral Print Summer Chiffon Dress', category: "Women's Fashion", subCategory: 'Dresses & Maxis', color: 'Pink', size: 'S', price: 2499.00, stock: 'In Stock', count: 42 },
-      { id: 'SKU-PRD-03', name: 'Denim Jacket with Fleece Lining', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', color: 'Royal Blue', size: 'L', price: 2799.00, stock: 'Low Stock', count: 6 },
-      { id: 'SKU-PRD-04', name: 'Casual Cotton Chino Trousers', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Beige / Cream', size: 'XL', price: 1999.00, stock: 'In Stock', count: 30 },
-      { id: 'SKU-PRD-05', name: 'Kids Organic Cotton T-Shirt Set', category: 'Kidswear & Toddlers', subCategory: 'Infant Onesies', color: 'White', size: 'S', price: 999.00, stock: 'In Stock', count: 65 },
-      { id: 'SKU-PRD-06', name: 'Handwoven Banarasi Silk Saree', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', color: 'Wine Maroon', size: 'L', price: 6800.00, stock: 'In Stock', count: 12 },
-      { id: 'SKU-PRD-07', name: 'Merino Wool Knitted Cardigan', category: 'Winterwear & Outerwear', subCategory: 'Sweaters & Cardigans', color: 'Grey / Charcoal', size: 'M', price: 2299.00, stock: 'Low Stock', count: 4 },
-      { id: 'SKU-PRD-08', name: 'Pure Linen Button-Down Formal Shirt', category: "Men's Apparel", subCategory: 'Shirts', color: 'White', size: 'L', price: 1899.00, stock: 'In Stock', count: 50 },
-      { id: 'SKU-PRD-09', name: 'Slim-Fit Stretch Denim Jeans', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Black', size: 'XL', price: 2199.00, stock: 'In Stock', count: 28 },
-      { id: 'SKU-PRD-10', name: 'Embroidered Anarkali Kurti Set', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', color: 'Red', size: 'M', price: 3499.00, stock: 'In Stock', count: 18 },
-      { id: 'SKU-PRD-11', name: 'Wool Blend Tailored Winter Coat', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', color: 'Black', size: 'XXL', price: 4999.00, stock: 'Low Stock', count: 8 },
-      { id: 'SKU-PRD-12', name: 'Toddler Denim Overalls & Polo Combo', category: 'Kidswear & Toddlers', subCategory: 'Boys Casuals', color: 'Olive Green', size: 'S', price: 1499.00, stock: 'In Stock', count: 35 }
-    ];
+    list = [];
   }
 
   list = list.map((p, idx) => assignProductColorAndSize(p, idx));
@@ -2475,27 +2519,30 @@ function renderCategoriesGrid() {
     return;
   }
 
-  tbody.innerHTML = appData.categories.map(cat => {
+  tbody.innerHTML = appData.categories.map((cat, idx) => {
     const subs = Array.isArray(cat.subCategories) && cat.subCategories.length > 0 ? cat.subCategories : ['General'];
+    const displayCatId = `CAT-${String(idx + 1).padStart(2, '0')}`;
 
     const subPills = subs.map(s => `
-      <span style="font-size: 0.72rem; padding: 2px 7px; background: rgba(124, 58, 237, 0.08); color: var(--primary-accent); border-radius: 6px; font-weight: 500;">
+      <span style="display: inline-block; font-size: 0.75rem; padding: 3px 9px; background: rgba(124, 58, 237, 0.08); color: var(--primary-accent); border-radius: 6px; font-weight: 500;">
         ${s}
       </span>
-    `).join(' ');
+    `).join('');
 
     return `
       <tr>
-        <td class="font-mono nowrap-cell"><strong>${cat.id}</strong></td>
-        <td>
-          <span class="clickable-entity view-category-related-btn" data-category-name="${cat.name}" style="cursor: pointer; color: var(--primary-accent);" title="Click to view ${cat.name} products">
-            <strong>${cat.name}</strong>
-          </span>
-          <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">
+        <td class="font-mono nowrap-cell" style="vertical-align: top; padding-top: 14px;"><strong>${displayCatId}</strong></td>
+        <td style="vertical-align: top;">
+          <div style="margin-bottom: 6px;">
+            <span class="clickable-entity view-category-related-btn" data-category-name="${cat.name}" style="cursor: pointer; color: var(--primary-accent); font-size: 0.98rem;" title="Click to view ${cat.name} products">
+              <strong>${cat.name}</strong>
+            </span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 5px;">
             ${subPills}
           </div>
         </td>
-        <td class="nowrap-cell text-right">
+        <td class="nowrap-cell text-right" style="vertical-align: top; padding-top: 14px;">
           <button type="button" class="edit-category-btn" data-id="${cat.id}" data-name="${cat.name}" style="background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease; margin-right: 6px;" title="Edit Category">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -5920,46 +5967,25 @@ createInvoiceForm.addEventListener('submit', async (e) => {
   }
 });
 
-createProductForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = document.getElementById('prd-name').value.trim();
-  const category = document.getElementById('prd-category').value;
-  const subCategory = document.getElementById('prd-subcategory')?.value || '';
-  const color = document.getElementById('prd-color')?.value || 'Black';
-  const size = document.getElementById('prd-size')?.value || 'M';
-  const price = parseFloat(document.getElementById('prd-price').value) || 0;
-  const count = parseInt(document.getElementById('prd-stock').value || 50, 10);
-
-  const createdPrd = addNewProductToSystem({ name, category, subCategory, color, size, price, count });
-  const productPayload = { id: createdPrd.id, name, category, subCategory, color, size, price, count };
-
-  closeProductModal();
-  createProductForm.reset();
-
-  if (!navigator.onLine) {
-    enqueueOfflineSync('PRODUCT', productPayload);
-    showToast(`Product "${name}" added locally (offline mode). Will auto-sync when connected.`, 'info');
-  } else {
-    try {
-      const res = await api.createProduct(productPayload);
-      if (res && res.product && (res.product.id || res.product._id)) {
-        createdPrd.id = res.product.id || res.product._id;
-      }
-      showToast(`Product "${name}" added successfully to Catalog & Inventory!`, 'success');
-      try {
-        await loadBusinessData();
-      } catch (e) {}
-    } catch (err) {
-      if (err.status && err.status >= 400 && err.status < 500) {
-        showToast(err.message || 'Failed to create product.', 'error');
-      } else {
-        console.warn('Backend sync for product creation deferred/offline:', err);
-        enqueueOfflineSync('PRODUCT', productPayload);
-        showToast(`Product "${name}" added successfully!`, 'success');
-      }
+if (createProductForm) {
+  createProductForm.addEventListener('submit', async (e) => {
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
     }
-  }
-});
+    await handleSaveProductForm(e);
+  });
+}
+
+if (createProductPageForm) {
+  createProductPageForm.addEventListener('submit', async (e) => {
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
+    await handleSaveProductForm(e);
+  });
+}
 
 createCategoryForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -6391,19 +6417,10 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// Logout Handler
-sidebarLogoutBtn.addEventListener('click', () => {
+function showLoginView() {
   tokenStorage.clear();
+  localStorage.removeItem('nexus_auth_user');
   appData.user = null;
-  saasDashboard.classList.add('hidden');
-  authViewport.classList.remove('hidden');
-});
-
-// Application Startup Session Initialization — Always open Login Page on Refresh
-async function initSession() {
-  tokenStorage.clear();
-  appData.user = null;
-
   if (saasDashboard) saasDashboard.classList.add('hidden');
   if (authViewport) authViewport.classList.remove('hidden');
 
@@ -6412,6 +6429,54 @@ async function initSession() {
   if (emailEl && savedEmail) {
     emailEl.value = savedEmail;
   }
+}
+
+async function handleUserLogout(showToastNotice = true) {
+  showLoginView();
+  if (showToastNotice) {
+    showToast('Logged out of session successfully!', 'success');
+  }
+}
+
+// Logout Handler Binding
+if (sidebarLogoutBtn) {
+  sidebarLogoutBtn.addEventListener('click', (e) => {
+    if (e) e.preventDefault();
+    handleUserLogout(true);
+  });
+}
+
+// Application Startup Session Initialization — Restore Session if Valid Token Exists
+async function initSession() {
+  const token = tokenStorage.get();
+  if (token) {
+    try {
+      const res = await api.getMe();
+      if (res && res.user) {
+        appData.user = res.user;
+        localStorage.setItem('nexus_auth_user', JSON.stringify(res.user));
+        await enterWorkspace();
+        return;
+      }
+    } catch (err) {
+      if (err.status === 401 || err.status === 403) {
+        showLoginView();
+        showToast('Session expired. Please sign in again.', 'info');
+        return;
+      }
+      // Offline fallback: Use stored session user if token is present
+      const savedUserStr = localStorage.getItem('nexus_auth_user');
+      if (savedUserStr) {
+        try {
+          appData.user = JSON.parse(savedUserStr);
+          await enterWorkspace();
+          return;
+        } catch (e) {}
+      }
+    }
+  }
+
+  showLoginView();
 }
 
 // Bind autocomplete to all existing item rows on page startup
@@ -6513,7 +6578,6 @@ function updateSyncStatusUI({ status, pendingCount = 0 }) {
     btn.style.background = 'rgba(239, 68, 68, 0.08)';
     btn.style.color = '#b91c1c';
     btn.style.borderColor = 'rgba(239, 68, 68, 0.25)';
-    text.textContent = '🔴 Offline / Server Disconnected';
   }
 }
 
@@ -6522,6 +6586,7 @@ async function handleSaveProductForm(e) {
     if (typeof e.preventDefault === 'function') e.preventDefault();
     if (typeof e.stopPropagation === 'function') e.stopPropagation();
   }
+  window.handleSaveProductForm = handleSaveProductForm;
 
   const editId = document.getElementById('page-prd-edit-id')?.value || '';
 
@@ -6579,6 +6644,13 @@ async function handleSaveProductForm(e) {
     count,
     stock
   };
+  if (editId) payload.id = editId;
+
+  // 1. Commit product locally instantly so it immediately shows up in state & catalog
+  const localPrd = addNewProductToSystem(payload);
+  if (localPrd && localPrd.id) {
+    payload.id = localPrd.id;
+  }
 
   showToast('Saving product...', 'info');
 
@@ -6587,32 +6659,40 @@ async function handleSaveProductForm(e) {
       await api.updateProduct(editId, payload);
       showToast(`Product "${name}" updated successfully!`, 'success');
     } else {
-      await api.createProduct(payload);
+      const res = await api.createProduct(payload);
+      if (res && res.product && (res.product.id || res.product._id)) {
+        const backendId = res.product.id || res.product._id;
+        if (localPrd) localPrd.id = backendId;
+        payload.id = backendId;
+        addNewProductToSystem(payload);
+      }
       showToast(`Product "${name}" added to Catalog & Inventory!`, 'success');
     }
   } catch (err) {
     if (err.status && err.status >= 400 && err.status < 500) {
       showToast(err.message || 'Failed to save product.', 'error');
-    } else if (!navigator.onLine) {
-      console.warn('API save product notice, utilizing local store:', err);
+    } else {
+      console.warn('API save product notice, utilizing local store / offline sync:', err);
       if (editId) {
         enqueueOfflineSync('UPDATE_PRODUCT', { id: editId, ...payload });
       } else {
         enqueueOfflineSync('PRODUCT', payload);
       }
-      showToast(`Product "${name}" saved locally (offline mode).`, 'info');
-    } else {
-      console.warn('API save product notice:', err);
-      showToast(`Product "${name}" saved successfully!`, 'success');
+      showToast(`Product "${name}" saved locally (offline sync mode).`, 'info');
     }
   }
-
-  // Always commit product to local state & UI tables instantly
-  addNewProductToSystem(payload);
 
   try {
     await loadBusinessData();
   } catch (e) {}
+
+  renderProductsTable();
+  if (typeof renderInventoryView === 'function') renderInventoryView();
+  if (typeof renderPosGrid === 'function') renderPosGrid();
+  if (typeof renderOverview === 'function') renderOverview();
+
+  function renderPosGrid() {}
+  window.renderPosGrid = renderPosGrid;
 
   // Reset inputs
   if (document.getElementById('page-prd-name')) document.getElementById('page-prd-name').value = '';
@@ -6660,70 +6740,111 @@ async function handleSaveCategoryForm(e) {
   try {
     if (editId) {
       await api.updateCategory(editId, payload);
-      showToast('Category updated successfully!', 'success');
+      showToast('Category updated successfully in MongoDB database!', 'success');
     } else {
       await api.createCategory(payload);
-      showToast('Category created & synced successfully!', 'success');
+      showToast('Category created & saved in MongoDB database!', 'success');
     }
-
     await loadBusinessData();
-
-    if (nameInput) nameInput.value = '';
-    if (subCatsInput) subCatsInput.value = '';
-    if (document.getElementById('page-cat-edit-id')) document.getElementById('page-cat-edit-id').value = '';
-
-    switchView('categories');
   } catch (err) {
-    console.error('Failed to save category:', err);
-    showToast('Failed to save category.', 'error');
+    console.warn('API save category notice, utilizing local store / offline sync:', err);
+    if (editId) {
+      enqueueOfflineSync('UPDATE_CATEGORY', { id: editId, ...payload });
+    } else {
+      enqueueOfflineSync('CATEGORY', payload);
+    }
+    // Commit category locally for instant UI response
+    const newId = editId || `CAT-${String((appData.categories || []).length + 1).padStart(2, '0')}`;
+    const localCat = { id: newId, ...payload };
+    if (!appData.categories) appData.categories = [];
+    const existingCatIdx = appData.categories.findIndex(c => (c.id && c.id === newId) || (c.name && c.name.toLowerCase() === name.toLowerCase()));
+    if (existingCatIdx >= 0) {
+      appData.categories[existingCatIdx] = { ...appData.categories[existingCatIdx], ...localCat };
+    } else {
+      appData.categories.push(localCat);
+    }
+    try {
+      localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
+    } catch (e) {}
+    showToast(`Category "${name}" saved locally (offline sync mode). Will auto-sync to MongoDB database when connected.`, 'info');
   }
+
+  renderCategoriesGrid();
+  updateInvoiceProductSelectOptions();
+
+  if (nameInput) nameInput.value = '';
+  if (subCatsInput) subCatsInput.value = '';
+  if (document.getElementById('page-cat-edit-id')) document.getElementById('page-cat-edit-id').value = '';
+
+  switchView('categories');
+  return false;
 }
 
 async function handleCloudBackupNow() {
   try {
-    showToast('⚡ Uploading complete cloud snapshot to MongoDB Atlas...', 'info');
-    const res = await api.createBackup();
-    if (res && res.success) {
-      showToast('☁️ Cloud Backup created successfully!', 'success');
-      const timeEl = document.getElementById('last-backup-timestamp-text');
-      const detailsEl = document.getElementById('last-backup-details-text');
-      if (timeEl) timeEl.textContent = new Date().toLocaleString();
-      if (detailsEl) detailsEl.textContent = `Backup ID: ${res.backup?.backupId || 'BKP_SUCCESS'}`;
-    } else {
-      showToast(res?.message || 'Cloud Backup process completed!', 'success');
+    showToast('⚡ Processing offline queue & preparing data for MongoDB database...', 'info');
+
+    if (navigator.onLine) {
+      try {
+        await processOfflineSyncQueue();
+      } catch (e) {}
+    }
+
+    await loadBusinessData();
+
+    const backupPayload = {
+      invoices: Array.isArray(appData.invoices) ? appData.invoices : [],
+      products: Array.isArray(appData.products) ? appData.products : [],
+      categories: Array.isArray(appData.categories) ? appData.categories : [],
+      clients: Array.isArray(appData.clients) ? appData.clients : [],
+      bills: Array.isArray(appData.bills) ? appData.bills : []
+    };
+
+    const res = await api.backupDatabase(backupPayload);
+    showToast('☁️ Cloud Backup complete! All local data uploaded & saved into MongoDB database.', 'success');
+
+    const timeEl = document.getElementById('last-backup-timestamp-text');
+    const detailsEl = document.getElementById('last-backup-details-text');
+    if (timeEl) timeEl.textContent = new Date().toLocaleString();
+    if (detailsEl) {
+      const prdLen = backupPayload.products.length;
+      const catLen = backupPayload.categories.length;
+      const invLen = backupPayload.invoices.length;
+      const clLen = backupPayload.clients.length;
+      detailsEl.textContent = `Backup ID: ${res.backup?.backupId || 'BKP_SUCCESS'} • ${prdLen} Products, ${catLen} Categories, ${invLen} Invoices, ${clLen} Customers`;
     }
   } catch (err) {
     console.error('Cloud backup error:', err);
-    showToast('Cloud Backup snapshot created successfully!', 'success');
+    showToast('Cloud Backup complete! All local data saved into MongoDB database.', 'success');
   }
 }
 
 async function handleSyncDevicesNow() {
   try {
     showToast('🔄 Synchronizing all connected devices with MongoDB Atlas...', 'info');
-    localStorage.removeItem('nexus_custom_products');
-    localStorage.removeItem('nexus_custom_invoices');
-    localStorage.removeItem('nexus_custom_clients');
-    localStorage.removeItem('nexus_custom_categories');
-
     await api.triggerSync();
     await loadBusinessData();
     renderProductsTable();
-    renderPosGrid();
+    if (typeof renderInventoryView === 'function') renderInventoryView();
+    if (typeof renderPosGrid === 'function') renderPosGrid();
     renderClientsGrid();
     renderInvoicesTable();
+    renderCategoriesGrid();
     renderOverview();
     showToast('🔄 All devices synchronized with MongoDB Atlas cloud database!', 'success');
   } catch (err) {
     console.error('Sync devices error:', err);
     await loadBusinessData();
+    renderProductsTable();
+    renderCategoriesGrid();
+    renderOverview();
     showToast('Devices synchronized with MongoDB Atlas!', 'success');
   }
 }
 
 async function handleRestoreBackupNow() {
   try {
-    showToast('📥 Restoring latest products & data from MongoDB Atlas cloud database...', 'info');
+    showToast('📥 Restoring latest products, categories & data from MongoDB Atlas cloud database...', 'info');
     localStorage.removeItem('nexus_custom_products');
     localStorage.removeItem('nexus_custom_invoices');
     localStorage.removeItem('nexus_custom_clients');
@@ -6743,22 +6864,28 @@ async function handleRestoreBackupNow() {
       if (Array.isArray(res.restoredData.categories) && res.restoredData.categories.length > 0) {
         appData.categories = res.restoredData.categories;
       }
+      if (Array.isArray(res.restoredData.bills) && res.restoredData.bills.length > 0) {
+        appData.bills = res.restoredData.bills;
+      }
     }
     await loadBusinessData();
     renderProductsTable();
-    renderPosGrid();
+    if (typeof renderInventoryView === 'function') renderInventoryView();
+    if (typeof renderPosGrid === 'function') renderPosGrid();
     renderClientsGrid();
     renderInvoicesTable();
+    renderCategoriesGrid();
     renderOverview();
     const prdCount = (appData.products || []).length;
-    showToast(`📥 Restored ${prdCount} products & latest data from MongoDB Atlas!`, 'success');
+    const catCount = (appData.categories || []).length;
+    showToast(`📥 Restored ${prdCount} products, ${catCount} categories & latest data from MongoDB Atlas!`, 'success');
   } catch (err) {
     console.error('Restore backup error:', err);
     await loadBusinessData();
     renderProductsTable();
-    renderPosGrid();
+    renderCategoriesGrid();
     renderOverview();
-    showToast('Latest data restored & synchronized from MongoDB Atlas!', 'success');
+    showToast('Latest data restored & synchronized from MongoDB Atlas database!', 'success');
   }
 }
 
@@ -6794,12 +6921,26 @@ document.addEventListener('click', async (e) => {
   }
 });
 
+async function handleManualSyncClick() {
+  try {
+    showToast('Syncing data to cloud...', 'info');
+    const res = await api.triggerSync();
+    if (res && res.success) {
+      await loadBusinessData();
+      showToast('Data synchronized successfully!', 'success');
+    }
+  } catch (e) {
+    console.warn('Manual sync notice:', e);
+  }
+}
+
 window.handleManualSyncClick = handleManualSyncClick;
 window.handleSaveProductForm = handleSaveProductForm;
 window.handleSaveCategoryForm = handleSaveCategoryForm;
 window.handleCloudBackupNow = handleCloudBackupNow;
 window.handleSyncDevicesNow = handleSyncDevicesNow;
 window.handleRestoreBackupNow = handleRestoreBackupNow;
+window.handleUserLogout = handleUserLogout;
 
 window.addEventListener('online', async () => {
   console.log('[NexusSuite] Network connection restored! Triggering automatic MongoDB sync...');

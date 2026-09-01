@@ -1,23 +1,12 @@
 import { io } from 'socket.io-client';
-import { tokenStorage } from './api.js';
+import { tokenStorage, getSocketBaseUrl } from './api.js';
 
 let socket = null;
 let currentCompanyId = null;
 const eventListeners = new Map();
 
 function getSocketUrl() {
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname || '127.0.0.1';
-    // If running via Vite dev server on port 3001 or Electron file protocol, connect to backend server on port 5050
-    if (window.location.port === '3001' || window.location.protocol === 'file:') {
-      return `http://${host}:5050`;
-    }
-    if (window.location.port === '5050') {
-      return window.location.origin;
-    }
-    return `http://${host}:5050`;
-  }
-  return 'http://127.0.0.1:5050';
+  return getSocketBaseUrl();
 }
 
 

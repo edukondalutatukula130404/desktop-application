@@ -143,9 +143,17 @@ const authController = {
       dataStore.seedInitialDataIfNeeded(userObj.id, companyId).catch(e => console.warn('Migration notice:', e.message));
 
       // Check if cloud DB has data for this company
-      const Product = require('../models/Product');
-      const cloudCount = await Product.countDocuments({ companyId });
-      const hasCloudData = cloudCount > 0;
+      let hasCloudData = false;
+      const mongoose = require('mongoose');
+      if (mongoose.connection && mongoose.connection.readyState === 1) {
+        try {
+          const Product = require('../models/Product');
+          const cloudCount = await Product.countDocuments({ companyId }).maxTimeMS(1500).exec();
+          hasCloudData = cloudCount > 0;
+        } catch (e) {
+          console.warn('Cloud data check warning:', e.message);
+        }
+      }
 
       return res.status(200).json({
         success: true,

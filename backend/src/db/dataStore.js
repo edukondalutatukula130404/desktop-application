@@ -13,223 +13,11 @@ const syncEngine = require('../services/syncEngine');
 
 
 const initialData = {
-  invoices: [
-    {
-      id: 'INV-20260801-001',
-      clientName: 'Royal Heritage Boutique',
-      clientEmail: 'orders@royalheritage.com',
-      issueDate: '2026-08-01',
-      dueDate: '2026-08-15',
-      amount: 12490.00,
-      status: 'Paid',
-      category: 'Ethnic & Festive Wear',
-      subCategory: 'Silk Sarees'
-    },
-    {
-      id: 'INV-20260805-002',
-      clientName: 'Starlight Apparel Store',
-      clientEmail: 'accounts@starlightapparel.in',
-      issueDate: '2026-08-05',
-      dueDate: '2026-08-20',
-      amount: 8950.00,
-      status: 'Paid',
-      category: "Men's Apparel",
-      subCategory: 'Shirts & T-Shirts'
-    },
-    {
-      id: 'INV-20260808-003',
-      clientName: 'Velvet Trendz Fashion',
-      clientEmail: 'finance@velvettrendz.com',
-      issueDate: '2026-08-08',
-      dueDate: '2026-08-22',
-      amount: 15800.00,
-      status: 'Pending',
-      category: "Women's Fashion",
-      subCategory: 'Chiffons & Dresses'
-    },
-    {
-      id: 'INV-20260810-004',
-      clientName: 'Urban Fit Clothing Hub',
-      clientEmail: 'billing@urbanfit.co',
-      issueDate: '2026-08-10',
-      dueDate: '2026-08-24',
-      amount: 6750.00,
-      status: 'Pending',
-      category: 'Casuals & Denim',
-      subCategory: 'Chino Trousers'
-    },
-    {
-      id: 'INV-20260725-005',
-      clientName: 'Little Wonders Kidswear',
-      clientEmail: 'contact@littlewonders.in',
-      issueDate: '2026-07-25',
-      dueDate: '2026-08-08',
-      amount: 4200.00,
-      status: 'Overdue',
-      category: 'Kidswear & Toddlers',
-      subCategory: 'Infant Onesies'
-    },
-    {
-      id: 'INV-20260811-006',
-      clientName: 'Metro Shoes & Accessories',
-      clientEmail: 'accounts@metrofashion.in',
-      issueDate: '2026-08-11',
-      dueDate: '2026-08-25',
-      amount: 11250.00,
-      status: 'Pending',
-      category: 'Footwear & Accessories',
-      subCategory: 'Sneakers & Boots'
-    }
-  ],
-  bills: [
-    {
-      id: 'BILL-101',
-      vendor: 'Surat Silk & Cotton Mills',
-      category: 'Raw Fabrics & Textiles',
-      dueDate: '2026-08-18',
-      amount: 18500.00,
-      status: 'Unpaid',
-      autoPay: true
-    },
-    {
-      id: 'BILL-102',
-      vendor: 'Ludhiana Woolens & Knitwear Supplier',
-      category: 'Winterwear & Outerwear Stock',
-      dueDate: '2026-08-22',
-      amount: 14200.00,
-      status: 'Unpaid',
-      autoPay: false
-    },
-    {
-      id: 'BILL-103',
-      vendor: 'Vardhman Textiles Ltd.',
-      category: 'Denim & Casual Apparel',
-      dueDate: '2026-08-15',
-      amount: 22800.00,
-      status: 'Paid',
-      autoPay: true
-    },
-    {
-      id: 'BILL-104',
-      vendor: 'Blue Dart Retail Logistics',
-      category: 'Freight & Shipping Delivery',
-      dueDate: '2026-08-25',
-      amount: 4350.00,
-      status: 'Paid',
-      autoPay: true
-    },
-    {
-      id: 'BILL-105',
-      vendor: 'Jaipur Print & Embroidery Crafts',
-      category: 'Ethnic & Festive Wear Stock',
-      dueDate: '2026-08-30',
-      amount: 12600.00,
-      status: 'Unpaid',
-      autoPay: false
-    },
-    {
-      id: 'BILL-106',
-      vendor: 'Prime Retail Mall Lease & Energy',
-      category: 'Store Rent & Utilities',
-      dueDate: '2026-09-01',
-      amount: 35000.00,
-      status: 'Unpaid',
-      autoPay: true
-    }
-  ],
-  clients: [
-    { id: 'CUST-20260801001', name: 'Royal Heritage Boutique', contact: 'orders@royalheritage.com', status: 'Active', totalBilled: 12490.00 },
-    { id: 'CUST-20260805002', name: 'Starlight Apparel Store', contact: 'accounts@starlightapparel.in', status: 'Active', totalBilled: 8950.00 },
-    { id: 'CUST-20260808003', name: 'Velvet Trendz Fashion', contact: 'finance@velvettrendz.com', status: 'Active', totalBilled: 15800.00 },
-    { id: 'CUST-20260810004', name: 'Urban Fit Clothing Hub', contact: 'billing@urbanfit.co', status: 'Active', totalBilled: 6750.00 },
-    { id: 'CUST-20260725005', name: 'Little Wonders Kidswear', contact: 'contact@littlewonders.in', status: 'Notice', totalBilled: 4200.00 },
-    { id: 'CUST-20260811006', name: 'Metro Shoes & Accessories', contact: 'accounts@metrofashion.in', status: 'Active', totalBilled: 11250.00 }
-  ],
-  products: [
-    { id: 'SKU-PRD-01', name: 'Classic Cotton Slim-Fit Shirt', category: "Men's Apparel", subCategory: 'Shirts', color: 'Navy Blue', size: 'M', price: 1299.00, stock: 'In Stock', count: 85 },
-    { id: 'SKU-PRD-02', name: 'Floral Print Summer Chiffon Dress', category: "Women's Fashion", subCategory: 'Dresses & Maxis', color: 'Pink', size: 'S', price: 2499.00, stock: 'In Stock', count: 42 },
-    { id: 'SKU-PRD-03', name: 'Denim Jacket with Fleece Lining', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', color: 'Royal Blue', size: 'L', price: 2799.00, stock: 'Low Stock', count: 6 },
-    { id: 'SKU-PRD-04', name: 'Casual Cotton Chino Trousers', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Beige / Cream', size: 'XL', price: 1999.00, stock: 'In Stock', count: 30 },
-    { id: 'SKU-PRD-05', name: 'Kids Organic Cotton T-Shirt Set', category: 'Kidswear & Toddlers', subCategory: 'Infant Onesies', color: 'White', size: 'S', price: 999.00, stock: 'In Stock', count: 65 },
-    { id: 'SKU-PRD-06', name: 'Handwoven Banarasi Silk Saree', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', color: 'Wine Maroon', size: 'Free Size', price: 6800.00, stock: 'In Stock', count: 12 },
-    { id: 'SKU-PRD-07', name: 'Merino Wool Knitted Cardigan', category: 'Winterwear & Outerwear', subCategory: 'Sweaters & Cardigans', color: 'Grey / Charcoal', size: 'M', price: 2299.00, stock: 'Low Stock', count: 4 },
-    { id: 'SKU-PRD-08', name: 'Pure Linen Button-Down Formal Shirt', category: "Men's Apparel", subCategory: 'Shirts', color: 'White', size: 'L', price: 1899.00, stock: 'In Stock', count: 50 },
-    { id: 'SKU-PRD-09', name: 'Slim-Fit Stretch Denim Jeans', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Black', size: 'XL', price: 2199.00, stock: 'In Stock', count: 28 },
-    { id: 'SKU-PRD-10', name: 'Embroidered Anarkali Kurti Set', category: "Women's Fashion", subCategory: 'Sarees & Kurtis', color: 'Red', size: 'M', price: 3499.00, stock: 'In Stock', count: 18 },
-    { id: 'SKU-PRD-11', name: 'Wool Blend Tailored Winter Coat', category: 'Winterwear & Outerwear', subCategory: 'Jackets & Coats', color: 'Black', size: 'XXL', price: 4999.00, stock: 'Low Stock', count: 8 },
-    { id: 'SKU-PRD-12', name: 'Toddler Denim Overalls & Polo Combo', category: 'Kidswear & Toddlers', subCategory: 'Boys Casuals', color: 'Olive Green', size: 'S', price: 1499.00, stock: 'In Stock', count: 35 },
-    { id: 'SKU-PRD-13', name: 'Shorts', category: "Men's Apparel", subCategory: 'Shorts', color: 'Sky Blue', size: 'XL', price: 599.00, stock: 'In Stock', count: 50 },
-    { id: 'SKU-PRD-14', name: 'trouser', category: "Men's Apparel", subCategory: 'Jeans & Trousers', color: 'Yellow / Mustard', size: 'L', price: 2999.00, stock: 'In Stock', count: 50 },
-    { id: 'SKU-PRD-15', name: 'Classic premium Lenin Black Shirt', category: "Men's Apparel", subCategory: 'Shirts', color: 'Multicolor', size: 'M', price: 2999.00, stock: 'In Stock', count: 50 }
-  ],
-  categories: [
-    {
-      id: 'CAT-01',
-      name: "Men's Apparel",
-      description: 'Shirts, T-shirts, Trousers, Suits, and Ethnic Wear.',
-      subCategories: ['Shirts', 'T-Shirts', 'Jeans & Trousers', 'Suits & Blazers', 'Ethnic Wear'],
-      genderType: 'Men',
-      seasonTag: 'All Season',
-      itemCounts: 14,
-      totalRevenue: 28400.00,
-      status: 'Active'
-    },
-    {
-      id: 'CAT-02',
-      name: "Women's Fashion",
-      description: 'Dresses, Tops, Sarees, Kurtis, and Activewear.',
-      subCategories: ['Dresses & Maxis', 'Tops & Tunics', 'Sarees & Kurtis', 'Activewear'],
-      genderType: 'Women',
-      seasonTag: 'Festive Special',
-      itemCounts: 18,
-      totalRevenue: 42100.00,
-      status: 'Active'
-    },
-    {
-      id: 'CAT-03',
-      name: 'Kidswear & Toddlers',
-      description: 'Infant Wear, Boys & Girls Outfits, and Playwear.',
-      subCategories: ['Infant Onesies', 'Boys Casuals', 'Girls Partywear', 'Sleepwear'],
-      genderType: 'Kids / Toddlers',
-      seasonTag: 'All Season',
-      itemCounts: 12,
-      totalRevenue: 18900.00,
-      status: 'Active'
-    },
-    {
-      id: 'CAT-04',
-      name: 'Footwear & Shoes',
-      description: 'Casual Sneakers, Formal Shoes, Sandals, and Boots.',
-      subCategories: ['Sneakers', 'Formal Shoes', 'Sandals & Slippers', 'Boots'],
-      genderType: 'Unisex',
-      seasonTag: 'All Season',
-      itemCounts: 10,
-      totalRevenue: 15500.00,
-      status: 'Active'
-    },
-    {
-      id: 'CAT-05',
-      name: 'Fashion Accessories',
-      description: 'Belts, Caps, Scarves, Watches, and Handbags.',
-      subCategories: ['Leather Belts & Wallets', 'Caps & Hats', 'Watches', 'Handbags'],
-      genderType: 'Unisex',
-      seasonTag: 'All Season',
-      itemCounts: 15,
-      totalRevenue: 31200.00,
-      status: 'Active'
-    },
-    {
-      id: 'CAT-06',
-      name: 'Winterwear & Outerwear',
-      description: 'Jackets, Sweaters, Hoodies, Overcoats, and Rainwear.',
-      subCategories: ['Jackets & Coats', 'Sweaters & Cardigans', 'Fleece Hoodies', 'Thermals', 'Rainwear'],
-      genderType: 'Unisex',
-      seasonTag: 'Winter Special',
-      itemCounts: 8,
-      totalRevenue: 22400.00,
-      status: 'Active'
-    }
-  ]
+  invoices: [],
+  bills: [],
+  clients: [],
+  products: [],
+  categories: []
 };
 
 let isSeedingPromise = null;
@@ -364,46 +152,7 @@ let hasCompletedInitialSeed = false;
 const migratedUsers = new Set();
 
 async function seedInitialDataIfNeeded(userId = null) {
-  if (!hasCompletedInitialSeed || (userId && !migratedUsers.has(userId))) {
-    if (isSeedingPromise) return isSeedingPromise;
-
-    isSeedingPromise = (async () => {
-      try {
-        const invoiceCount = await Invoice.countDocuments();
-        const billCount = await Bill.countDocuments();
-        const clientCount = await Client.countDocuments();
-        const categoryCount = await Category.countDocuments();
-        const productCount = await Product.countDocuments();
-
-        const isDatabaseEmpty = (invoiceCount === 0 && billCount === 0 && clientCount === 0 && categoryCount === 0 && productCount === 0);
-
-        if (isDatabaseEmpty) {
-          console.log('[DataStore] MongoDB is empty. Performing one-time initial seed...');
-          const seedDocs = (arr, uid) => arr.map(d => ({ ...d, userId: uid || null }));
-          await Invoice.insertMany(seedDocs(initialData.invoices, userId));
-          await Bill.insertMany(seedDocs(initialData.bills, userId));
-          await Client.insertMany(seedDocs(initialData.clients, userId));
-          await Category.insertMany(seedDocs(initialData.categories, userId));
-          await Product.insertMany(seedDocs(initialData.products, userId));
-        }
-
-        await removeDuplicateDatabaseDocuments();
-        hasCompletedInitialSeed = true;
-
-        // Migrate any unscoped data to this user
-        if (userId) {
-          await migrateUnscopedDataToUser(userId);
-          migratedUsers.add(userId);
-        }
-      } catch (error) {
-        console.error('Error seeding initial MongoDB data:', error.message);
-      } finally {
-        isSeedingPromise = null;
-      }
-    })();
-
-    return isSeedingPromise;
-  }
+  return Promise.resolve();
 }
 
 const dataStore = {
@@ -437,16 +186,12 @@ const dataStore = {
           } catch (e) {}
         }
 
-        if (uniqueMap.size > 0) return Array.from(uniqueMap.values());
+        return Array.from(uniqueMap.values());
       } catch (e) {
-        console.warn('MongoDB getInvoices notice, falling back to local storage:', e.message);
+        console.warn('MongoDB getInvoices notice:', e.message);
       }
     }
-    try {
-      return await sqliteStore.getInvoices();
-    } catch (e) {
-      return [];
-    }
+    return [];
   },
 
   createInvoice: async (invoiceData, userId = null) => {
@@ -541,16 +286,12 @@ const dataStore = {
         await seedInitialDataIfNeeded(userId);
         const filter = userId ? { userId } : {};
         let bills = await Bill.find(filter).sort({ createdAt: -1 }).lean().exec();
-        if (bills && bills.length > 0) return bills;
+        return bills || [];
       } catch (e) {
-        console.warn('MongoDB getBills notice, falling back to local storage:', e.message);
+        console.warn('MongoDB getBills notice:', e.message);
       }
     }
-    try {
-      return await sqliteStore.getBills();
-    } catch (e) {
-      return [];
-    }
+    return [];
   },
 
   createBill: async (billData, userId = null) => {
@@ -609,16 +350,12 @@ const dataStore = {
       try {
         const filter = companyId ? { $or: [{ companyId }, { userId: companyId }] } : {};
         let clients = await Client.find(filter).sort({ createdAt: -1 }).lean().exec();
-        if (clients && clients.length > 0) return clients;
+        return clients || [];
       } catch (e) {
-        console.warn('MongoDB getClients notice, falling back to local storage:', e.message);
+        console.warn('MongoDB getClients notice:', e.message);
       }
     }
-    try {
-      return await sqliteStore.getClients();
-    } catch (e) {
-      return [];
-    }
+    return [];
   },
 
 
@@ -696,35 +433,34 @@ const dataStore = {
     return await client.save();
   },
 
-  getProducts: async (userId) => {
+  getProducts: async (userId = null, companyId = null) => {
     if (mongoose.connection && mongoose.connection.readyState === 1) {
       try {
-        await seedInitialDataIfNeeded(userId);
-        const filter = userId ? { userId } : {};
+        await seedInitialDataIfNeeded(userId, companyId);
+        const filterQueries = [];
+        if (companyId) filterQueries.push({ companyId });
+        if (userId) filterQueries.push({ userId });
+        const filter = filterQueries.length > 0 ? { $or: filterQueries } : {};
         let products = await Product.find(filter).lean().exec();
-        if (products && products.length > 0) {
-          return [...products].sort((a, b) => {
-            const numA = parseInt((a.id || '').replace(/\D/g, ''), 10) || 99999;
-            const numB = parseInt((b.id || '').replace(/\D/g, ''), 10) || 99999;
-            return numA - numB;
-          });
-        }
+        return (products || []).sort((a, b) => {
+          const numA = parseInt((a.id || '').replace(/\D/g, ''), 10) || 99999;
+          const numB = parseInt((b.id || '').replace(/\D/g, ''), 10) || 99999;
+          return numA - numB;
+        });
       } catch (e) {
-        console.warn('MongoDB getProducts notice, falling back to local storage:', e.message);
+        console.warn('MongoDB getProducts notice:', e.message);
       }
     }
-    try {
-      return await sqliteStore.getProducts();
-    } catch (e) {
-      return [];
-    }
+    return [];
   },
 
   createProduct: async (productData, userId = null) => {
+    const companyId = productData.companyId || (userId ? `shop_${userId}` : 'shop_default');
+
     // 1. Save to local SQLite database & enqueue sync item
     let sqliteResult = null;
     try {
-      sqliteResult = await sqliteStore.createProduct(productData);
+      sqliteResult = await sqliteStore.createProduct({ ...productData, companyId });
     } catch (e) {
       console.warn('SQLite createProduct warning:', e.message);
     }
@@ -733,8 +469,8 @@ const dataStore = {
     let mongoResult = null;
     if (mongoose.connection && mongoose.connection.readyState === 1) {
       try {
-        await seedInitialDataIfNeeded(userId);
-        const filter = userId ? { userId } : {};
+        await seedInitialDataIfNeeded(userId, companyId);
+        const filter = userId ? { $or: [{ companyId }, { userId }] } : { companyId };
         const cleanName = (productData.name || '').trim();
         if (cleanName) {
           const countNum = parseInt(productData.count, 10) || 50;
@@ -745,6 +481,8 @@ const dataStore = {
           let existingByName = await Product.findOne({ ...filter, name: safeRegexName }).exec();
           if (existingByName) {
             existingByName.name = cleanName;
+            existingByName.companyId = companyId;
+            if (userId) existingByName.userId = userId;
             existingByName.category = productData.category || existingByName.category || "Men's Apparel";
             existingByName.subCategory = productData.subCategory || existingByName.subCategory || '';
             existingByName.color = productData.color || existingByName.color || '';
@@ -757,6 +495,7 @@ const dataStore = {
             const candidateId = productData.id || (sqliteResult ? sqliteResult.id : `SKU-PRD-${Date.now().toString().slice(-6)}`);
             const newPrd = new Product({
               id: candidateId,
+              companyId,
               userId: userId || null,
               name: cleanName,
               category: productData.category || "Men's Apparel",
@@ -780,7 +519,8 @@ const dataStore = {
       syncEngine.runSyncCycle();
     } catch (e) {}
 
-    return mongoResult || sqliteResult || { id: productData.id || `SKU-PRD-${Date.now()}`, ...productData };
+    const finalResult = (mongoResult ? (mongoResult.toObject ? mongoResult.toObject() : mongoResult) : null) || sqliteResult || { id: productData.id || `SKU-PRD-${Date.now()}`, companyId, ...productData };
+    return finalResult;
   },
 
   getProductById: async (id, companyId = null) => {
@@ -871,37 +611,42 @@ const dataStore = {
     return product;
   },
 
-  getCategories: async (userId) => {
-    await seedInitialDataIfNeeded(userId);
-    const filter = userId ? { userId } : {};
-    let categories = await Category.find(filter).lean().exec();
+  cleanupDuplicateCategories: async (userId = null) => {
+    try {
+      const filter = userId ? { userId } : {};
+      const allCategories = await Category.find(filter).exec();
+      const seenNames = new Map();
+      const idsToDelete = [];
 
-    // Auto-cleanup duplicates from MongoDB
-    const uniqueMap = new Map();
-    const duplicateIds = [];
-
-    categories.forEach(c => {
-      if (c && c.name) {
-        const key = c.name.trim().toLowerCase();
-        if (!uniqueMap.has(key)) {
-          uniqueMap.set(key, c);
+      for (const cat of allCategories) {
+        if (!cat.name) continue;
+        const key = cat.name.trim().toLowerCase();
+        if (seenNames.has(key)) {
+          const master = seenNames.get(key);
+          const masterSubs = Array.isArray(master.subCategories) ? master.subCategories : [];
+          const catSubs = Array.isArray(cat.subCategories) ? cat.subCategories : [];
+          master.subCategories = Array.from(new Set([...masterSubs, ...catSubs]));
+          await master.save();
+          idsToDelete.push(cat._id);
         } else {
-          duplicateIds.push(c._id || c.id);
-          const existing = uniqueMap.get(key);
-          const existingSubs = Array.isArray(existing.subCategories) ? existing.subCategories : [];
-          const newSubs = Array.isArray(c.subCategories) ? c.subCategories : [];
-          existing.subCategories = Array.from(new Set([...existingSubs, ...newSubs]));
+          seenNames.set(key, cat);
         }
       }
-    });
 
-    if (duplicateIds.length > 0) {
-      try {
-        await Category.deleteMany({ _id: { $in: duplicateIds } });
-      } catch (e) {}
+      if (idsToDelete.length > 0) {
+        await Category.deleteMany({ _id: { $in: idsToDelete } });
+        console.log(`🍃 [MongoDB Atlas] Purged ${idsToDelete.length} duplicate category documents.`);
+      }
+    } catch (err) {
+      console.warn('Error purging duplicate categories:', err.message);
     }
+  },
 
-    return Array.from(uniqueMap.values());
+  getCategories: async (userId) => {
+    await seedInitialDataIfNeeded(userId);
+    await dataStore.cleanupDuplicateCategories(userId);
+    const filter = userId ? { userId } : {};
+    return await Category.find(filter).lean().exec();
   },
 
   createCategory: async (catData, userId = null) => {
@@ -1179,22 +924,9 @@ const dataStore = {
     let syncedClients = 0;
     let syncedBills = 0;
 
-    // 1. Save Invoices to MongoDB
-    if (Array.isArray(invoices)) {
-      for (const inv of invoices) {
-        try {
-          if (inv && (inv.clientName || inv.amount)) {
-            await dataStore.createInvoice(inv, userId);
-            syncedInvoices++;
-          }
-        } catch (e) {
-          console.warn('Backup invoice sync warning:', e.message);
-        }
-      }
-    }
-
-    // 2. Save Products to MongoDB
+    // 1. Sync Active Products to MongoDB Atlas
     if (Array.isArray(products)) {
+      const activePrdIds = new Set(products.map(p => String(p.id || p.name || '').toLowerCase().trim()));
       for (const prd of products) {
         try {
           if (prd && prd.name) {
@@ -1205,10 +937,23 @@ const dataStore = {
           console.warn('Backup product sync warning:', e.message);
         }
       }
+      if (mongoose.connection && mongoose.connection.readyState === 1 && products.length > 0) {
+        try {
+          const dbProducts = await Product.find({}).lean().exec();
+          for (const dbP of dbProducts) {
+            const keyId = String(dbP.id || '').toLowerCase().trim();
+            const keyName = String(dbP.name || '').toLowerCase().trim();
+            if (!activePrdIds.has(keyId) && !activePrdIds.has(keyName)) {
+              await Product.deleteOne({ _id: dbP._id }).exec();
+            }
+          }
+        } catch (e) {}
+      }
     }
 
-    // 3. Save Categories to MongoDB
+    // 2. Sync Active Categories to MongoDB Atlas
     if (Array.isArray(categories)) {
+      const activeCatNames = new Set(categories.map(c => String(c.name || '').toLowerCase().trim()));
       for (const cat of categories) {
         try {
           if (cat && cat.name) {
@@ -1219,9 +964,34 @@ const dataStore = {
           console.warn('Backup category sync warning:', e.message);
         }
       }
+      if (mongoose.connection && mongoose.connection.readyState === 1 && categories.length > 0) {
+        try {
+          const dbCategories = await Category.find({}).lean().exec();
+          for (const dbC of dbCategories) {
+            const keyName = String(dbC.name || '').toLowerCase().trim();
+            if (!activeCatNames.has(keyName)) {
+              await Category.deleteOne({ _id: dbC._id }).exec();
+            }
+          }
+        } catch (e) {}
+      }
     }
 
-    // 4. Save Clients to MongoDB
+    // 3. Save Invoices to MongoDB Atlas
+    if (Array.isArray(invoices)) {
+      for (const inv of invoices) {
+        try {
+          if (inv && (inv.clientName || inv.amount || inv.id)) {
+            await dataStore.createInvoice(inv, userId);
+            syncedInvoices++;
+          }
+        } catch (e) {
+          console.warn('Backup invoice sync warning:', e.message);
+        }
+      }
+    }
+
+    // 4. Save Clients to MongoDB Atlas
     if (Array.isArray(clients)) {
       for (const cl of clients) {
         try {
@@ -1235,7 +1005,7 @@ const dataStore = {
       }
     }
 
-    // 5. Save Bills to MongoDB
+    // 5. Save Bills to MongoDB Atlas
     if (Array.isArray(bills)) {
       for (const b of bills) {
         try {

@@ -36,7 +36,17 @@ const connectDB = async () => {
       try {
         const Client = require('../models/Client');
         await Client.collection.dropIndex('id_1');
-        console.log('🍃 [MongoDB Atlas] Legacy unique index id_1 on clients dropped.');
+      } catch (dropErr) {}
+
+      try {
+        const Category = require('../models/Category');
+        await Category.collection.dropIndex('id_1');
+        console.log('🍃 [MongoDB Atlas] Legacy unique index id_1 on categories dropped.');
+      } catch (dropErr) {}
+
+      try {
+        const Product = require('../models/Product');
+        await Product.collection.dropIndex('id_1');
       } catch (dropErr) {}
 
       return;

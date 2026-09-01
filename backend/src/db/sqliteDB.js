@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const sqlite3 = require('sqlite3').verbose();
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
+const uuidv4 = () => randomUUID();
 
 let db = null;
 let currentDeviceId = null;
