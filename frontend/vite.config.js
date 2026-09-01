@@ -1,5 +1,7 @@
 import { defineConfig } from 'vite';
 
+const BACKEND_PORT = process.env.PORT || 5000;
+
 export default defineConfig({
   base: './',
   server: {
@@ -9,7 +11,7 @@ export default defineConfig({
     open: false,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5050',
+        target: `http://127.0.0.1:${BACKEND_PORT}`,
         changeOrigin: true,
         secure: false,
         configure: (proxy) => {
