@@ -24,18 +24,26 @@ let PRODUCTION_API_URL = typeof import.meta !== 'undefined' && import.meta.env ?
 
 async function detectActivePort() {
   if (PRODUCTION_API_URL) return PRODUCTION_API_URL;
+  const cachedPort = typeof localStorage !== 'undefined' ? localStorage.getItem('nexus_active_api_port') : null;
+  if (cachedPort) {
+    const parsedP = parseInt(cachedPort, 10);
+    if (parsedP) ACTIVE_PORT = parsedP;
+  }
 
-  const ports = [5000, 5001, 5002, 5003, 5004, 5005, 5050, 5051, 5052];
-  for (const p of ports) {
+  const ports = [ACTIVE_PORT, 5000, 5001, 5002, 5003, 5004, 5005, 5050, 5051, 5052];
+  const uniquePorts = Array.from(new Set(ports));
+
+  for (const p of uniquePorts) {
     try {
       const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 600);
+      const t = setTimeout(() => controller.abort(), 2500);
       const res = await fetch(`http://127.0.0.1:${p}/api/health`, { method: 'GET', signal: controller.signal });
       clearTimeout(t);
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
         if (data.status === 'online' || data.service) {
           ACTIVE_PORT = p;
+          try { localStorage.setItem('nexus_active_api_port', String(p)); } catch(e) {}
           return p;
         }
       }
@@ -94,7 +102,7 @@ async function request(endpoint, options = {}) {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 4000);
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
 
   try {
     const response = await fetch(`${getApiBaseUrl(ACTIVE_PORT)}${endpoint}`, {
@@ -119,12 +127,18 @@ async function request(endpoint, options = {}) {
   } catch (error) {
     clearTimeout(timeoutId);
 
+    if (error.name === 'AbortError' || error.message.includes('aborted')) {
+      const err = new Error('Network request timed out');
+      err.status = 504;
+      throw err;
+    }
+
     const detectedPort = await detectActivePort();
     if (detectedPort) {
       ACTIVE_PORT = detectedPort;
       try {
         const retryController = new AbortController();
-        const retryTimeout = setTimeout(() => retryController.abort(), 4000);
+        const retryTimeout = setTimeout(() => retryController.abort(), 12000);
         const retryRes = await fetch(`${getApiBaseUrl(ACTIVE_PORT)}${endpoint}`, {
           ...options,
           headers,
@@ -144,7 +158,7 @@ async function request(endpoint, options = {}) {
       }
     }
 
-    console.warn(`API Request [${endpoint}] error:`, error.message);
+    console.warn(`API Request [${endpoint}] notice:`, error.message);
     throw error;
   }
 }

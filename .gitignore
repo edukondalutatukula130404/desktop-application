@@ -8,4 +8,5 @@ mongo-data/
 *.db
 .DS_Store
 *.log
+scripts/*.zip
 

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const dns = require('dns');
 const Invoice = require('../models/Invoice');
 const Bill = require('../models/Bill');
 const Client = require('../models/Client');
@@ -10,6 +11,40 @@ const Sale = require('../models/Sale');
 const InventoryLog = require('../models/InventoryLog');
 const sqliteStore = require('./sqliteStore');
 const syncEngine = require('../services/syncEngine');
+
+let lastOnlineCheckTime = 0;
+let lastOnlineCheckStatus = false;
+
+async function checkMongoOnlineFast() {
+  const now = Date.now();
+  if (now - lastOnlineCheckTime < 2500) {
+    return lastOnlineCheckStatus;
+  }
+  lastOnlineCheckTime = now;
+
+  if (!mongoose.connection || mongoose.connection.readyState !== 1) {
+    lastOnlineCheckStatus = false;
+    return false;
+  }
+
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      lastOnlineCheckStatus = false;
+      resolve(false);
+    }, 350);
+
+    dns.lookup('ac-73qhkjq-shard-00-00.qdjwbzw.mongodb.net', (err) => {
+      clearTimeout(timer);
+      if (err) {
+        lastOnlineCheckStatus = false;
+        resolve(false);
+      } else {
+        lastOnlineCheckStatus = true;
+        resolve(true);
+      }
+    });
+  });
+}
 
 
 const initialData = {
@@ -159,13 +194,14 @@ const dataStore = {
   seedInitialDataIfNeeded,
 
   getInvoices: async (userId) => {
-    if (mongoose.connection && mongoose.connection.readyState === 1) {
+    let mongoList = [];
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
       try {
         await seedInitialDataIfNeeded(userId);
         const filter = userId ? { userId } : {};
         let invoices = await Invoice.find(filter).sort({ createdAt: -1 }).lean().exec();
 
-        // Auto-deduplicate invoices by normalized ID
         const uniqueMap = new Map();
         const duplicateIds = [];
 
@@ -185,13 +221,36 @@ const dataStore = {
             await Invoice.deleteMany({ _id: { $in: duplicateIds } });
           } catch (e) {}
         }
-
-        return Array.from(uniqueMap.values());
+        mongoList = Array.from(uniqueMap.values());
       } catch (e) {
         console.warn('MongoDB getInvoices notice:', e.message);
       }
     }
-    return [];
+
+    let localList = [];
+    try { localList = await sqliteStore.getInvoices() || []; } catch (e) {}
+
+    const invMap = new Map();
+    (mongoList || []).forEach(inv => {
+      if (inv && inv.id) {
+        const key = String(inv.id).replace(/-/g, '').toLowerCase().trim();
+        invMap.set(key, { ...inv });
+        try { sqliteStore.createInvoice(inv); } catch (e) {}
+      }
+    });
+
+    (localList || []).forEach(inv => {
+      if (inv && inv.id) {
+        const key = String(inv.id).replace(/-/g, '').toLowerCase().trim();
+        if (!invMap.has(key)) {
+          invMap.set(key, { ...inv });
+        } else {
+          invMap.set(key, { ...invMap.get(key), ...inv });
+        }
+      }
+    });
+
+    return Array.from(invMap.values());
   },
 
   createInvoice: async (invoiceData, userId = null) => {
@@ -203,11 +262,11 @@ const dataStore = {
       console.warn('SQLite createInvoice warning:', e.message);
     }
 
-    // 2. Save directly to MongoDB Atlas if connected
+    // 2. Save directly to MongoDB Atlas ONLY if connected
     let mongoResult = null;
-    if (mongoose.connection && mongoose.connection.readyState === 1) {
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
       try {
-        const filter = userId ? { userId } : {};
         const d = invoiceData.issueDate ? new Date(invoiceData.issueDate) : (invoiceData.dueDate ? new Date(invoiceData.dueDate) : new Date());
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -219,48 +278,41 @@ const dataStore = {
         const amount = parseFloat(invoiceData.amount) || 0;
         const dateStr = `${year}-${month}-${day}`;
 
-        const idFilter = { id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }, ...filter };
-        let existingInv = await Invoice.findOne(idFilter).exec();
-        if (existingInv) {
-          existingInv.clientName = clientName;
-          existingInv.amount = amount;
-          if (invoiceData.category) existingInv.category = invoiceData.category;
-          if (invoiceData.paymentMode) existingInv.paymentMode = invoiceData.paymentMode;
-          if (invoiceData.status) existingInv.status = invoiceData.status;
-          if (invoiceData.items) existingInv.items = invoiceData.items;
-          mongoResult = await existingInv.save();
-        } else {
-          const newInvoice = new Invoice({
-            id: customId,
-            userId: userId || null,
-            clientId: invoiceData.clientId || `CUST-${dateMerged}001`,
-            clientName: clientName,
-            clientEmail: invoiceData.clientEmail || 'billing@client.com',
-            issueDate: invoiceData.issueDate || dateStr,
-            dueDate: invoiceData.dueDate || dateStr,
-            amount: amount,
-            subtotal: parseFloat(invoiceData.subtotal) || amount,
-            tax: parseFloat(invoiceData.tax) || 0,
-            discount: parseFloat(invoiceData.discount) || 0,
-            status: invoiceData.status || 'Paid',
-            category: invoiceData.category || 'General Service',
-            paymentMode: invoiceData.paymentMode || 'Cash',
-            items: Array.isArray(invoiceData.items) ? invoiceData.items : [],
-            notes: invoiceData.notes || ''
-          });
-          mongoResult = await newInvoice.save();
-        }
+        const invFields = {
+          id: customId,
+          userId: userId || null,
+          clientId: invoiceData.clientId || `CUST-${dateMerged}001`,
+          clientName: clientName,
+          clientEmail: invoiceData.clientEmail || 'billing@client.com',
+          issueDate: invoiceData.issueDate || dateStr,
+          dueDate: invoiceData.dueDate || dateStr,
+          amount: amount,
+          subtotal: parseFloat(invoiceData.subtotal) || amount,
+          tax: parseFloat(invoiceData.tax) || 0,
+          discount: parseFloat(invoiceData.discount) || 0,
+          status: invoiceData.status || 'Paid',
+          category: invoiceData.category || 'General Service',
+          paymentMode: invoiceData.paymentMode || 'Cash',
+          items: Array.isArray(invoiceData.items) ? invoiceData.items : [],
+          notes: invoiceData.notes || ''
+        };
+
+        mongoResult = await Invoice.findOneAndUpdate(
+          { id: customId },
+          { $set: invFields },
+          { upsert: true, new: true, runValidators: false }
+        ).exec();
       } catch (err) {
-        console.warn('MongoDB invoice save warning:', err.message);
+        console.warn('MongoDB invoice save notice:', err.message);
       }
     }
 
-    // 3. Trigger immediate sync cycle to push pending items to MongoDB Atlas
-    try {
-      syncEngine.runSyncCycle();
-    } catch (e) {}
+    if (isOnline) {
+      try { syncEngine.runSyncCycle(); } catch (e) {}
+    }
 
-    return mongoResult || sqliteResult || { id: invoiceData.id || `INV-${Date.now()}`, ...invoiceData };
+    const finalInv = mongoResult ? (mongoResult.toObject ? mongoResult.toObject() : mongoResult) : (sqliteResult || invoiceData);
+    return finalInv;
   },
 
   updateInvoiceStatus: async (id, status) => {
@@ -281,45 +333,75 @@ const dataStore = {
   },
 
   getBills: async (userId) => {
-    if (mongoose.connection && mongoose.connection.readyState === 1) {
+    let mongoList = [];
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
       try {
         await seedInitialDataIfNeeded(userId);
         const filter = userId ? { userId } : {};
         let bills = await Bill.find(filter).sort({ createdAt: -1 }).lean().exec();
-        return bills || [];
+        mongoList = bills || [];
       } catch (e) {
         console.warn('MongoDB getBills notice:', e.message);
       }
     }
+    try {
+      const localBills = await sqliteStore.getBills();
+      if (Array.isArray(localBills) && localBills.length > 0) {
+        return localBills;
+      }
+    } catch (e) {}
     return [];
   },
 
   createBill: async (billData, userId = null) => {
-    const filter = userId ? { userId } : {};
-    const count = await Bill.countDocuments(filter);
-    const customId = billData.id || ('BILL-' + (100 + count + 1));
-    let existingBill = await Bill.findOne({ ...filter, id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
-    if (existingBill) {
-      if (billData.vendor) existingBill.vendor = billData.vendor;
-      if (billData.category) existingBill.category = billData.category;
-      if (billData.dueDate) existingBill.dueDate = billData.dueDate;
-      if (billData.amount !== undefined) existingBill.amount = parseFloat(billData.amount) || 0;
-      if (billData.status) existingBill.status = billData.status;
-      if (billData.autoPay !== undefined) existingBill.autoPay = !!billData.autoPay;
-      return await existingBill.save();
+    // 1. Save to local SQLite database first
+    let sqliteResult = null;
+    try {
+      sqliteResult = await sqliteStore.createBill(billData);
+    } catch (e) {
+      console.warn('SQLite createBill warning:', e.message);
     }
 
-    const newBill = new Bill({
-      id: customId,
-      userId: userId || null,
-      vendor: billData.vendor,
-      category: billData.category || 'General Expenses',
-      dueDate: billData.dueDate || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
-      amount: parseFloat(billData.amount) || 0,
-      status: billData.status || 'Unpaid',
-      autoPay: !!billData.autoPay
-    });
-    return await newBill.save();
+    // 2. Save directly to MongoDB Atlas ONLY if connected
+    let mongoResult = null;
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
+      try {
+        const customId = billData.id || (sqliteResult ? sqliteResult.id : `BILL-${Date.now().toString().slice(-6)}`);
+        const billFields = {
+          id: customId,
+          userId: userId || null,
+          vendor: billData.vendor,
+          category: billData.category || 'General Expenses',
+          dueDate: billData.dueDate || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+          amount: parseFloat(billData.amount) || 0,
+          status: billData.status || 'Unpaid',
+          autoPay: !!billData.autoPay
+        };
+
+        let existingBill = await Bill.findOne({ id: customId }).exec();
+        if (existingBill) {
+          Object.assign(existingBill, billFields);
+          mongoResult = await existingBill.save();
+        } else {
+          mongoResult = await Bill.findOneAndUpdate(
+            { id: customId },
+            { $set: billFields },
+            { upsert: true, new: true, runValidators: false }
+          ).exec();
+        }
+      } catch (err) {
+        console.warn('MongoDB bill save notice:', err.message);
+      }
+    }
+
+    if (isOnline) {
+      try { syncEngine.runSyncCycle(); } catch (e) {}
+    }
+
+    const finalBill = mongoResult ? (mongoResult.toObject ? mongoResult.toObject() : mongoResult) : (sqliteResult || billData);
+    return finalBill;
   },
 
 
@@ -346,15 +428,23 @@ const dataStore = {
   },
 
   getClients: async (companyId = null) => {
-    if (mongoose.connection && mongoose.connection.readyState === 1) {
+    let mongoList = [];
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
       try {
         const filter = companyId ? { $or: [{ companyId }, { userId: companyId }] } : {};
         let clients = await Client.find(filter).sort({ createdAt: -1 }).lean().exec();
-        return clients || [];
+        mongoList = clients || [];
       } catch (e) {
         console.warn('MongoDB getClients notice:', e.message);
       }
     }
+    try {
+      const localClients = await sqliteStore.getClients();
+      if (Array.isArray(localClients) && localClients.length > 0) {
+        return localClients;
+      }
+    } catch (e) {}
     return [];
   },
 
@@ -369,58 +459,53 @@ const dataStore = {
       console.warn('SQLite createClient warning:', e.message);
     }
 
-    // 2. Save directly to MongoDB Atlas if connected
+    // 2. Save directly to MongoDB Atlas ONLY if connected
     let mongoResult = null;
-    if (mongoose.connection && mongoose.connection.readyState === 1) {
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
       try {
-        const filter = userId ? { userId } : {};
-        let customId = clientData.id ? clientData.id.trim() : '';
+        let customId = clientData.id ? clientData.id.trim() : (sqliteResult ? sqliteResult.id : `CUST-${Date.now().toString().slice(-6)}`);
         const cleanName = (clientData.name || 'New Customer').trim();
+        const cid = clientData.companyId || (userId ? `shop_${userId}` : 'shop_default');
 
-        let existing = null;
-        if (customId) {
-          existing = await Client.findOne({ ...filter, id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
-        }
-        if (!existing) {
-          existing = await Client.findOne({ ...filter, name: { $regex: new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).exec();
-        }
+        const clientFields = {
+          id: customId,
+          companyId: cid,
+          userId: userId || null,
+          name: cleanName,
+          contact: clientData.contact || 'contact@client.com',
+          status: clientData.status || 'Active',
+          totalBilled: parseFloat(clientData.totalBilled) || 0
+        };
+
+        let existing = await Client.findOne({
+          $or: [
+            { id: customId },
+            { name: { $regex: new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }
+          ]
+        }).exec();
 
         if (existing) {
-          existing.name = cleanName;
-          if (clientData.contact) existing.contact = clientData.contact;
-          if (clientData.status) existing.status = clientData.status;
-          if (clientData.totalBilled !== undefined) existing.totalBilled = parseFloat(clientData.totalBilled) || 0;
+          Object.assign(existing, clientFields);
           mongoResult = await existing.save();
         } else {
-          if (!customId) {
-            const todayStr = new Date().toISOString().split('T')[0];
-            customId = `CUST-${todayStr.replace(/-/g, '')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-          }
-
-          const cid = clientData.companyId || (userId ? `shop_${userId}` : 'shop_default');
-          const newClient = new Client({
-            id: customId,
-            companyId: cid,
-            userId: userId || null,
-            name: cleanName,
-            contact: clientData.contact || 'contact@client.com',
-            status: clientData.status || 'Active',
-            totalBilled: parseFloat(clientData.totalBilled) || 0
-          });
-
-          mongoResult = await newClient.save();
+          mongoResult = await Client.findOneAndUpdate(
+            { id: customId },
+            { $set: clientFields },
+            { upsert: true, new: true, runValidators: false }
+          ).exec();
         }
       } catch (err) {
-        console.warn('MongoDB client save warning:', err.message);
+        console.warn('MongoDB client save notice:', err.message);
       }
     }
 
-    // 3. Trigger immediate sync cycle to push changes to MongoDB Atlas
-    try {
-      syncEngine.runSyncCycle();
-    } catch (e) {}
+    if (isOnline) {
+      try { syncEngine.runSyncCycle(); } catch (e) {}
+    }
 
-    return mongoResult || sqliteResult || { id: clientData.id || `CUST-${Date.now()}`, ...clientData };
+    const finalClient = mongoResult ? (mongoResult.toObject ? mongoResult.toObject() : mongoResult) : (sqliteResult || clientData);
+    return finalClient;
   },
 
 
@@ -434,24 +519,56 @@ const dataStore = {
   },
 
   getProducts: async (userId = null, companyId = null) => {
-    if (mongoose.connection && mongoose.connection.readyState === 1) {
+    let mongoList = [];
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
       try {
         await seedInitialDataIfNeeded(userId, companyId);
-        const filterQueries = [];
-        if (companyId) filterQueries.push({ companyId });
-        if (userId) filterQueries.push({ userId });
-        const filter = filterQueries.length > 0 ? { $or: filterQueries } : {};
-        let products = await Product.find(filter).lean().exec();
-        return (products || []).sort((a, b) => {
-          const numA = parseInt((a.id || '').replace(/\D/g, ''), 10) || 99999;
-          const numB = parseInt((b.id || '').replace(/\D/g, ''), 10) || 99999;
-          return numA - numB;
-        });
+        mongoList = await Product.find({}).lean().exec() || [];
       } catch (e) {
         console.warn('MongoDB getProducts notice:', e.message);
       }
     }
-    return [];
+
+    let localList = [];
+    try {
+      localList = await sqliteStore.getProducts() || [];
+    } catch (e) {}
+
+    const prdMap = new Map();
+    const nameMap = new Map();
+
+    (mongoList || []).forEach(p => {
+      if (p && (p.id || p.name)) {
+        const idKey = String(p.id || p._id || '').trim().toLowerCase();
+        const nameKey = String(p.name || '').trim().toLowerCase();
+        if (idKey) prdMap.set(idKey, { ...p });
+        if (nameKey && idKey) nameMap.set(nameKey, idKey);
+        try { sqliteStore.createProduct(p); } catch (e) {}
+      }
+    });
+
+    (localList || []).forEach(p => {
+      if (p && (p.id || p.name)) {
+        const idKey = String(p.id || '').trim().toLowerCase();
+        const nameKey = String(p.name || '').trim().toLowerCase();
+        const matchedKey = (idKey && prdMap.has(idKey)) ? idKey : (nameKey && nameMap.has(nameKey) ? nameMap.get(nameKey) : null);
+
+        if (matchedKey) {
+          prdMap.set(matchedKey, { ...prdMap.get(matchedKey), ...p });
+        } else {
+          const newKey = idKey || nameKey;
+          if (newKey) prdMap.set(newKey, { ...p });
+        }
+      }
+    });
+
+    const list = Array.from(prdMap.values());
+    return list.sort((a, b) => {
+      const numA = parseInt((a.id || '').replace(/\D/g, ''), 10) || 99999;
+      const numB = parseInt((b.id || '').replace(/\D/g, ''), 10) || 99999;
+      return numA - numB;
+    });
   },
 
   createProduct: async (productData, userId = null) => {
@@ -465,62 +582,64 @@ const dataStore = {
       console.warn('SQLite createProduct warning:', e.message);
     }
 
-    // 2. Save directly to MongoDB Atlas if connected
+    // 2. Save directly to MongoDB Atlas ONLY if internet is connected & online
     let mongoResult = null;
-    if (mongoose.connection && mongoose.connection.readyState === 1) {
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
       try {
-        await seedInitialDataIfNeeded(userId, companyId);
-        const filter = userId ? { $or: [{ companyId }, { userId }] } : { companyId };
         const cleanName = (productData.name || '').trim();
         if (cleanName) {
           const countNum = parseInt(productData.count, 10) || 50;
           const priceNum = parseFloat(productData.price) || 0;
           const stockStatus = productData.stock || (countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock'));
           const safeRegexName = new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+          const customId = productData.id || (sqliteResult ? sqliteResult.id : `PRD-${Date.now().toString().slice(-6)}`);
 
-          let existingByName = await Product.findOne({ ...filter, name: safeRegexName }).exec();
-          if (existingByName) {
-            existingByName.name = cleanName;
-            existingByName.companyId = companyId;
-            if (userId) existingByName.userId = userId;
-            existingByName.category = productData.category || existingByName.category || "Men's Apparel";
-            existingByName.subCategory = productData.subCategory || existingByName.subCategory || '';
-            existingByName.color = productData.color || existingByName.color || '';
-            existingByName.size = productData.size || existingByName.size || '';
-            existingByName.price = priceNum;
-            existingByName.count = countNum;
-            existingByName.stock = stockStatus;
-            mongoResult = await existingByName.save();
+          const productFields = {
+            id: customId,
+            name: cleanName,
+            category: productData.category || "Men's Apparel",
+            subCategory: productData.subCategory || '',
+            color: productData.color || '',
+            size: productData.size || '',
+            price: priceNum,
+            count: countNum,
+            stock: stockStatus,
+            companyId,
+            userId: userId || null
+          };
+
+          let existingPrd = await Product.findOne({
+            $or: [
+              { id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+              { name: safeRegexName }
+            ]
+          }).exec();
+
+          if (existingPrd) {
+            Object.assign(existingPrd, productFields);
+            mongoResult = await existingPrd.save();
           } else {
-            const candidateId = productData.id || (sqliteResult ? sqliteResult.id : `SKU-PRD-${Date.now().toString().slice(-6)}`);
-            const newPrd = new Product({
-              id: candidateId,
-              companyId,
-              userId: userId || null,
-              name: cleanName,
-              category: productData.category || "Men's Apparel",
-              subCategory: productData.subCategory || '',
-              color: productData.color || '',
-              size: productData.size || '',
-              price: priceNum,
-              count: countNum,
-              stock: stockStatus
-            });
-            mongoResult = await newPrd.save();
+            mongoResult = await Product.findOneAndUpdate(
+              { id: customId },
+              { $set: productFields },
+              { upsert: true, new: true, runValidators: false }
+            ).exec();
           }
         }
       } catch (err) {
-        console.warn('MongoDB product save error, queued in sync_queue:', err.message);
+        console.warn('MongoDB product save notice:', err.message);
       }
     }
 
-    // 3. Trigger immediate background sync cycle to push changes to MongoDB Atlas
-    try {
-      syncEngine.runSyncCycle();
-    } catch (e) {}
+    if (isOnline) {
+      try {
+        syncEngine.runSyncCycle();
+      } catch (e) {}
+    }
 
-    const finalResult = (mongoResult ? (mongoResult.toObject ? mongoResult.toObject() : mongoResult) : null) || sqliteResult || { id: productData.id || `SKU-PRD-${Date.now()}`, companyId, ...productData };
-    return finalResult;
+    const finalPrd = mongoResult ? (mongoResult.toObject ? mongoResult.toObject() : mongoResult) : (sqliteResult || productData);
+    return finalPrd;
   },
 
   getProductById: async (id, companyId = null) => {
@@ -643,14 +762,44 @@ const dataStore = {
   },
 
   getCategories: async (userId) => {
-    await seedInitialDataIfNeeded(userId);
-    await dataStore.cleanupDuplicateCategories(userId);
-    const filter = userId ? { userId } : {};
-    return await Category.find(filter).lean().exec();
+    let mongoList = [];
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+      try {
+        await seedInitialDataIfNeeded(userId);
+        await dataStore.cleanupDuplicateCategories(userId);
+        const filter = userId ? { userId } : {};
+        mongoList = await Category.find(filter).lean().exec() || [];
+      } catch (e) {
+        console.warn('MongoDB getCategories notice:', e.message);
+      }
+    }
+    let localList = [];
+    try { localList = await sqliteStore.getCategories() || []; } catch (e) {}
+
+    const catMap = new Map();
+    (mongoList || []).forEach(c => {
+      if (c && (c.id || c.name)) {
+        const key = String(c.id || c.name).trim().toLowerCase();
+        catMap.set(key, { ...c });
+        try { sqliteStore.createCategory(c); } catch (e) {}
+      }
+    });
+
+    (localList || []).forEach(c => {
+      if (c && (c.id || c.name)) {
+        const key = String(c.id || c.name).trim().toLowerCase();
+        if (!catMap.has(key)) {
+          catMap.set(key, { ...c });
+        } else {
+          catMap.set(key, { ...catMap.get(key), ...c });
+        }
+      }
+    });
+
+    return Array.from(catMap.values());
   },
 
   createCategory: async (catData, userId = null) => {
-    const filter = userId ? { userId } : {};
     const nameClean = (catData.name || '').trim();
     if (!nameClean) return null;
 
@@ -661,46 +810,67 @@ const dataStore = {
       subs = catData.subCategories.split(',').map(s => s.trim()).filter(Boolean);
     }
 
-    let existing = await Category.findOne({
-      ...filter,
-      name: { $regex: new RegExp(`^${nameClean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
-    }).exec();
-
-    if (existing) {
-      const existingSubs = Array.isArray(existing.subCategories) ? existing.subCategories : [];
-      existing.subCategories = Array.from(new Set([...existingSubs, ...subs]));
-      if (catData.description) existing.description = catData.description;
-      if (catData.genderType) existing.genderType = catData.genderType;
-      if (catData.seasonTag) existing.seasonTag = catData.seasonTag;
-      if (catData.status) existing.status = catData.status;
-      return await existing.save();
+    // 1. Save to local SQLite database first
+    let sqliteResult = null;
+    try {
+      sqliteResult = await sqliteStore.createCategory({ ...catData, name: nameClean, subCategories: subs });
+    } catch (e) {
+      console.warn('SQLite createCategory warning:', e.message);
     }
 
-    const allCats = await Category.find(filter).lean().exec();
-    let maxNum = 0;
-    allCats.forEach(c => {
-      const match = (c.id || '').match(/CAT-(\d+)/i);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        if (num > maxNum) maxNum = num;
+    // 2. Save to MongoDB Atlas ONLY if connected
+    let mongoResult = null;
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
+      try {
+        const targetId = catData.id || (sqliteResult ? sqliteResult.id : `CAT-${Date.now().toString().slice(-6)}`);
+        const catFields = {
+          id: targetId,
+          companyId: catData.companyId || 'shop_default',
+          userId: userId || null,
+          name: nameClean,
+          description: catData.description || '',
+          subCategories: subs,
+          genderType: catData.genderType || 'Unisex',
+          seasonTag: catData.seasonTag || 'All Season',
+          itemCounts: parseInt(catData.itemCounts, 10) || 0,
+          status: catData.status || 'Active'
+        };
+
+        let existing = await Category.findOne({
+          $or: [
+            { id: targetId },
+            { name: { $regex: new RegExp(`^${nameClean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }
+          ]
+        }).exec();
+
+        if (existing) {
+          const existingSubs = Array.isArray(existing.subCategories) ? existing.subCategories : [];
+          existing.name = nameClean;
+          existing.subCategories = Array.from(new Set([...existingSubs, ...subs]));
+          if (catData.description) existing.description = catData.description;
+          if (catData.genderType) existing.genderType = catData.genderType;
+          if (catData.seasonTag) existing.seasonTag = catData.seasonTag;
+          if (catData.status) existing.status = catData.status;
+          mongoResult = await existing.save();
+        } else {
+          mongoResult = await Category.findOneAndUpdate(
+            { id: targetId },
+            { $set: catFields },
+            { upsert: true, new: true, runValidators: false }
+          ).exec();
+        }
+      } catch (err) {
+        console.warn('MongoDB category save notice:', err.message);
       }
-    });
+    }
 
-    const newId = 'CAT-' + (maxNum + 1).toString().padStart(2, '0');
+    if (isOnline) {
+      try { syncEngine.runSyncCycle(); } catch (e) {}
+    }
 
-    const newCat = new Category({
-      id: newId,
-      userId: userId || null,
-      name: nameClean,
-      description: catData.description || '',
-      subCategories: subs,
-      genderType: catData.genderType || 'Unisex',
-      seasonTag: catData.seasonTag || 'All Season',
-      itemCounts: parseInt(catData.itemCounts, 10) || 0,
-      totalRevenue: 0,
-      status: catData.status || 'Active'
-    });
-    return await newCat.save();
+    const finalCat = mongoResult ? (mongoResult.toObject ? mongoResult.toObject() : mongoResult) : (sqliteResult || catData);
+    return finalCat;
   },
 
   updateCategory: async (id, catData) => {

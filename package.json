@@ -12,12 +12,14 @@
     "electron:dev": "node scripts/electron-dev.cjs",
     "electron:start": "electron .",
     "electron:build": "npm run dist:installer",
-    "dist:win": "npm run frontend:build && npx electron-packager . InvoiceProDesktop --platform=win32 --arch=x64 --out=dist-desktop --overwrite --ignore=\"dist-desktop\" --ignore=\"release\"",
-    "dist:installer": "npm run frontend:build && npx electron-builder --win nsis"
+    "dist:win": "npm run frontend:build && npx cross-env CSC_IDENTITY_AUTO_DISCOVERY=false WIN_CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win nsis portable",
+    "dist:installer": "npm run frontend:build && npx cross-env CSC_IDENTITY_AUTO_DISCOVERY=false WIN_CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win nsis",
+    "dist:portable": "npm run frontend:build && npx cross-env CSC_IDENTITY_AUTO_DISCOVERY=false WIN_CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win portable"
   },
   "build": {
     "appId": "com.nexussuite.desktop",
     "productName": "NexusSuite",
+    "executableName": "NexusSuite",
     "icon": "electron/icon.ico",
     "directories": {
       "output": "dist-installer"
@@ -31,16 +33,22 @@
     "extraFiles": [
       {
         "from": "backend/node_modules",
-        "to": "backend/node_modules",
+        "to": "resources/backend/node_modules",
         "filter": [
           "**/*"
         ]
       }
     ],
-    "asar": false,
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node"
+    ],
     "win": {
       "icon": "electron/icon.ico",
       "publisherName": "NexusSuite",
+      "verifyUpdateCodeSignature": false,
+      "forceCodeSigning": false,
+      "certificateFile": null,
       "target": [
         {
           "target": "nsis",
@@ -65,7 +73,7 @@
       "artifactName": "NexusSuite-Windows-Installer.exe"
     },
     "portable": {
-      "artifactName": "NexusSuite-Portable.exe",
+      "artifactName": "NexusSuite.exe",
       "unpackDirName": "NexusSuite"
     }
   }
@@ -79,7 +87,9 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb-memory-server": "^10.0.0",
     "mongoose": "^8.0.0",
-    "socket.io-client": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "uuid": "^14.0.2"
   },
   "devDependencies": {
     "@electron/packager": "^20.3.0",

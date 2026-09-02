@@ -150,6 +150,21 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  // Configure robust module resolution paths for packaged production mode
+  const Module = require('module');
+  const extraPaths = [
+    path.join(__dirname, '../node_modules'),
+    path.join(__dirname, '../backend/node_modules'),
+    path.join(process.resourcesPath, 'backend/node_modules'),
+    path.join(process.resourcesPath, 'app.asar/node_modules'),
+    path.join(process.resourcesPath, 'app.asar/backend/node_modules')
+  ];
+  extraPaths.forEach((p) => {
+    if (fs.existsSync(p) && !Module.globalPaths.includes(p)) {
+      Module.globalPaths.push(p);
+    }
+  });
+
   // 1. Open Electron Window IMMEDIATELY so app UI displays instantly on any computer
   createWindow().catch((err) => {
     console.error('[Electron Main] createWindow error:', err);
@@ -172,10 +187,10 @@ app.whenReady().then(async () => {
         backendServer = await backendModule.startServer(PORT);
       }
     } catch (srvErr) {
-      console.error('[Electron Main] Express server launch error:', srvErr.message);
+      console.error('[Electron Main] Express server launch error:', srvErr.stack || srvErr.message);
     }
   } catch (err) {
-    console.error('[Electron Main] Error initializing backend services:', err.message);
+    console.error('[Electron Main] Error initializing backend services:', err.stack || err.message);
   }
 
   app.on('activate', () => {

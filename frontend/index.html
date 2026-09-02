@@ -1137,7 +1137,7 @@
               </button>
             </div>
 
-            <form id="create-product-page-form" onsubmit="handleSaveProductForm(event); return false;" class="modal-form" style="display: flex; flex-direction: column; gap: 12px;">
+            <form id="create-product-page-form" class="modal-form" style="display: flex; flex-direction: column; gap: 12px;">
               <input type="hidden" id="page-prd-edit-id" value="" />
               <!-- 1. Product Name -->
               <div class="input-group" style="margin-bottom: 0;">
@@ -1220,7 +1220,7 @@
                 <button type="button" class="secondary-btn back-to-products-btn" onclick="switchView('products')" style="padding: 10px 20px; font-weight: 600; border-radius: 10px; cursor: pointer; font-size: 0.88rem;">
                   Cancel
                 </button>
-                <button type="submit" id="page-submit-create-product-btn" onclick="handleSaveProductForm(event)" class="primary-action-btn" style="padding: 10px 28px; font-size: 0.92rem; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: 700;">
+                <button type="submit" id="page-submit-create-product-btn" class="primary-action-btn" style="padding: 10px 28px; font-size: 0.92rem; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: 700;">
                   <span>Save Product</span>
                 </button>
               </div>

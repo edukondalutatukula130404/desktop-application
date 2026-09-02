@@ -5,7 +5,6 @@ const express = require('express');
 const cors = require('cors');
 const { connectDatabase } = require('./config/database');
 const { connectDB, getDBStatus } = require('./src/db/connect');
-const { initSQLiteDB } = require('./src/db/sqliteDB');
 const { startSyncEngine } = require('./src/services/syncEngine');
 const authRoutes = require('./src/routes/authRoutes');
 const businessRoutes = require('./src/routes/businessRoutes');
@@ -114,13 +113,6 @@ app.use((err, req, res, next) => {
 
 // Start Server helper function
 async function startServer(port = PORT) {
-  try {
-    console.log('[Express Server] Initializing offline-first local SQLite database...');
-    await initSQLiteDB();
-  } catch (sqlErr) {
-    console.error('[Express Server] SQLite initialization warning:', sqlErr.message);
-  }
-
   try {
     console.log('[Express Server] Connecting background DB connections...');
     await connectDB();

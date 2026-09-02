@@ -1,529 +1,287 @@
-const { randomUUID } = require('crypto');
-const uuidv4 = () => randomUUID();
-const { dbRun, dbGet, dbAll, dbExec, getDeviceId } = require('./sqliteDB');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+
+function getStorageDir() {
+  const appDataDir = process.env.APPDATA || (process.platform === 'darwin' ? path.join(os.homedir(), 'Library', 'Preferences') : path.join(os.homedir(), '.config'));
+  const dbDir = path.join(appDataDir, 'InvoiceProDesktop', 'local-data');
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+  }
+  return dbDir;
+}
+
+const storagePath = path.join(getStorageDir(), 'store.json');
+
+const DEFAULT_SEED_CATEGORIES = [
+  { id: 'CAT-01', name: "Men's Apparel", subCategories: ['Shirts', 'T-Shirts', 'Jeans & Trousers', 'Suits & Blazers', 'Ethnic Wear'] },
+  { id: 'CAT-02', name: "Women's Fashion", subCategories: ['Dresses & Maxis', 'Sarees & Kurtis', 'Tops & Tees', 'Ethnic Wear', 'Skirts & Shorts'] },
+  { id: 'CAT-03', name: "Kidswear & Toddlers", subCategories: ['T-Shirts & Tops', 'Shorts & Skirts', 'Frocks & Dresses', 'Nightwear & Onesies', 'Ethnic Wear'] },
+  { id: 'CAT-04', name: "Footwear & Shoes", subCategories: ['Sneakers', 'Formal Shoes', 'Sandals & Floaters', 'Boots', 'Heels & Flats'] },
+  { id: 'CAT-05', name: "Fashion Accessories", subCategories: ['Belts & Wallets', 'Caps & Hats', 'Bags & Backpacks', 'Sunglasses', 'Socks & Gloves'] },
+  { id: 'CAT-06', name: "Winterwear & Outerwear", subCategories: ['Jackets & Coats', 'Sweaters & Cardigans', 'Hoodies & Sweatshirts', 'Thermal Wear', 'Mufflers & Scarves'] }
+];
+
+const DEFAULT_SEED_PRODUCTS = [];
+const DEFAULT_SEED_INVOICES = [];
+const DEFAULT_SEED_CLIENTS = [];
+const DEFAULT_SEED_BILLS = [];
+
+function loadStore() {
+  let loaded = null;
+  try {
+    if (fs.existsSync(storagePath)) {
+      const data = fs.readFileSync(storagePath, 'utf8');
+      loaded = JSON.parse(data);
+    }
+  } catch (e) {}
+
+  if (!loaded) loaded = {};
+
+  const EXACT_DEMO_SEED_IDS = new Set([
+    'SKU-PRD-01', 'SKU-PRD-02', 'SKU-PRD-03', 'SKU-PRD-04', 'SKU-PRD-05', 'SKU-PRD-06',
+    'SKU-PRD-07', 'SKU-PRD-08', 'SKU-PRD-09', 'SKU-PRD-10', 'SKU-PRD-11', 'SKU-PRD-12'
+  ]);
+
+  // Purge legacy demo seed data from disk
+  if (Array.isArray(loaded.products)) {
+    loaded.products = loaded.products.filter(p => p && p.id && !EXACT_DEMO_SEED_IDS.has(String(p.id).toUpperCase().trim()));
+  } else {
+    loaded.products = [];
+  }
+
+  if (Array.isArray(loaded.categories) && loaded.categories.length > 0) {
+    DEFAULT_SEED_CATEGORIES.forEach(sc => {
+      if (!loaded.categories.some(c => c.id === sc.id || (c.name && c.name.toLowerCase() === sc.name.toLowerCase()))) {
+        loaded.categories.push(sc);
+      }
+    });
+  } else {
+    loaded.categories = [...DEFAULT_SEED_CATEGORIES];
+  }
+
+  if (Array.isArray(loaded.invoices)) {
+    loaded.invoices = loaded.invoices.filter(i => i && i.id && !i.id.startsWith('INV-20260901-'));
+  } else {
+    loaded.invoices = [];
+  }
+
+  if (Array.isArray(loaded.clients)) {
+    loaded.clients = loaded.clients.filter(c => c && c.id && !c.id.startsWith('CUST-00'));
+  } else {
+    loaded.clients = [];
+  }
+
+  if (Array.isArray(loaded.bills)) {
+    loaded.bills = loaded.bills.filter(b => b && b.id && !b.id.startsWith('BILL-00'));
+  } else {
+    loaded.bills = [];
+  }
+
+  if (!Array.isArray(loaded.sync_queue)) loaded.sync_queue = [];
+  if (!loaded.meta) loaded.meta = { device_id: 'DEV-' + Date.now().toString().slice(-6) };
+
+  return loaded;
+}
+
+let store = loadStore();
+
+function saveStore() {
+  try {
+    fs.writeFileSync(storagePath, JSON.stringify(store, null, 2), 'utf8');
+  } catch (e) {}
+}
 
 const sqliteStore = {
-  // Sync Queue Helper
-  async enqueueSync(entityType, entityId, operation, payload) {
-    const queueId = `SYNC-${uuidv4()}`;
-    const now = new Date().toISOString();
-    const deviceId = getDeviceId();
-    const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
-
-    await dbRun(
-      `INSERT INTO sync_queue (id, entity_type, entity_id, operation, payload, created_at, updated_at, sync_status, retry_count, device_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', 0, ?)`,
-      [queueId, entityType, entityId, operation, payloadStr, now, now, deviceId]
-    );
-    return queueId;
+  getDeviceId() {
+    return store.meta.device_id || 'DEV-LOCAL';
   },
 
-  // INVOICES
-  async getInvoices() {
-    const invoices = await dbAll(`SELECT * FROM invoices ORDER BY updated_at DESC`);
-    for (const inv of invoices) {
-      const items = await dbAll(`SELECT * FROM invoice_items WHERE invoiceId = ?`, [inv.id]);
-      inv.items = items || [];
-    }
-    return invoices;
+  async getSyncMetaData(key) {
+    return store.meta[key] || null;
   },
 
-  async getInvoiceById(id) {
-    if (!id) return null;
-    const inv = await dbGet(`SELECT * FROM invoices WHERE LOWER(id) = LOWER(?)`, [id.toString().trim()]);
-    if (!inv) return null;
-    inv.items = await dbAll(`SELECT * FROM invoice_items WHERE invoiceId = ?`, [inv.id]);
-    return inv;
+  async setSyncMetaData(key, value) {
+    store.meta[key] = value;
+    saveStore();
   },
 
-  async createInvoice(invoiceData, options = {}) {
-    const deviceId = getDeviceId();
-    const now = new Date().toISOString();
-    const dateMerged = (invoiceData.issueDate || now.split('T')[0]).replace(/-/g, '');
-    const skipSyncQueue = !!options.skipSyncQueue;
-    const initialSyncStatus = skipSyncQueue ? 'SYNCED' : 'PENDING';
-    
-    // Generate UUID if not custom
-    const id = invoiceData.id || `INV-${dateMerged}-${uuidv4().substring(0, 4).toUpperCase()}`;
-    const clientId = invoiceData.clientId || `CUST-${dateMerged}-${uuidv4().substring(0, 4).toUpperCase()}`;
-    const clientName = (invoiceData.clientName || 'Walk-in Retail Customer').trim();
-    const amount = parseFloat(invoiceData.amount) || 0;
-    const subtotal = parseFloat(invoiceData.subtotal) || amount;
-    const tax = parseFloat(invoiceData.tax) || 0;
-    const discount = parseFloat(invoiceData.discount) || 0;
-    const status = invoiceData.status || 'Paid';
-    const category = invoiceData.category || 'Retail Sale';
-    const paymentMode = invoiceData.paymentMode || 'Cash';
-    const notes = invoiceData.notes || '';
-    const issueDate = invoiceData.issueDate || now.split('T')[0];
-    const dueDate = invoiceData.dueDate || issueDate;
-    const clientEmail = invoiceData.clientEmail || '';
-
-    // Check if invoice already exists locally
-    const existing = await dbGet(`SELECT id FROM invoices WHERE id = ?`, [id]);
-    if (existing) {
-      await dbRun(
-        `UPDATE invoices SET clientName=?, clientEmail=?, issueDate=?, dueDate=?, amount=?, subtotal=?, tax=?, discount=?, status=?, category=?, paymentMode=?, notes=?, updated_at=?, sync_status=?
-         WHERE id=?`,
-        [clientName, clientEmail, issueDate, dueDate, amount, subtotal, tax, discount, status, category, paymentMode, notes, now, initialSyncStatus, id]
-      );
-    } else {
-      await dbRun(
-        `INSERT INTO invoices (id, clientId, clientName, clientEmail, issueDate, dueDate, amount, subtotal, tax, discount, status, category, paymentMode, notes, updated_at, device_id, sync_status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, clientId, clientName, clientEmail, issueDate, dueDate, amount, subtotal, tax, discount, status, category, paymentMode, notes, now, deviceId, initialSyncStatus]
-      );
-    }
-
-    // Insert Invoice Items atomically
-    if (Array.isArray(invoiceData.items)) {
-      await dbRun(`DELETE FROM invoice_items WHERE invoiceId = ?`, [id]);
-      for (const item of invoiceData.items) {
-        const itemId = `ITEM-${uuidv4()}`;
-        const itemQty = parseFloat(item.qty) || 1;
-        const itemPrice = parseFloat(item.price) || 0;
-        const itemSubtotal = parseFloat(item.subtotal) || (itemQty * itemPrice);
-
-        await dbRun(
-          `INSERT INTO invoice_items (id, invoiceId, productName, category, subCategory, color, size, qty, price, subtotal)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [itemId, id, item.name || item.productName || 'Product Item', item.category || "Men's Apparel", item.subCategory || 'Shirts', item.color || 'Black', item.size || 'M', itemQty, itemPrice, itemSubtotal]
-        );
-
-        // Deduct Product Stock Level in SQLite if not pulling
-        if (item.name && !skipSyncQueue) {
-          const prdName = item.name.trim();
-          const prd = await dbGet(`SELECT * FROM products WHERE LOWER(name) = LOWER(?)`, [prdName]);
-          if (prd) {
-            const newCount = Math.max(0, (prd.count || 0) - itemQty);
-            const newStock = newCount > 10 ? 'In Stock' : (newCount > 0 ? 'Low Stock' : 'Out of Stock');
-            await dbRun(
-              `UPDATE products SET count = ?, stock = ?, updated_at = ?, sync_status = 'PENDING' WHERE id = ?`,
-              [newCount, newStock, now, prd.id]
-            );
-            await sqliteStore.enqueueSync('PRODUCT', prd.id, 'UPDATE', { id: prd.id, count: newCount, stock: newStock });
-          }
-        }
-      }
-    }
-
-    // Ensure Customer Record always exists locally (even when pulling remote invoices)
-    let customer = null;
-    if (clientId) {
-      customer = await dbGet(`SELECT * FROM customers WHERE id = ?`, [clientId]);
-    }
-    if (!customer && clientName) {
-      customer = await dbGet(`SELECT * FROM customers WHERE LOWER(name) = LOWER(?)`, [clientName.toLowerCase()]);
-    }
-
-    if (!customer) {
-      // Customer doesn't exist locally — create from invoice data
-      const targetCustId = clientId || `CUST-${dateMerged}-${uuidv4().substring(0, 4).toUpperCase()}`;
-      await dbRun(
-        `INSERT INTO customers (id, name, email, phone, contact, status, totalBilled, updated_at, device_id, sync_status)
-         VALUES (?, ?, ?, ?, ?, 'Active', ?, ?, ?, ?)`,
-        [targetCustId, clientName, clientEmail, '+91 98765 43210', clientEmail || 'orders@client.com', amount, now, deviceId, initialSyncStatus]
-      );
-      if (!skipSyncQueue) {
-        await sqliteStore.enqueueSync('CUSTOMER', targetCustId, 'CREATE', { id: targetCustId, name: clientName, email: clientEmail, totalBilled: amount });
-      }
-    } else if (!skipSyncQueue) {
-      // Only update stored totalBilled counter when not pulling (local write) — getClients() computes live total from JOIN
-      const newTotalBilled = (customer.totalBilled || 0) + amount;
-      await dbRun(
-        `UPDATE customers SET totalBilled = ?, updated_at = ?, sync_status = 'PENDING' WHERE id = ?`,
-        [newTotalBilled, now, customer.id]
-      );
-      await sqliteStore.enqueueSync('CUSTOMER', customer.id, 'UPDATE', { id: customer.id, name: customer.name, totalBilled: newTotalBilled });
-    }
-
-    const fullInvoice = await sqliteStore.getInvoiceById(id);
-    if (!skipSyncQueue) {
-      await sqliteStore.enqueueSync('INVOICE', id, 'CREATE', fullInvoice);
-    }
-
-    return fullInvoice;
-  },
-
-  async updateInvoiceStatus(id, status) {
-    const now = new Date().toISOString();
-    await dbRun(`UPDATE invoices SET status = ?, updated_at = ?, sync_status = 'PENDING' WHERE id = ?`, [status, now, id]);
-    const inv = await sqliteStore.getInvoiceById(id);
-    if (inv) {
-      await sqliteStore.enqueueSync('INVOICE', id, 'UPDATE', { id, status });
-    }
-    return inv;
-  },
-
-  // PRODUCTS
   async getProducts() {
-    return await dbAll(`SELECT * FROM products ORDER BY name ASC`);
+    return (store.products || []).filter(p => !p.is_deleted);
   },
 
-  async createProduct(productData, options = {}) {
-    const deviceId = getDeviceId();
-    const now = new Date().toISOString();
-    const skipSyncQueue = !!options.skipSyncQueue;
-    const initialSyncStatus = skipSyncQueue ? 'SYNCED' : 'PENDING';
-    const name = (productData.name || 'New Product').trim();
-    let existing = null;
-    if (productData.id) {
-      existing = await dbGet(`SELECT * FROM products WHERE id = ?`, [productData.id]);
-    }
-    if (!existing && name) {
-      existing = await dbGet(`SELECT * FROM products WHERE LOWER(name) = LOWER(?)`, [name.toLowerCase()]);
-    }
-    const id = existing ? existing.id : (productData.id || `SKU-PRD-${uuidv4().substring(0, 6).toUpperCase()}`);
-
-    const category = productData.category || "Men's Apparel";
-    const subCategory = productData.subCategory || 'Shirts';
-    const color = productData.color || 'Black';
-    const size = productData.size || 'M';
-    const price = parseFloat(productData.price) || 0;
-    const count = parseInt(productData.count || 0, 10);
-    const stock = productData.stock || (count > 10 ? 'In Stock' : (count > 0 ? 'Low Stock' : 'Out of Stock'));
-
-    if (existing) {
-      await dbRun(
-        `UPDATE products SET name=?, category=?, subCategory=?, color=?, size=?, price=?, stock=?, count=?, updated_at=?, sync_status=?
-         WHERE id=?`,
-        [name, category, subCategory, color, size, price, stock, count, now, initialSyncStatus, id]
-      );
+  async createProduct(prd) {
+    const existingIdx = (store.products || []).findIndex(p => p.id === prd.id || (p.name && p.name.toLowerCase() === (prd.name || '').toLowerCase()));
+    const record = {
+      id: prd.id || `PRD-${Date.now()}`,
+      name: prd.name,
+      category: prd.category || "Men's Apparel",
+      subCategory: prd.subCategory || '',
+      color: prd.color || 'Black',
+      size: prd.size || 'M',
+      price: Number(prd.price) || 0,
+      stock: prd.stock || 'In Stock',
+      count: Number(prd.count) || 50,
+      is_deleted: 0,
+      updated_at: new Date().toISOString()
+    };
+    if (existingIdx >= 0) {
+      store.products[existingIdx] = { ...store.products[existingIdx], ...record };
     } else {
-      await dbRun(
-        `INSERT INTO products (id, name, category, subCategory, color, size, price, stock, count, updated_at, device_id, sync_status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, name, category, subCategory, color, size, price, stock, count, now, deviceId, initialSyncStatus]
-      );
+      store.products.push(record);
     }
+    saveStore();
+    return record;
+  },
 
-    const prd = await dbGet(`SELECT * FROM products WHERE id = ?`, [id]);
-    if (!skipSyncQueue) {
-      await sqliteStore.enqueueSync('PRODUCT', id, existing ? 'UPDATE' : 'CREATE', prd);
+  async updateProduct(id, updates) {
+    const prd = (store.products || []).find(p => p.id === id);
+    if (prd) {
+      Object.assign(prd, updates, { updated_at: new Date().toISOString() });
+      saveStore();
     }
     return prd;
   },
 
-  async updateProduct(id, productData) {
-    const now = new Date().toISOString();
-    const prd = await dbGet(`SELECT * FROM products WHERE id = ?`, [id]);
-    if (!prd) return null;
-
-    const name = productData.name !== undefined ? productData.name.trim() : prd.name;
-    const category = productData.category !== undefined ? productData.category : prd.category;
-    const subCategory = productData.subCategory !== undefined ? productData.subCategory : prd.subCategory;
-    const color = productData.color !== undefined ? productData.color : prd.color;
-    const size = productData.size !== undefined ? productData.size : prd.size;
-    const price = productData.price !== undefined ? parseFloat(productData.price) : prd.price;
-    const count = productData.count !== undefined ? parseInt(productData.count, 10) : prd.count;
-    const stock = productData.stock !== undefined ? productData.stock : (count > 10 ? 'In Stock' : (count > 0 ? 'Low Stock' : 'Out of Stock'));
-
-    await dbRun(
-      `UPDATE products SET name=?, category=?, subCategory=?, color=?, size=?, price=?, stock=?, count=?, updated_at=?, sync_status='PENDING'
-       WHERE id=?`,
-      [name, category, subCategory, color, size, price, stock, count, now, id]
-    );
-
-    const updated = await dbGet(`SELECT * FROM products WHERE id = ?`, [id]);
-    await sqliteStore.enqueueSync('PRODUCT', id, 'UPDATE', updated);
-    return updated;
-  },
-
-  async updateProductStock(id, { count, stock }) {
-    const now = new Date().toISOString();
-    const prd = await dbGet(`SELECT * FROM products WHERE id = ?`, [id]);
-    if (!prd) return null;
-
-    const newCount = count !== undefined ? parseInt(count, 10) : prd.count;
-    const newStock = stock || (newCount > 10 ? 'In Stock' : (newCount > 0 ? 'Low Stock' : 'Out of Stock'));
-
-    await dbRun(`UPDATE products SET count = ?, stock = ?, updated_at = ?, sync_status = 'PENDING' WHERE id = ?`, [newCount, newStock, now, id]);
-    const updated = await dbGet(`SELECT * FROM products WHERE id = ?`, [id]);
-    await sqliteStore.enqueueSync('PRODUCT', id, 'UPDATE', { id, count: newCount, stock: newStock });
-    return updated;
-  },
-
-  async deleteProduct(id, name) {
-    const now = new Date().toISOString();
-    let prd = null;
-    if (id) prd = await dbGet(`SELECT * FROM products WHERE id = ?`, [id]);
-    if (!prd && name) prd = await dbGet(`SELECT * FROM products WHERE LOWER(name) = LOWER(?)`, [name.trim()]);
-    
+  async deleteProduct(id) {
+    const prd = (store.products || []).find(p => p.id === id);
     if (prd) {
-      await dbRun(`DELETE FROM products WHERE id = ?`, [prd.id]);
-      await sqliteStore.enqueueSync('PRODUCT', prd.id, 'DELETE', { id: prd.id, name: prd.name });
-      return { deletedCount: 1 };
+      prd.is_deleted = 1;
+      prd.updated_at = new Date().toISOString();
+      saveStore();
     }
-    return { deletedCount: 0 };
   },
 
-  // CUSTOMERS / CLIENTS
-  async getClients() {
-    // Always compute totalBilled from actual invoice records so all devices stay in sync
-    const clients = await dbAll(`
-      SELECT c.*,
-             COALESCE(SUM(i.amount), 0) AS totalBilled
-      FROM customers c
-      LEFT JOIN invoices i ON LOWER(i.clientId) = LOWER(c.id)
-                           OR LOWER(i.clientName) = LOWER(c.name)
-      GROUP BY c.id
-      ORDER BY c.id ASC
-    `);
-    return clients;
-  },
-
-  async createClient(clientData, options = {}) {
-    const deviceId = getDeviceId();
-    const now = new Date().toISOString();
-    const skipSyncQueue = !!options.skipSyncQueue;
-    const initialSyncStatus = skipSyncQueue ? 'SYNCED' : 'PENDING';
-    const name = (clientData.name || 'New Customer').trim();
-    let existing = null;
-    if (clientData.id) {
-      existing = await dbGet(`SELECT * FROM customers WHERE id = ?`, [clientData.id]);
-    }
-    if (!existing && name) {
-      existing = await dbGet(`SELECT * FROM customers WHERE LOWER(name) = LOWER(?)`, [name.toLowerCase()]);
-    }
-    const id = existing ? existing.id : (clientData.id || `CUST-${now.split('T')[0].replace(/-/g, '')}-${uuidv4().substring(0, 4).toUpperCase()}`);
-
-    const email = clientData.email || (existing ? existing.email : '');
-    const phone = clientData.phone || (existing ? existing.phone : '+91 98765 43210');
-    const contact = clientData.contact || email || 'orders@client.com';
-    const status = clientData.status || 'Active';
-    const totalBilled = clientData.totalBilled !== undefined ? parseFloat(clientData.totalBilled) : (existing ? existing.totalBilled : 0);
-
-    if (existing) {
-      await dbRun(
-        `UPDATE customers SET name=?, email=?, phone=?, contact=?, status=?, totalBilled=?, updated_at=?, sync_status=?
-         WHERE id=?`,
-        [name, email, phone, contact, status, totalBilled, now, initialSyncStatus, id]
-      );
-    } else {
-      await dbRun(
-        `INSERT INTO customers (id, name, email, phone, contact, status, totalBilled, updated_at, device_id, sync_status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, name, email, phone, contact, status, totalBilled, now, deviceId, initialSyncStatus]
-      );
-    }
-
-    const client = await dbGet(`SELECT * FROM customers WHERE id = ?`, [id]);
-    if (!skipSyncQueue) {
-      await sqliteStore.enqueueSync('CUSTOMER', id, existing ? 'UPDATE' : 'CREATE', client);
-    }
-    return client;
-  },
-
-  async toggleClientStatus(id) {
-    const now = new Date().toISOString();
-    const client = await dbGet(`SELECT * FROM customers WHERE id = ?`, [id]);
-    if (!client) return null;
-
-    const newStatus = client.status === 'Active' ? 'Notice' : 'Active';
-    await dbRun(`UPDATE customers SET status = ?, updated_at = ?, sync_status = 'PENDING' WHERE id = ?`, [newStatus, now, id]);
-    const updated = await dbGet(`SELECT * FROM customers WHERE id = ?`, [id]);
-    await sqliteStore.enqueueSync('CUSTOMER', id, 'UPDATE', { id, status: newStatus });
-    return updated;
-  },
-
-  // CATEGORIES
   async getCategories() {
-    return await dbAll(`SELECT * FROM categories ORDER BY name ASC`);
+    return (store.categories || []).filter(c => !c.is_deleted);
   },
 
-  async createCategory(catData, options = {}) {
-    const deviceId = getDeviceId();
-    const now = new Date().toISOString();
-    const skipSyncQueue = !!options.skipSyncQueue;
-    const initialSyncStatus = skipSyncQueue ? 'SYNCED' : 'PENDING';
-    const name = (catData.name || 'New Category').trim();
-    let existing = null;
-    if (catData.id) {
-      existing = await dbGet(`SELECT * FROM categories WHERE id = ?`, [catData.id]);
-    }
-    if (!existing && name) {
-      existing = await dbGet(`SELECT * FROM categories WHERE LOWER(name) = LOWER(?)`, [name.toLowerCase()]);
-    }
-    const id = existing ? existing.id : (catData.id || `CAT-${uuidv4().substring(0, 6).toUpperCase()}`);
-    const subCategories = typeof catData.subCategories === 'string' ? catData.subCategories : JSON.stringify(catData.subCategories || []);
-    const status = catData.status || 'Active';
-    const productCount = catData.productCount || 0;
-
-    if (existing) {
-      await dbRun(
-        `UPDATE categories SET name=?, subCategories=?, status=?, productCount=?, updated_at=?, sync_status=? WHERE id=?`,
-        [name, subCategories, status, productCount, now, initialSyncStatus, id]
-      );
+  async createCategory(cat) {
+    const existingIdx = (store.categories || []).findIndex(c => c.id === cat.id || (c.name && c.name.toLowerCase() === (cat.name || '').toLowerCase()));
+    const record = {
+      id: cat.id || `CAT-${Date.now()}`,
+      name: cat.name,
+      subCategories: Array.isArray(cat.subCategories) ? cat.subCategories : [],
+      status: cat.status || 'Active',
+      productCount: Number(cat.productCount) || 0,
+      is_deleted: 0,
+      updated_at: new Date().toISOString()
+    };
+    if (existingIdx >= 0) {
+      store.categories[existingIdx] = { ...store.categories[existingIdx], ...record };
     } else {
-      await dbRun(
-        `INSERT INTO categories (id, name, subCategories, status, productCount, updated_at, device_id, sync_status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, name, subCategories, status, productCount, now, deviceId, initialSyncStatus]
-      );
+      store.categories.push(record);
     }
+    saveStore();
+    return record;
+  },
 
-    const cat = await dbGet(`SELECT * FROM categories WHERE id = ?`, [id]);
-    if (!skipSyncQueue) {
-      await sqliteStore.enqueueSync('CATEGORY', id, existing ? 'UPDATE' : 'CREATE', cat);
+  async getInvoices() {
+    return (store.invoices || []).filter(i => !i.is_deleted);
+  },
+
+  async getInvoiceById(id) {
+    return (store.invoices || []).find(i => i.id === id && !i.is_deleted) || null;
+  },
+
+  async createInvoice(inv) {
+    const existingIdx = (store.invoices || []).findIndex(i => i.id === inv.id);
+    const record = {
+      id: inv.id || `INV-${Date.now()}`,
+      clientId: inv.clientId || '',
+      clientName: inv.clientName || 'Walk-in Retail Customer',
+      clientEmail: inv.clientEmail || '',
+      issueDate: inv.issueDate || new Date().toISOString().split('T')[0],
+      dueDate: inv.dueDate || new Date().toISOString().split('T')[0],
+      amount: Number(inv.amount) || 0,
+      status: inv.status || 'Paid',
+      category: inv.category || 'Retail Sale',
+      paymentMode: inv.paymentMode || 'Cash',
+      items: Array.isArray(inv.items) ? inv.items : [],
+      is_deleted: 0,
+      updated_at: new Date().toISOString()
+    };
+    if (existingIdx >= 0) {
+      store.invoices[existingIdx] = { ...store.invoices[existingIdx], ...record };
+    } else {
+      store.invoices.push(record);
     }
-    return cat;
+    saveStore();
+    return record;
   },
 
-  async updateCategory(id, catData) {
-    const now = new Date().toISOString();
-    const cat = await dbGet(`SELECT * FROM categories WHERE id = ?`, [id]);
-    if (!cat) return null;
-
-    const name = catData.name !== undefined ? catData.name.trim() : cat.name;
-    const subCategories = catData.subCategories !== undefined ? (typeof catData.subCategories === 'string' ? catData.subCategories : JSON.stringify(catData.subCategories)) : cat.subCategories;
-    const status = catData.status !== undefined ? catData.status : cat.status;
-    const productCount = catData.productCount !== undefined ? catData.productCount : cat.productCount;
-
-    await dbRun(
-      `UPDATE categories SET name=?, subCategories=?, status=?, productCount=?, updated_at=?, sync_status='PENDING' WHERE id=?`,
-      [name, subCategories, status, productCount, now, id]
-    );
-
-    const updated = await dbGet(`SELECT * FROM categories WHERE id = ?`, [id]);
-    await sqliteStore.enqueueSync('CATEGORY', id, 'UPDATE', updated);
-    return updated;
+  async getClients() {
+    return (store.clients || []).filter(c => !c.is_deleted);
   },
 
-  async deleteCategory(id, name) {
-    let cat = null;
-    if (id) cat = await dbGet(`SELECT * FROM categories WHERE id = ?`, [id]);
-    if (!cat && name) cat = await dbGet(`SELECT * FROM categories WHERE LOWER(name) = LOWER(?)`, [name.trim()]);
-
-    if (cat) {
-      await dbRun(`DELETE FROM categories WHERE id = ?`, [cat.id]);
-      await sqliteStore.enqueueSync('CATEGORY', cat.id, 'DELETE', { id: cat.id, name: cat.name });
-      return { deletedCount: 1 };
+  async createClient(client) {
+    const existingIdx = (store.clients || []).findIndex(c => c.id === client.id || (c.name && c.name.toLowerCase() === (client.name || '').toLowerCase()));
+    const record = {
+      id: client.id || `CUST-${Date.now()}`,
+      name: client.name,
+      email: client.email || '',
+      phone: client.phone || '',
+      status: client.status || 'Active',
+      is_deleted: 0,
+      updated_at: new Date().toISOString()
+    };
+    if (existingIdx >= 0) {
+      store.clients[existingIdx] = { ...store.clients[existingIdx], ...record };
+    } else {
+      store.clients.push(record);
     }
-    return { deletedCount: 0 };
+    saveStore();
+    return record;
   },
 
-  async toggleCategoryStatus(id) {
-    const now = new Date().toISOString();
-    const cat = await dbGet(`SELECT * FROM categories WHERE id = ?`, [id]);
-    if (!cat) return null;
-
-    const newStatus = cat.status === 'Active' ? 'Disabled' : 'Active';
-    await dbRun(`UPDATE categories SET status = ?, updated_at = ?, sync_status = 'PENDING' WHERE id = ?`, [newStatus, now, id]);
-    const updated = await dbGet(`SELECT * FROM categories WHERE id = ?`, [id]);
-    await sqliteStore.enqueueSync('CATEGORY', id, 'UPDATE', { id, status: newStatus });
-    return updated;
-  },
-
-  // BILLS
   async getBills() {
-    return await dbAll(`SELECT * FROM bills ORDER BY dueDate ASC`);
+    return (store.bills || []).filter(b => !b.is_deleted);
   },
 
-  async createBill(billData, options = {}) {
-    const deviceId = getDeviceId();
-    const now = new Date().toISOString();
-    const skipSyncQueue = !!options.skipSyncQueue;
-    const initialSyncStatus = skipSyncQueue ? 'SYNCED' : 'PENDING';
-    const vendor = (billData.vendor || 'Vendor').trim();
-    let existing = null;
-    if (billData.id) {
-      existing = await dbGet(`SELECT * FROM bills WHERE id = ?`, [billData.id]);
-    }
-    const id = existing ? existing.id : (billData.id || `BILL-${uuidv4().substring(0, 6).toUpperCase()}`);
-    const category = billData.category || 'General Expense';
-    const dueDate = billData.dueDate || now.split('T')[0];
-    const amount = parseFloat(billData.amount) || 0;
-    const status = billData.status || 'Unpaid';
-    const autoPay = billData.autoPay ? 1 : 0;
-
-    if (existing) {
-      await dbRun(
-        `UPDATE bills SET vendor=?, category=?, dueDate=?, amount=?, status=?, autoPay=?, updated_at=?, sync_status=? WHERE id=?`,
-        [vendor, category, dueDate, amount, status, autoPay, now, initialSyncStatus, id]
-      );
+  async createBill(bill) {
+    const existingIdx = (store.bills || []).findIndex(b => b.id === bill.id);
+    const record = {
+      id: bill.id || `BILL-${Date.now()}`,
+      vendor: bill.vendor,
+      category: bill.category || 'Inventory Purchase',
+      dueDate: bill.dueDate || new Date().toISOString().split('T')[0],
+      amount: Number(bill.amount) || 0,
+      status: bill.status || 'Unpaid',
+      autoPay: bill.autoPay ? 1 : 0,
+      is_deleted: 0,
+      updated_at: new Date().toISOString()
+    };
+    if (existingIdx >= 0) {
+      store.bills[existingIdx] = { ...store.bills[existingIdx], ...record };
     } else {
-      await dbRun(
-        `INSERT INTO bills (id, vendor, category, dueDate, amount, status, autoPay, updated_at, device_id, sync_status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, vendor, category, dueDate, amount, status, autoPay, now, deviceId, initialSyncStatus]
-      );
+      store.bills.push(record);
     }
-
-    const bill = await dbGet(`SELECT * FROM bills WHERE id = ?`, [id]);
-    if (!skipSyncQueue) {
-      await sqliteStore.enqueueSync('BILL', id, 'CREATE', bill);
-    }
-    return bill;
+    saveStore();
+    return record;
   },
 
-  async payBill(id) {
-    const now = new Date().toISOString();
-    await dbRun(`UPDATE bills SET status = 'Paid', updated_at = ?, sync_status = 'PENDING' WHERE id = ?`, [now, id]);
-    const bill = await dbGet(`SELECT * FROM bills WHERE id = ?`, [id]);
-    if (bill) {
-      await sqliteStore.enqueueSync('BILL', id, 'UPDATE', { id, status: 'Paid' });
-    }
-    return bill;
-  },
-
-  async toggleBillStatus(id) {
-    const now = new Date().toISOString();
-    const bill = await dbGet(`SELECT * FROM bills WHERE id = ?`, [id]);
-    if (!bill) return null;
-
-    const newStatus = bill.status === 'Paid' ? 'Unpaid' : 'Paid';
-    await dbRun(`UPDATE bills SET status = ?, updated_at = ?, sync_status = 'PENDING' WHERE id = ?`, [newStatus, now, id]);
-    const updated = await dbGet(`SELECT * FROM bills WHERE id = ?`, [id]);
-    await sqliteStore.enqueueSync('BILL', id, 'UPDATE', { id, status: newStatus });
-    return updated;
-  },
-
-  async toggleBillAutoPay(id) {
-    const now = new Date().toISOString();
-    const bill = await dbGet(`SELECT * FROM bills WHERE id = ?`, [id]);
-    if (!bill) return null;
-
-    const newAutoPay = bill.autoPay ? 0 : 1;
-    await dbRun(`UPDATE bills SET autoPay = ?, updated_at = ?, sync_status = 'PENDING' WHERE id = ?`, [newAutoPay, now, id]);
-    const updated = await dbGet(`SELECT * FROM bills WHERE id = ?`, [id]);
-    await sqliteStore.enqueueSync('BILL', id, 'UPDATE', { id, autoPay: newAutoPay });
-    return updated;
-  },
-
-  // SYNC QUEUE MANAGEMENT
   async getPendingSyncItems() {
-    return await dbAll(`SELECT * FROM sync_queue WHERE sync_status = 'PENDING' OR (sync_status = 'FAILED' AND retry_count < 5) ORDER BY created_at ASC`);
+    return (store.sync_queue || []).filter(q => q.status === 'PENDING');
   },
 
-  async markSyncItemSynced(queueId) {
-    const now = new Date().toISOString();
-    await dbRun(`UPDATE sync_queue SET sync_status = 'SYNCED', synced_at = ?, updated_at = ? WHERE id = ?`, [now, now, queueId]);
+  async markSyncItemSynced(id) {
+    const item = (store.sync_queue || []).find(q => q.id === id);
+    if (item) item.status = 'SYNCED';
+    saveStore();
   },
 
-  async markSyncItemFailed(queueId, errorMsg) {
-    const now = new Date().toISOString();
-    await dbRun(
-      `UPDATE sync_queue SET sync_status = 'FAILED', retry_count = retry_count + 1, last_error = ?, updated_at = ? WHERE id = ?`,
-      [errorMsg || 'Sync failed', now, queueId]
-    );
+  async markSyncItemFailed(id, err) {
+    const item = (store.sync_queue || []).find(q => q.id === id);
+    if (item) {
+      item.status = 'FAILED';
+      item.error_message = err;
+    }
+    saveStore();
   },
 
   async clearCompletedSyncQueue() {
-    await dbRun(`DELETE FROM sync_queue WHERE sync_status = 'SYNCED' OR retry_count >= 5`);
-  },
-
-  async getSyncMetaData(key) {
-    const row = await dbGet(`SELECT value FROM sync_metadata WHERE key = ?`, [key]);
-    return row ? row.value : null;
-  },
-
-  async setSyncMetaData(key, value) {
-    const now = new Date().toISOString();
-    await dbRun(
-      `INSERT INTO sync_metadata (key, value, updated_at) VALUES (?, ?, ?)
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-      [key, value, now]
-    );
+    store.sync_queue = (store.sync_queue || []).filter(q => q.status === 'PENDING');
+    saveStore();
   }
 };
 

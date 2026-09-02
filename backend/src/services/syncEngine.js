@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const sqliteStore = require('../db/sqliteStore');
-const { getDeviceId } = require('../db/sqliteDB');
+const { getDeviceId } = sqliteStore;
 
 const Invoice = require('../models/Invoice');
 const Bill = require('../models/Bill');
@@ -45,10 +45,10 @@ async function runSyncCycle() {
   } catch (err) {
     lastError = err.message;
     retryBackoffMs = Math.min(retryBackoffMs * 2, MAX_BACKOFF_MS);
-    if (err.message && (err.message.includes('timed out') || err.message.includes('ECONNREFUSED'))) {
-      console.warn(`[Sync Engine] Network offline or MongoDB Atlas unreachable (${err.message.split('timed out')[0] || 'timeout'}). Retrying in ${retryBackoffMs / 1000}s...`);
+    if (err.message && (err.message.includes('timed out') || err.message.includes('ECONNREFUSED') || err.message.includes('ENOTFOUND'))) {
+      // Quietly wait for network reconnection
     } else {
-      console.error('[Sync Engine] Synchronization cycle error:', err.message);
+      console.error('[Sync Engine] Synchronization cycle notice:', err.message);
     }
   } finally {
     isSyncing = false;
@@ -111,7 +111,9 @@ async function pushLocalChangesToMongo() {
           ).exec();
         }
       } else if (item.entity_type === 'CUSTOMER') {
-        const clientUpdate = {};
+        const clientUpdate = {
+          id: payload.id || item.entity_id
+        };
         if (payload.name) clientUpdate.name = payload.name;
         if (payload.email !== undefined) clientUpdate.email = payload.email;
         if (payload.phone !== undefined) clientUpdate.phone = payload.phone;
@@ -130,15 +132,17 @@ async function pushLocalChangesToMongo() {
         if (item.operation === 'DELETE') {
           await Product.deleteOne({ id: item.entity_id }).exec();
         } else {
-          const productUpdate = {};
+          const productUpdate = {
+            id: payload.id || item.entity_id
+          };
           if (payload.name) productUpdate.name = payload.name;
           if (payload.category !== undefined) productUpdate.category = payload.category;
           if (payload.subCategory !== undefined) productUpdate.subCategory = payload.subCategory;
           if (payload.color !== undefined) productUpdate.color = payload.color;
           if (payload.size !== undefined) productUpdate.size = payload.size;
-          if (payload.price !== undefined) productUpdate.price = payload.price;
+          if (payload.price !== undefined) productUpdate.price = Number(payload.price) || 0;
           if (payload.stock !== undefined) productUpdate.stock = payload.stock;
-          if (payload.count !== undefined) productUpdate.count = payload.count;
+          if (payload.count !== undefined) productUpdate.count = Number(payload.count) || 50;
           if (payload.companyId) productUpdate.companyId = payload.companyId;
           productUpdate.updatedAt = payload.updated_at || new Date().toISOString();
           productUpdate.deviceId = deviceId;
@@ -327,14 +331,6 @@ async function pullRemoteChangesFromMongo() {
   // Clean up completed/synced items from sync_queue
   await sqliteStore.clearCompletedSyncQueue();
   await sqliteStore.setSyncMetaData('last_pull_timestamp', new Date().toISOString());
-
-  if (hasNewPullData) {
-    try {
-      const { emitToCompany } = require('./socketService');
-      console.log(`[Sync Engine] ⚡ Pulled remote changes from cloud. Emitting live real-time sync update.`);
-      emitToCompany('shop_default', 'dashboard:updated', { trigger: 'cloud_pull_sync' });
-    } catch (e) {}
-  }
 }
 
 
