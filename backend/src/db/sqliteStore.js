@@ -13,14 +13,7 @@ function getStorageDir() {
 
 const storagePath = path.join(getStorageDir(), 'store.json');
 
-const DEFAULT_SEED_CATEGORIES = [
-  { id: 'CAT-01', name: "Men's Apparel", subCategories: ['Shirts', 'T-Shirts', 'Jeans & Trousers', 'Suits & Blazers', 'Ethnic Wear'] },
-  { id: 'CAT-02', name: "Women's Fashion", subCategories: ['Dresses & Maxis', 'Sarees & Kurtis', 'Tops & Tees', 'Ethnic Wear', 'Skirts & Shorts'] },
-  { id: 'CAT-03', name: "Kidswear & Toddlers", subCategories: ['T-Shirts & Tops', 'Shorts & Skirts', 'Frocks & Dresses', 'Nightwear & Onesies', 'Ethnic Wear'] },
-  { id: 'CAT-04', name: "Footwear & Shoes", subCategories: ['Sneakers', 'Formal Shoes', 'Sandals & Floaters', 'Boots', 'Heels & Flats'] },
-  { id: 'CAT-05', name: "Fashion Accessories", subCategories: ['Belts & Wallets', 'Caps & Hats', 'Bags & Backpacks', 'Sunglasses', 'Socks & Gloves'] },
-  { id: 'CAT-06', name: "Winterwear & Outerwear", subCategories: ['Jackets & Coats', 'Sweaters & Cardigans', 'Hoodies & Sweatshirts', 'Thermal Wear', 'Mufflers & Scarves'] }
-];
+const DEFAULT_SEED_CATEGORIES = [];
 
 const DEFAULT_SEED_PRODUCTS = [];
 const DEFAULT_SEED_INVOICES = [];
@@ -43,6 +36,11 @@ function loadStore() {
     'SKU-PRD-07', 'SKU-PRD-08', 'SKU-PRD-09', 'SKU-PRD-10', 'SKU-PRD-11', 'SKU-PRD-12'
   ]);
 
+  const SEED_CAT_NAMES = new Set([
+    "men's apparel", "women's fashion", "kidswear & toddlers",
+    "footwear & shoes", "fashion accessories", "winterwear & outerwear"
+  ]);
+
   // Purge legacy demo seed data from disk
   if (Array.isArray(loaded.products)) {
     loaded.products = loaded.products.filter(p => p && p.id && !EXACT_DEMO_SEED_IDS.has(String(p.id).toUpperCase().trim()));
@@ -50,14 +48,10 @@ function loadStore() {
     loaded.products = [];
   }
 
-  if (Array.isArray(loaded.categories) && loaded.categories.length > 0) {
-    DEFAULT_SEED_CATEGORIES.forEach(sc => {
-      if (!loaded.categories.some(c => c.id === sc.id || (c.name && c.name.toLowerCase() === sc.name.toLowerCase()))) {
-        loaded.categories.push(sc);
-      }
-    });
+  if (Array.isArray(loaded.categories)) {
+    loaded.categories = loaded.categories.filter(c => c && c.name && !SEED_CAT_NAMES.has(String(c.name).trim().toLowerCase()) && !/^CAT-0[1-8]$/i.test(c.id || ''));
   } else {
-    loaded.categories = [...DEFAULT_SEED_CATEGORIES];
+    loaded.categories = [];
   }
 
   if (Array.isArray(loaded.invoices)) {

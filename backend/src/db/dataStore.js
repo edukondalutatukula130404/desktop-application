@@ -523,66 +523,27 @@ const dataStore = {
     const isOnline = await checkMongoOnlineFast();
     if (isOnline) {
       try {
-        await seedInitialDataIfNeeded(userId, companyId);
         mongoList = await Product.find({}).lean().exec() || [];
       } catch (e) {
         console.warn('MongoDB getProducts notice:', e.message);
       }
     }
 
-    let localList = [];
-    try {
-      localList = await sqliteStore.getProducts() || [];
-    } catch (e) {}
-
     const prdMap = new Map();
-    const nameMap = new Map();
 
     (mongoList || []).forEach(p => {
       if (p && (p.id || p.name)) {
         const idKey = String(p.id || p._id || '').trim().toLowerCase();
-        const nameKey = String(p.name || '').trim().toLowerCase();
         if (idKey) prdMap.set(idKey, { ...p });
-        if (nameKey && idKey) nameMap.set(nameKey, idKey);
-        try { sqliteStore.createProduct(p); } catch (e) {}
       }
     });
 
-    (localList || []).forEach(p => {
-      if (p && (p.id || p.name)) {
-        const idKey = String(p.id || '').trim().toLowerCase();
-        const nameKey = String(p.name || '').trim().toLowerCase();
-        const matchedKey = (idKey && prdMap.has(idKey)) ? idKey : (nameKey && nameMap.has(nameKey) ? nameMap.get(nameKey) : null);
-
-        if (matchedKey) {
-          prdMap.set(matchedKey, { ...prdMap.get(matchedKey), ...p });
-        } else {
-          const newKey = idKey || nameKey;
-          if (newKey) prdMap.set(newKey, { ...p });
-        }
-      }
-    });
-
-    const list = Array.from(prdMap.values());
-    return list.sort((a, b) => {
-      const numA = parseInt((a.id || '').replace(/\D/g, ''), 10) || 99999;
-      const numB = parseInt((b.id || '').replace(/\D/g, ''), 10) || 99999;
-      return numA - numB;
-    });
+    return Array.from(prdMap.values());
   },
 
   createProduct: async (productData, userId = null) => {
     const companyId = productData.companyId || (userId ? `shop_${userId}` : 'shop_default');
 
-    // 1. Save to local SQLite database & enqueue sync item
-    let sqliteResult = null;
-    try {
-      sqliteResult = await sqliteStore.createProduct({ ...productData, companyId });
-    } catch (e) {
-      console.warn('SQLite createProduct warning:', e.message);
-    }
-
-    // 2. Save directly to MongoDB Atlas ONLY if internet is connected & online
     let mongoResult = null;
     const isOnline = await checkMongoOnlineFast();
     if (isOnline) {
@@ -593,7 +554,7 @@ const dataStore = {
           const priceNum = parseFloat(productData.price) || 0;
           const stockStatus = productData.stock || (countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock'));
           const safeRegexName = new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-          const customId = productData.id || (sqliteResult ? sqliteResult.id : `PRD-${Date.now().toString().slice(-6)}`);
+          const customId = productData.id || `PRD-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
           const productFields = {
             id: customId,
@@ -632,13 +593,7 @@ const dataStore = {
       }
     }
 
-    if (isOnline) {
-      try {
-        syncEngine.runSyncCycle();
-      } catch (e) {}
-    }
-
-    const finalPrd = mongoResult ? (mongoResult.toObject ? mongoResult.toObject() : mongoResult) : (sqliteResult || productData);
+    const finalPrd = mongoResult ? (mongoResult.toObject ? mongoResult.toObject() : mongoResult) : { id: productData.id || `PRD-${Date.now()}`, ...productData };
     return finalPrd;
   },
 
@@ -732,6 +687,18 @@ const dataStore = {
 
   cleanupDuplicateCategories: async (userId = null) => {
     try {
+      const SEED_CAT_NAMES = [
+        "men's apparel", "women's fashion", "kidswear & toddlers",
+        "footwear & shoes", "fashion accessories", "winterwear & outerwear"
+      ];
+      // Delete legacy seed category documents
+      await Category.deleteMany({
+        $or: [
+          { name: { $in: SEED_CAT_NAMES.map(n => new RegExp(`^${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')) } },
+          { id: { $in: ['CAT-01', 'CAT-02', 'CAT-03', 'CAT-04', 'CAT-05', 'CAT-06', 'CAT-07', 'CAT-08'] } }
+        ]
+      });
+
       const filter = userId ? { userId } : {};
       const allCategories = await Category.find(filter).exec();
       const seenNames = new Map();
@@ -754,18 +721,17 @@ const dataStore = {
 
       if (idsToDelete.length > 0) {
         await Category.deleteMany({ _id: { $in: idsToDelete } });
-        console.log(`🍃 [MongoDB Atlas] Purged ${idsToDelete.length} duplicate category documents.`);
       }
     } catch (err) {
       console.warn('Error purging duplicate categories:', err.message);
     }
   },
 
-  getCategories: async (userId) => {
+  getCategories: async (userId = null) => {
     let mongoList = [];
-    if (mongoose.connection && mongoose.connection.readyState === 1) {
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
       try {
-        await seedInitialDataIfNeeded(userId);
         await dataStore.cleanupDuplicateCategories(userId);
         const filter = userId ? { userId } : {};
         mongoList = await Category.find(filter).lean().exec() || [];
@@ -773,25 +739,18 @@ const dataStore = {
         console.warn('MongoDB getCategories notice:', e.message);
       }
     }
-    let localList = [];
-    try { localList = await sqliteStore.getCategories() || []; } catch (e) {}
 
     const catMap = new Map();
     (mongoList || []).forEach(c => {
-      if (c && (c.id || c.name)) {
-        const key = String(c.id || c.name).trim().toLowerCase();
-        catMap.set(key, { ...c });
-        try { sqliteStore.createCategory(c); } catch (e) {}
-      }
-    });
-
-    (localList || []).forEach(c => {
-      if (c && (c.id || c.name)) {
-        const key = String(c.id || c.name).trim().toLowerCase();
-        if (!catMap.has(key)) {
-          catMap.set(key, { ...c });
+      if (c && c.name) {
+        const key = c.name.trim().toLowerCase();
+        if (catMap.has(key)) {
+          const existing = catMap.get(key);
+          const existingSubs = Array.isArray(existing.subCategories) ? existing.subCategories : [];
+          const newSubs = Array.isArray(c.subCategories) ? c.subCategories : [];
+          catMap.set(key, { ...existing, ...c, subCategories: Array.from(new Set([...existingSubs, ...newSubs])) });
         } else {
-          catMap.set(key, { ...catMap.get(key), ...c });
+          catMap.set(key, { ...c });
         }
       }
     });
@@ -810,20 +769,11 @@ const dataStore = {
       subs = catData.subCategories.split(',').map(s => s.trim()).filter(Boolean);
     }
 
-    // 1. Save to local SQLite database first
-    let sqliteResult = null;
-    try {
-      sqliteResult = await sqliteStore.createCategory({ ...catData, name: nameClean, subCategories: subs });
-    } catch (e) {
-      console.warn('SQLite createCategory warning:', e.message);
-    }
-
-    // 2. Save to MongoDB Atlas ONLY if connected
     let mongoResult = null;
     const isOnline = await checkMongoOnlineFast();
     if (isOnline) {
       try {
-        const targetId = catData.id || (sqliteResult ? sqliteResult.id : `CAT-${Date.now().toString().slice(-6)}`);
+        const targetId = catData.id || `CAT-${Date.now().toString().slice(-6)}`;
         const catFields = {
           id: targetId,
           companyId: catData.companyId || 'shop_default',
@@ -865,11 +815,7 @@ const dataStore = {
       }
     }
 
-    if (isOnline) {
-      try { syncEngine.runSyncCycle(); } catch (e) {}
-    }
-
-    const finalCat = mongoResult ? (mongoResult.toObject ? mongoResult.toObject() : mongoResult) : (sqliteResult || catData);
+    const finalCat = mongoResult ? (mongoResult.toObject ? mongoResult.toObject() : mongoResult) : { id: catData.id || `CAT-${Date.now()}`, ...catData, name: nameClean, subCategories: subs };
     return finalCat;
   },
 

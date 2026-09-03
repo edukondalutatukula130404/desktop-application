@@ -962,15 +962,7 @@ window.addEventListener('beforeunload', () => {
 });
 setInterval(processOfflineSyncQueue, 4000);
 
-const DEFAULT_SEED_CATEGORIES = [
-  { id: 'CAT-01', name: "Men's Apparel", subCategories: ['Shirts', 'T-Shirts', 'Jeans & Trousers', 'Suits & Blazers', 'Ethnic Wear'] },
-  { id: 'CAT-02', name: "Women's Fashion", subCategories: ['Dresses & Maxis', 'Kurtis & Sarees', 'Tops & Tees', 'Skirts & Palazzos', 'Jeans & Jeggings'] },
-  { id: 'CAT-03', name: "Kidswear & Toddlers", subCategories: ['T-Shirts & Tops', 'Shorts & Skirts', 'Frocks & Dresses', 'Nightwear & Onesies', 'Ethnic Wear'] },
-  { id: 'CAT-04', name: "Footwear & Shoes", subCategories: ['Sneakers', 'Formal Shoes', 'Sandals & Floaters', 'Boots', 'Heels & Flats'] },
-  { id: 'CAT-05', name: "Fashion Accessories", subCategories: ['Belts & Wallets', 'Caps & Hats', 'Bags & Backpacks', 'Sunglasses', 'Socks & Gloves'] },
-  { id: 'CAT-06', name: "Winterwear & Outerwear", subCategories: ['Jackets & Coats', 'Sweaters & Cardigans', 'Hoodies & Sweatshirts', 'Thermal Wear', 'Mufflers & Scarves'] }
-];
-
+const DEFAULT_SEED_CATEGORIES = [];
 const DEFAULT_SEED_PRODUCTS = [];
 const DEFAULT_SEED_INVOICES = [];
 const DEFAULT_SEED_CLIENTS = [];
@@ -1319,7 +1311,14 @@ async function loadBusinessData() {
       if (cat && cat.name) {
         const key = cat.name.trim().toLowerCase();
         if (!isEntityDeleted('CATEGORY', cat.id, cat.name)) {
-          catMap.set(key, { ...cat });
+          if (catMap.has(key)) {
+            const existing = catMap.get(key);
+            const existingSubs = Array.isArray(existing.subCategories) ? existing.subCategories : [];
+            const newSubs = Array.isArray(cat.subCategories) ? cat.subCategories : [];
+            catMap.set(key, { ...existing, ...cat, subCategories: Array.from(new Set([...existingSubs, ...newSubs])) });
+          } else {
+            catMap.set(key, { ...cat });
+          }
         }
       }
     });
@@ -1364,17 +1363,19 @@ async function loadBusinessData() {
       }
     });
   }
-  if (catMap.size === 0) {
-    DEFAULT_SEED_CATEGORIES.forEach(cat => {
-      if (cat && cat.name) {
-        const key = cat.name.trim().toLowerCase();
-        if (!isEntityDeleted('CATEGORY', cat.id, cat.name)) {
-          catMap.set(key, { ...cat });
-        }
-      }
-    });
-  }
-  appData.categories = Array.from(catMap.values());
+  const SEED_CAT_NAMES = new Set([
+    "men's apparel", "women's fashion", "kidswear & toddlers",
+    "footwear & shoes", "fashion accessories", "winterwear & outerwear"
+  ]);
+
+  appData.categories = Array.from(catMap.values()).filter(c => {
+    if (!c || !c.name) return false;
+    const nameNorm = c.name.trim().toLowerCase();
+    const idNorm = (c.id || '').toUpperCase().trim();
+    if (SEED_CAT_NAMES.has(nameNorm) || /^CAT-0[1-8]$/.test(idNorm)) return false;
+    return true;
+  });
+
   try {
     localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
   } catch (e) {}
@@ -1398,11 +1399,7 @@ async function loadBusinessData() {
 
 function sortProductsBySku(prds) {
   if (!Array.isArray(prds)) return [];
-  return [...prds].sort((a, b) => {
-    const numA = parseInt((a.id || '').replace(/\D/g, ''), 10) || 99999;
-    const numB = parseInt((b.id || '').replace(/\D/g, ''), 10) || 99999;
-    return numA - numB;
-  });
+  return [...prds];
 }
 
 function addNewProductToSystem(productData) {
