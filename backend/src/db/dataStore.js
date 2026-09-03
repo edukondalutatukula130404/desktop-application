@@ -16,34 +16,7 @@ let lastOnlineCheckTime = 0;
 let lastOnlineCheckStatus = false;
 
 async function checkMongoOnlineFast() {
-  const now = Date.now();
-  if (now - lastOnlineCheckTime < 2500) {
-    return lastOnlineCheckStatus;
-  }
-  lastOnlineCheckTime = now;
-
-  if (!mongoose.connection || mongoose.connection.readyState !== 1) {
-    lastOnlineCheckStatus = false;
-    return false;
-  }
-
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      lastOnlineCheckStatus = false;
-      resolve(false);
-    }, 350);
-
-    dns.lookup('ac-73qhkjq-shard-00-00.qdjwbzw.mongodb.net', (err) => {
-      clearTimeout(timer);
-      if (err) {
-        lastOnlineCheckStatus = false;
-        resolve(false);
-      } else {
-        lastOnlineCheckStatus = true;
-        resolve(true);
-      }
-    });
-  });
+  return mongoose.connection && mongoose.connection.readyState === 1;
 }
 
 
@@ -529,12 +502,30 @@ const dataStore = {
       }
     }
 
+    let sqliteList = [];
+    try {
+      sqliteList = await sqliteStore.getProducts();
+    } catch (e) {}
+
     const prdMap = new Map();
+
+    (sqliteList || []).forEach(p => {
+      if (p && (p.id || p.name)) {
+        const idKey = String(p.id || p.name).trim().toLowerCase();
+        if (idKey) prdMap.set(idKey, { ...p });
+      }
+    });
 
     (mongoList || []).forEach(p => {
       if (p && (p.id || p.name)) {
-        const idKey = String(p.id || p._id || '').trim().toLowerCase();
-        if (idKey) prdMap.set(idKey, { ...p });
+        const idKey = String(p.id || p.name).trim().toLowerCase();
+        if (idKey) {
+          if (prdMap.has(idKey)) {
+            prdMap.set(idKey, { ...prdMap.get(idKey), ...p });
+          } else {
+            prdMap.set(idKey, { ...p });
+          }
+        }
       }
     });
 
@@ -553,7 +544,6 @@ const dataStore = {
           const countNum = parseInt(productData.count, 10) || 50;
           const priceNum = parseFloat(productData.price) || 0;
           const stockStatus = productData.stock || (countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock'));
-          const safeRegexName = new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
           const customId = productData.id || `PRD-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
           const productFields = {
@@ -570,12 +560,10 @@ const dataStore = {
             userId: userId || null
           };
 
-          let existingPrd = await Product.findOne({
-            $or: [
-              { id: { $regex: new RegExp(`^${customId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
-              { name: safeRegexName }
-            ]
-          }).exec();
+          let existingPrd = null;
+          if (productData.id) {
+            existingPrd = await Product.findOne({ id: productData.id }).exec();
+          }
 
           if (existingPrd) {
             Object.assign(existingPrd, productFields);
@@ -594,6 +582,11 @@ const dataStore = {
     }
 
     const finalPrd = mongoResult ? (mongoResult.toObject ? mongoResult.toObject() : mongoResult) : { id: productData.id || `PRD-${Date.now()}`, ...productData };
+
+    try {
+      await sqliteStore.createProduct(finalPrd);
+    } catch (e) {}
+
     return finalPrd;
   },
 
@@ -607,22 +600,36 @@ const dataStore = {
   deleteProduct: async (id, name = '', userId = null) => {
     try {
       await seedInitialDataIfNeeded(userId);
-      const filter = userId ? { userId } : {};
-      const queries = [];
       const idStr = id ? String(id).trim() : '';
       const nameStr = name ? String(name).trim() : '';
 
+      const orConditions = [];
+
       if (idStr) {
-        queries.push({ ...filter, id: { $regex: new RegExp(`^${idStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+        const safeIdRegex = new RegExp(`^${idStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+        orConditions.push({ id: safeIdRegex });
+        orConditions.push({ id: idStr });
         if (mongoose.Types.ObjectId.isValid(idStr)) {
-          queries.push({ ...filter, _id: idStr });
+          orConditions.push({ _id: idStr });
         }
       }
+
       if (nameStr) {
-        queries.push({ ...filter, name: { $regex: new RegExp(`^${nameStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+        const safeNameRegex = new RegExp(`^${nameStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+        orConditions.push({ name: safeNameRegex });
+        orConditions.push({ name: nameStr });
       }
-      if (queries.length > 0) {
-        await Product.deleteMany({ $or: queries }).exec();
+
+      if (orConditions.length > 0) {
+        console.log(`[dataStore] Automatically deleting product from MongoDB collection:`, idStr || nameStr);
+        const mongoRes = await Product.deleteMany({ $or: orConditions }).exec();
+        console.log(`[dataStore] MongoDB deleteMany result:`, mongoRes);
+      }
+
+      try {
+        await sqliteStore.deleteProduct(id, name);
+      } catch (e) {
+        console.warn('sqliteStore deleteProduct notice:', e);
       }
       return { success: true };
     } catch (err) {
@@ -687,19 +694,7 @@ const dataStore = {
 
   cleanupDuplicateCategories: async (userId = null) => {
     try {
-      const SEED_CAT_NAMES = [
-        "men's apparel", "women's fashion", "kidswear & toddlers",
-        "footwear & shoes", "fashion accessories", "winterwear & outerwear"
-      ];
-      // Delete legacy seed category documents
-      await Category.deleteMany({
-        $or: [
-          { name: { $in: SEED_CAT_NAMES.map(n => new RegExp(`^${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')) } },
-          { id: { $in: ['CAT-01', 'CAT-02', 'CAT-03', 'CAT-04', 'CAT-05', 'CAT-06', 'CAT-07', 'CAT-08'] } }
-        ]
-      });
-
-      const filter = userId ? { userId } : {};
+      const filter = {};
       const allCategories = await Category.find(filter).exec();
       const seenNames = new Map();
       const idsToDelete = [];
@@ -733,14 +728,26 @@ const dataStore = {
     if (isOnline) {
       try {
         await dataStore.cleanupDuplicateCategories(userId);
-        const filter = userId ? { userId } : {};
-        mongoList = await Category.find(filter).lean().exec() || [];
+        mongoList = await Category.find({}).sort({ createdAt: 1, _id: 1 }).lean().exec() || [];
       } catch (e) {
         console.warn('MongoDB getCategories notice:', e.message);
       }
     }
 
+    let sqliteList = [];
+    try {
+      sqliteList = await sqliteStore.getCategories();
+    } catch (e) {}
+
     const catMap = new Map();
+
+    (sqliteList || []).forEach(c => {
+      if (c && c.name) {
+        const key = c.name.trim().toLowerCase();
+        catMap.set(key, { ...c });
+      }
+    });
+
     (mongoList || []).forEach(c => {
       if (c && c.name) {
         const key = c.name.trim().toLowerCase();
@@ -768,31 +775,25 @@ const dataStore = {
     } else if (typeof catData.subCategories === 'string') {
       subs = catData.subCategories.split(',').map(s => s.trim()).filter(Boolean);
     }
+    if (subs.length === 0) subs = ['General'];
 
     let mongoResult = null;
     const isOnline = await checkMongoOnlineFast();
     if (isOnline) {
       try {
-        const targetId = catData.id || `CAT-${Date.now().toString().slice(-6)}`;
-        const catFields = {
-          id: targetId,
-          companyId: catData.companyId || 'shop_default',
-          userId: userId || null,
-          name: nameClean,
-          description: catData.description || '',
-          subCategories: subs,
-          genderType: catData.genderType || 'Unisex',
-          seasonTag: catData.seasonTag || 'All Season',
-          itemCounts: parseInt(catData.itemCounts, 10) || 0,
-          status: catData.status || 'Active'
-        };
+        const targetId = catData.id || `CAT-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+        const companyId = catData.companyId || 'shop_default';
 
-        let existing = await Category.findOne({
-          $or: [
-            { id: targetId },
-            { name: { $regex: new RegExp(`^${nameClean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }
-          ]
-        }).exec();
+        let existing = null;
+        if (catData.id) {
+          existing = await Category.findOne({ id: catData.id }).exec();
+        }
+        if (!existing && nameClean) {
+          existing = await Category.findOne({
+            companyId,
+            name: { $regex: new RegExp(`^${nameClean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+          }).exec();
+        }
 
         if (existing) {
           const existingSubs = Array.isArray(existing.subCategories) ? existing.subCategories : [];
@@ -804,18 +805,30 @@ const dataStore = {
           if (catData.status) existing.status = catData.status;
           mongoResult = await existing.save();
         } else {
-          mongoResult = await Category.findOneAndUpdate(
-            { id: targetId },
-            { $set: catFields },
-            { upsert: true, new: true, runValidators: false }
-          ).exec();
+          const newDoc = new Category({
+            id: targetId,
+            companyId,
+            userId: userId || null,
+            name: nameClean,
+            description: catData.description || '',
+            subCategories: subs,
+            genderType: catData.genderType || 'Unisex',
+            seasonTag: catData.seasonTag || 'All Season',
+            itemCounts: parseInt(catData.itemCounts, 10) || 0,
+            status: catData.status || 'Active'
+          });
+          mongoResult = await newDoc.save();
+          console.log(`✅ [MongoDB Atlas] Category "${nameClean}" (ID: ${targetId}) saved to MongoDB collection!`);
         }
       } catch (err) {
-        console.warn('MongoDB category save notice:', err.message);
+        console.error('❌ MongoDB Category save error:', err.message);
       }
     }
 
     const finalCat = mongoResult ? (mongoResult.toObject ? mongoResult.toObject() : mongoResult) : { id: catData.id || `CAT-${Date.now()}`, ...catData, name: nameClean, subCategories: subs };
+    try {
+      await sqliteStore.createCategory(finalCat);
+    } catch (e) {}
     return finalCat;
   },
 
@@ -861,6 +874,9 @@ const dataStore = {
       if (queries.length > 0) {
         await Category.deleteMany({ $or: queries }).exec();
       }
+      try {
+        await sqliteStore.deleteCategory(id, name);
+      } catch (e) {}
       return { success: true };
     } catch (err) {
       console.error('deleteCategory error:', err.message);

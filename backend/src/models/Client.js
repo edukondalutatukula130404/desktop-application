@@ -11,7 +11,10 @@ const clientSchema = new mongoose.Schema({
   contact: { type: String, default: '' },
   address: { type: String, default: '' },
   status: { type: String, enum: ['Active', 'Notice', 'Inactive'], default: 'Active' },
-  totalBilled: { type: Number, default: 0 }
+  totalBilled: { type: Number, default: 0 },
+  version: { type: Number, default: 1 },
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date, default: null }
 }, {
   timestamps: true
 });

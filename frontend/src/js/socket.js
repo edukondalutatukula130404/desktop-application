@@ -125,16 +125,53 @@ export function disconnectSocket() {
   }
 }
 
-function updateUIConnectionBadge(state, text) {
+export function updateSyncStatusBadge(state, customText = '') {
   const badge = document.getElementById('cloud-sync-status-badge');
-  if (badge) {
-    badge.className = `cloud-sync-badge sync-status-${state}`;
-    const cleanText = text.replace(/^[🟢🟡🔴]\s*/, '');
-    badge.innerHTML = `
-      <span class="sync-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: currentColor; display: inline-block;"></span>
-      <span class="sync-status-text">${cleanText}</span>
-      <button type="button" onclick="this.parentElement.style.display='none'" style="background: none; border: none; cursor: pointer; opacity: 0.6; font-size: 14px; line-height: 1; padding: 0 0 0 6px; color: inherit;" title="Dismiss">&times;</button>
-    `;
+  const settingsBadge = document.getElementById('sync-status-badge');
+
+  let text = customText;
+  let dotSymbol = '●';
+  if (!text) {
+    switch (state) {
+      case 'online':
+        text = 'Online';
+        dotSymbol = '●';
+        break;
+      case 'offline':
+        text = 'Offline';
+        dotSymbol = '●';
+        break;
+      case 'syncing':
+        text = 'Syncing...';
+        dotSymbol = '↻';
+        break;
+      case 'synced':
+        text = 'Synced';
+        dotSymbol = '✓';
+        break;
+      case 'conflict':
+        text = 'Sync Conflict';
+        dotSymbol = '⚠';
+        break;
+      default:
+        text = 'Online';
+        dotSymbol = '●';
+    }
   }
+
+  [badge, settingsBadge].forEach(el => {
+    if (el) {
+      el.style.display = 'inline-flex';
+      el.className = `cloud-sync-badge sync-status-${state}`;
+      el.innerHTML = `
+        <span class="sync-status-dot" style="font-weight: bold; margin-right: 4px;">${dotSymbol}</span>
+        <span class="sync-status-text">${text}</span>
+      `;
+    }
+  });
+}
+
+function updateUIConnectionBadge(state, text) {
+  updateSyncStatusBadge(state, text);
 }
 

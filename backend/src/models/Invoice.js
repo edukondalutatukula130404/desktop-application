@@ -18,7 +18,10 @@ const invoiceSchema = new mongoose.Schema({
   category: { type: String, default: 'General' },
   paymentMode: { type: String, default: 'Cash' },
   items: { type: [mongoose.Schema.Types.Mixed], default: [] },
-  notes: { type: String, default: '' }
+  notes: { type: String, default: '' },
+  version: { type: Number, default: 1 },
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date, default: null }
 }, {
   timestamps: true,
   strict: false

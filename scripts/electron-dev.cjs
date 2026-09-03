@@ -7,11 +7,15 @@ let electronProcess = null;
 function checkUrl(url) {
   return new Promise((resolve) => {
     const req = http.get(url, (res) => {
-      if (res.statusCode >= 200 && res.statusCode < 400) {
-        resolve(true);
-      } else {
-        resolve(false);
-      }
+      let body = '';
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 400 && (body.includes('vite') || body.includes('root') || body.includes('<html') || body.includes('<body'))) {
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      });
     });
     req.on('error', () => resolve(false));
     req.setTimeout(1500, () => {

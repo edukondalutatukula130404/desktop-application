@@ -16,7 +16,9 @@ const productSchema = new mongoose.Schema({
   stock: { type: String, default: 'In Stock' },
   count: { type: Number, default: 0 },
   minStock: { type: Number, default: 5 },
-  version: { type: Number, default: 1 }
+  version: { type: Number, default: 1 },
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date, default: null }
 }, {
   timestamps: true
 });

@@ -4,17 +4,7 @@ import { NEXUS_LOGO_BASE64 } from './logoBase64.js';
 import { initSocketConnection, subscribeToRealtimeEvent } from './socket.js';
 
 
-// Startup Purge: Clear any old local storage seed caches completely
-if (typeof window !== 'undefined' && window.localStorage) {
-  try {
-    localStorage.removeItem('nexus_custom_invoices');
-    localStorage.removeItem('nexus_custom_products');
-    localStorage.removeItem('nexus_custom_clients');
-    localStorage.removeItem('nexus_custom_bills');
-    localStorage.removeItem('nexus_custom_categories');
-    localStorage.removeItem('nexus_offline_sync_queue');
-  } catch (e) {}
-}
+
 
 // Application State
 let appData = {
@@ -826,6 +816,18 @@ function markEntityAsDeleted(type, id, name = '') {
   }
 }
 
+function unmarkEntityAsDeleted(type, id, name = '') {
+  try {
+    const list = getDeletedEntityList(type);
+    const keyId = id ? String(id).toLowerCase().trim() : '';
+    const keyName = name ? String(name).toLowerCase().trim() : '';
+    const filtered = list.filter(k => k !== keyId && k !== keyName);
+    localStorage.setItem(`nexus_deleted_${type.toLowerCase()}s`, JSON.stringify(filtered));
+  } catch (e) {
+    console.warn(`Error unmarking ${type} as deleted:`, e);
+  }
+}
+
 function isEntityDeleted(type, id, name = '') {
   try {
     const list = getDeletedEntityList(type);
@@ -1235,6 +1237,11 @@ async function loadBusinessData() {
   if (Array.isArray(fetchedPrds)) {
     fetchedPrds.forEach(p => {
       if (p && (p.name || p.id) && !isDemoSeedProduct(p)) {
+        if (p.is_deleted || p.isDeleted) {
+          markEntityAsDeleted('PRODUCT', p.id, p.name);
+        } else {
+          unmarkEntityAsDeleted('PRODUCT', p.id, p.name);
+        }
         const idKey = String(p.id || p._id || '').trim().toLowerCase();
         const nameKey = String(p.name || '').trim().toLowerCase();
         if (!isEntityDeleted('PRODUCT', p.id, p.name)) {
@@ -1309,6 +1316,11 @@ async function loadBusinessData() {
   if (Array.isArray(fetchedCats)) {
     fetchedCats.forEach(cat => {
       if (cat && cat.name) {
+        if (cat.is_deleted || cat.isDeleted) {
+          markEntityAsDeleted('CATEGORY', cat.id, cat.name);
+        } else {
+          unmarkEntityAsDeleted('CATEGORY', cat.id, cat.name);
+        }
         const key = cat.name.trim().toLowerCase();
         if (!isEntityDeleted('CATEGORY', cat.id, cat.name)) {
           if (catMap.has(key)) {
@@ -1363,18 +1375,7 @@ async function loadBusinessData() {
       }
     });
   }
-  const SEED_CAT_NAMES = new Set([
-    "men's apparel", "women's fashion", "kidswear & toddlers",
-    "footwear & shoes", "fashion accessories", "winterwear & outerwear"
-  ]);
-
-  appData.categories = Array.from(catMap.values()).filter(c => {
-    if (!c || !c.name) return false;
-    const nameNorm = c.name.trim().toLowerCase();
-    const idNorm = (c.id || '').toUpperCase().trim();
-    if (SEED_CAT_NAMES.has(nameNorm) || /^CAT-0[1-8]$/.test(idNorm)) return false;
-    return true;
-  });
+  appData.categories = sortCategoriesChronologically(Array.from(catMap.values()).filter(c => c && c.name && c.name.trim().length > 0));
 
   try {
     localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
@@ -2671,6 +2672,35 @@ window.selectStockType = selectStockType;
 window.submitStockAdjustment = submitStockAdjustment;
 window.renderInventoryView = renderInventoryView;
 
+function getCategoryTimestamp(c) {
+  if (!c) return 0;
+  if (c.createdAt) {
+    const t = new Date(c.createdAt).getTime();
+    if (!isNaN(t)) return t;
+  }
+  if (c.created_at) {
+    const t = new Date(c.created_at).getTime();
+    if (!isNaN(t)) return t;
+  }
+  if (c.updatedAt || c.updated_at) {
+    const t = new Date(c.updatedAt || c.updated_at).getTime();
+    if (!isNaN(t)) return t;
+  }
+  if (c.id) {
+    const match = String(c.id).match(/\d{10,}/);
+    if (match) {
+      const parsed = parseInt(match[0], 10);
+      if (!isNaN(parsed)) return parsed;
+    }
+  }
+  return 0;
+}
+
+function sortCategoriesChronologically(categories) {
+  if (!Array.isArray(categories)) return [];
+  return [...categories].sort((a, b) => getCategoryTimestamp(a) - getCategoryTimestamp(b));
+}
+
 function renderCategoriesGrid() {
   const tbody = document.getElementById('categories-table-tbody');
   if (!tbody) return;
@@ -2690,7 +2720,7 @@ function renderCategoriesGrid() {
         }
       }
     });
-    appData.categories = Array.from(uniqueMap.values());
+    appData.categories = sortCategoriesChronologically(Array.from(uniqueMap.values()));
   }
 
   if (!appData.categories || appData.categories.length === 0) {
@@ -2755,6 +2785,7 @@ function renderCategoriesGrid() {
       const catId = btn.getAttribute('data-id');
       const catName = btn.getAttribute('data-name');
       if (confirm(`Are you sure you want to delete category "${catName}"?`)) {
+        markEntityAsDeleted('CATEGORY', catId, catName);
         appData.categories = (appData.categories || []).filter(c => c.id !== catId && c.name !== catName);
         try {
           localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
@@ -6160,46 +6191,26 @@ if (createProductPageForm) {
   });
 }
 
-createCategoryForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = document.getElementById('cat-name').value.trim();
-  const subCategoriesRaw = document.getElementById('cat-subcategories').value;
-  const subCategories = subCategoriesRaw ? subCategoriesRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
-  const genderType = document.getElementById('cat-gender')?.value || 'Unisex';
-  const seasonTag = document.getElementById('cat-season')?.value || 'All Season';
-  const itemCounts = parseInt(document.getElementById('cat-item-counts').value, 10) || 0;
-  const statusSelect = document.getElementById('cat-status');
-  const status = statusSelect ? statusSelect.value : 'Active';
+if (createCategoryForm) {
+  createCategoryForm.addEventListener('submit', async (e) => {
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
+    await handleSaveCategoryForm(e);
+  });
+}
 
-  const categoryPayload = { name, subCategories, genderType, seasonTag, itemCounts, status };
-
-  const newId = `CAT-${String((appData.categories || []).length + 1).padStart(2, '0')}`;
-  const localCat = { id: newId, ...categoryPayload };
-  if (!appData.categories) appData.categories = [];
-  const existingCatIdx = appData.categories.findIndex(c => c.name && c.name.toLowerCase() === name.toLowerCase());
-  if (existingCatIdx >= 0) {
-    appData.categories[existingCatIdx] = { ...appData.categories[existingCatIdx], ...localCat };
-  } else {
-    appData.categories.push(localCat);
-  }
-  try {
-    localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
-  } catch (err) {}
-  renderCategoriesGrid();
-  updateInvoiceProductSelectOptions();
-
-  try {
-    const res = await api.createCategory(categoryPayload);
-    showToast(res.message || 'Category created!', 'success');
-  } catch (err) {
-    console.warn('Backend offline - queuing category creation:', err);
-    enqueueOfflineSync('CATEGORY', categoryPayload);
-    showToast(`Category "${name}" saved offline! Will auto-sync when connected.`, 'info');
-  }
-
-  closeCategoryModal();
-  createCategoryForm.reset();
-});
+const createCategoryPageForm = document.getElementById('create-category-page-form');
+if (createCategoryPageForm) {
+  createCategoryPageForm.addEventListener('submit', async (e) => {
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
+    await handleSaveCategoryForm(e);
+  });
+}
 
 async function addNewBillToSystem(billData) {
   const currentBills = appData.bills || [];
@@ -6672,6 +6683,11 @@ async function pollSyncStatus() {
 
   _isSyncPolling = true;
   try {
+    if (navigator.onLine) {
+      try {
+        await processOfflineSyncQueue();
+      } catch (e) {}
+    }
     // First trigger a backend sync cycle (push + pull from MongoDB)
     try {
       await api.triggerSync();
@@ -6692,32 +6708,41 @@ async function pollSyncStatus() {
 }
 
 function updateSyncStatusUI({ status, pendingCount = 0 }) {
-  const dot = document.getElementById('sync-status-dot');
-  const text = document.getElementById('sync-status-text');
-  const btn = document.getElementById('sync-status-btn');
-  if (!dot || !text || !btn) return;
+  const badge = document.getElementById('cloud-sync-status-badge');
+  const settingsBadge = document.getElementById('sync-status-badge');
 
-  if (status === 'online_synced' || status === 'online') {
-    dot.style.background = '#22c55e';
-    dot.style.boxShadow = '0 0 8px rgba(34, 197, 94, 0.8)';
-    btn.style.background = 'rgba(34, 197, 94, 0.08)';
-    btn.style.color = '#15803d';
-    btn.style.borderColor = 'rgba(34, 197, 94, 0.25)';
-    text.textContent = '🟢 Online & Synced';
+  let stateKey = 'online';
+  let badgeText = 'Online';
+  let dotChar = '●';
+
+  if (!navigator.onLine || status === 'offline') {
+    stateKey = 'offline';
+    badgeText = 'Offline';
+    dotChar = '●';
   } else if (status === 'syncing' || status === 'connecting') {
-    dot.style.background = '#eab308';
-    dot.style.boxShadow = '0 0 8px rgba(234, 179, 8, 0.8)';
-    btn.style.background = 'rgba(234, 179, 8, 0.08)';
-    btn.style.color = '#a16207';
-    btn.style.borderColor = 'rgba(234, 179, 8, 0.25)';
-    text.textContent = '🟡 Connecting...';
-  } else {
-    dot.style.background = '#ef4444';
-    dot.style.boxShadow = '0 0 8px rgba(239, 68, 68, 0.8)';
-    btn.style.background = 'rgba(239, 68, 68, 0.08)';
-    btn.style.color = '#b91c1c';
-    btn.style.borderColor = 'rgba(239, 68, 68, 0.25)';
+    stateKey = 'syncing';
+    badgeText = 'Syncing...';
+    dotChar = '↻';
+  } else if (status === 'synced' || status === 'online_synced') {
+    stateKey = 'synced';
+    badgeText = 'Synced';
+    dotChar = '✓';
+  } else if (status === 'conflict') {
+    stateKey = 'conflict';
+    badgeText = 'Sync Conflict';
+    dotChar = '⚠';
   }
+
+  [badge, settingsBadge].forEach(el => {
+    if (el) {
+      el.style.display = 'inline-flex';
+      el.className = `cloud-sync-badge sync-status-${stateKey}`;
+      const dotEl = el.querySelector('.sync-status-dot');
+      const textEl = el.querySelector('.sync-status-text');
+      if (dotEl) dotEl.textContent = dotChar;
+      if (textEl) textEl.textContent = badgeText;
+    }
+  });
 }
 
 let _isSavingProduct = false;
@@ -6742,33 +6767,28 @@ async function handleSaveProductForm(e) {
   if (submitBtn) submitBtn.disabled = true;
 
   try {
-    if (isModalActive) {
-      editId = '';
-      name = document.getElementById('prd-name')?.value?.trim() || '';
-      category = document.getElementById('prd-category')?.value?.trim() || "Men's Apparel";
-      subCategory = document.getElementById('prd-subcategory')?.value?.trim() || 'Shirts';
-      color = document.getElementById('prd-color')?.value || 'Black';
-      size = document.getElementById('prd-size')?.value || 'M';
-      const rawPrice = document.getElementById('prd-price')?.value?.trim() || '';
-      price = parseFloat(rawPrice);
-      const rawStock = document.getElementById('prd-stock')?.value || '50';
-      count = parseInt(rawStock, 10) || 50;
-      focusTarget = document.getElementById('prd-name');
-      focusPriceTarget = document.getElementById('prd-price');
-    } else {
-      editId = document.getElementById('page-prd-edit-id')?.value || '';
-      name = document.getElementById('page-prd-name')?.value?.trim() || '';
-      category = document.getElementById('page-prd-category')?.value?.trim() || "Men's Apparel";
-      subCategory = document.getElementById('page-prd-subcategory')?.value?.trim() || 'Shirts';
-      color = document.getElementById('page-prd-color')?.value || 'Black';
-      size = document.getElementById('page-prd-size')?.value || 'M';
-      const rawPrice = document.getElementById('page-prd-price')?.value?.trim() || '';
-      price = parseFloat(rawPrice);
-      const rawStock = document.getElementById('page-prd-stock')?.value || '50';
-      count = parseInt(rawStock, 10) || 50;
-      focusTarget = document.getElementById('page-prd-name');
-      focusPriceTarget = document.getElementById('page-prd-price');
-    }
+    const pageName = document.getElementById('page-prd-name')?.value?.trim() || '';
+    const modalName = document.getElementById('prd-name')?.value?.trim() || '';
+
+    const pagePriceStr = document.getElementById('page-prd-price')?.value?.trim() || '';
+    const modalPriceStr = document.getElementById('prd-price')?.value?.trim() || '';
+
+    name = pageName || modalName;
+    const rawPrice = pagePriceStr || modalPriceStr;
+    price = parseFloat(rawPrice);
+
+    editId = document.getElementById('page-prd-edit-id')?.value || '';
+    const isPageSource = !!pageName;
+
+    category = (isPageSource ? document.getElementById('page-prd-category')?.value?.trim() : document.getElementById('prd-category')?.value?.trim()) || "Men's Apparel";
+    subCategory = (isPageSource ? document.getElementById('page-prd-subcategory')?.value?.trim() : document.getElementById('prd-subcategory')?.value?.trim()) || 'Shirts';
+    color = (isPageSource ? document.getElementById('page-prd-color')?.value : document.getElementById('prd-color')?.value) || 'Black';
+    size = (isPageSource ? document.getElementById('page-prd-size')?.value : document.getElementById('prd-size')?.value) || 'M';
+    const rawStock = (isPageSource ? document.getElementById('page-prd-stock')?.value : document.getElementById('prd-stock')?.value) || '50';
+    count = parseInt(rawStock, 10) || 50;
+
+    focusTarget = isPageSource ? document.getElementById('page-prd-name') : document.getElementById('prd-name');
+    focusPriceTarget = isPageSource ? document.getElementById('page-prd-price') : document.getElementById('prd-price');
 
     if (!name) {
       showToast('Please enter a product name', 'error');
@@ -6824,7 +6844,7 @@ async function handleSaveProductForm(e) {
         if (editId) {
           enqueueOfflineSync('UPDATE_PRODUCT', { id: editId, ...payload });
         } else {
-          enqueueOfflineSync('PRODUCT', payload);
+          enqueueOfflineSync('PRODUCT', { id: localPrd ? localPrd.id : payload.id, ...payload });
         }
         showToast(`Product "${name}" saved locally (offline sync mode).`, 'info');
       }
@@ -6860,54 +6880,69 @@ async function handleSaveProductForm(e) {
   }
 }
 
+let _isSavingCategory = false;
+
 async function handleSaveCategoryForm(e) {
-  if (e) e.preventDefault();
-
-  const editId = document.getElementById('page-cat-edit-id')?.value || '';
-  const nameInput = document.getElementById('page-cat-name');
-  const subCatsInput = document.getElementById('page-cat-subcategories');
-  const statusSelect = document.getElementById('page-cat-status');
-
-  const name = nameInput ? nameInput.value.trim() : '';
-  const rawSubCats = subCatsInput ? subCatsInput.value.trim() : '';
-  const status = statusSelect ? statusSelect.value : 'Active';
-
-  if (!name) {
-    showToast('Please enter a category name', 'error');
-    return;
+  if (e) {
+    if (typeof e.preventDefault === 'function') e.preventDefault();
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
   }
+  if (_isSavingCategory) return false;
+  _isSavingCategory = true;
+  window.handleSaveCategoryForm = handleSaveCategoryForm;
 
-  const subCategories = rawSubCats
-    ? rawSubCats.split(',').map(s => s.trim()).filter(Boolean)
-    : ['General'];
-
-  const payload = {
-    name,
-    subCategories,
-    status
-  };
-
-  showToast('Saving category...', 'info');
+  const submitBtn = document.getElementById('page-submit-create-category-btn') || document.querySelector('#create-category-modal button.primary-action-btn');
+  if (submitBtn) submitBtn.disabled = true;
 
   try {
-    if (editId) {
-      await api.updateCategory(editId, payload);
-      showToast('Category updated successfully in MongoDB database!', 'success');
+    const isModalForm = e && e.target && (e.target.id === 'create-category-form' || (typeof e.target.closest === 'function' && e.target.closest('#create-category-modal')));
+
+    const editId = document.getElementById('page-cat-edit-id')?.value || '';
+    const pageNameInp = document.getElementById('page-cat-name');
+    const modalNameInp = document.getElementById('cat-name');
+
+    const pageSubInp = document.getElementById('page-cat-subcategories');
+    const modalSubInp = document.getElementById('cat-subcategories');
+
+    const pageStatusInp = document.getElementById('page-cat-status');
+    const modalStatusInp = document.getElementById('cat-status');
+
+    let name = '';
+    let rawSubCats = '';
+    let status = 'Active';
+
+    if (isModalForm) {
+      name = (modalNameInp?.value || '').trim();
+      rawSubCats = (modalSubInp?.value || '').trim();
+      status = (modalStatusInp?.value || 'Active');
     } else {
-      await api.createCategory(payload);
-      showToast('Category created & saved in MongoDB database!', 'success');
+      name = (modalNameInp?.value && modalNameInp.value.trim()) ? modalNameInp.value.trim() : (pageNameInp?.value || '').trim();
+      rawSubCats = (modalSubInp?.value && modalSubInp.value.trim()) ? modalSubInp.value.trim() : (pageSubInp?.value || '').trim();
+      status = (modalStatusInp?.value || pageStatusInp?.value || 'Active');
     }
-    await loadBusinessData();
-  } catch (err) {
-    console.warn('API save category notice, utilizing local store / offline sync:', err);
-    if (editId) {
-      enqueueOfflineSync('UPDATE_CATEGORY', { id: editId, ...payload });
-    } else {
-      enqueueOfflineSync('CATEGORY', payload);
+
+    if (!name) {
+      showToast('Please enter a category name', 'error');
+      const focusEl = isModalForm ? modalNameInp : (pageNameInp || modalNameInp);
+      if (focusEl) focusEl.focus();
+      return false;
     }
-    // Commit category locally for instant UI response
-    const newId = editId || `CAT-${String((appData.categories || []).length + 1).padStart(2, '0')}`;
-    const localCat = { id: newId, ...payload };
+
+    const subCategories = rawSubCats
+      ? rawSubCats.split(',').map(s => s.trim()).filter(Boolean)
+      : ['General'];
+
+    const payload = {
+      name,
+      subCategories,
+      status
+    };
+
+    // Unmark from local deleted list if previously marked
+    const newId = editId || `CAT-${Date.now()}`;
+    unmarkEntityAsDeleted('CATEGORY', newId, name);
+
+    const localCat = { id: newId, name, subCategories, status, createdAt: new Date().toISOString() };
     if (!appData.categories) appData.categories = [];
     const existingCatIdx = appData.categories.findIndex(c => (c.id && c.id === newId) || (c.name && c.name.toLowerCase() === name.toLowerCase()));
     if (existingCatIdx >= 0) {
@@ -6915,21 +6950,55 @@ async function handleSaveCategoryForm(e) {
     } else {
       appData.categories.push(localCat);
     }
+    appData.categories = sortCategoriesChronologically(appData.categories);
     try {
       localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
     } catch (e) {}
-    showToast(`Category "${name}" saved locally (offline sync mode). Will auto-sync to MongoDB database when connected.`, 'info');
+
+    // Instantly render UI grid so user sees the newly added category
+    renderCategoriesGrid();
+    updateInvoiceProductSelectOptions();
+
+    showToast('Saving category...', 'info');
+
+    try {
+      if (editId) {
+        await api.updateCategory(editId, payload);
+        showToast(`Category "${name}" updated successfully!`, 'success');
+      } else {
+        const res = await api.createCategory(payload);
+        if (res && res.category && res.category.id) {
+          localCat.id = res.category.id;
+        }
+        showToast(`Category "${name}" created & saved successfully!`, 'success');
+      }
+      await loadBusinessData();
+    } catch (err) {
+      console.warn('API save category notice, utilizing local store / offline sync:', err);
+      if (editId) {
+        enqueueOfflineSync('UPDATE_CATEGORY', { id: editId, ...payload });
+      } else {
+        enqueueOfflineSync('CATEGORY', { id: localCat.id, ...payload });
+      }
+      showToast(`Category "${name}" saved locally (offline sync mode). Will auto-sync when connected.`, 'info');
+    }
+
+    renderCategoriesGrid();
+    updateInvoiceProductSelectOptions();
+
+    if (pageNameInp) pageNameInp.value = '';
+    if (modalNameInp) modalNameInp.value = '';
+    if (pageSubInp) pageSubInp.value = '';
+    if (modalSubInp) modalSubInp.value = '';
+    if (document.getElementById('page-cat-edit-id')) document.getElementById('page-cat-edit-id').value = '';
+
+    if (typeof closeCategoryModal === 'function') closeCategoryModal();
+    switchView('categories');
+    return false;
+  } finally {
+    _isSavingCategory = false;
+    if (submitBtn) submitBtn.disabled = false;
   }
-
-  renderCategoriesGrid();
-  updateInvoiceProductSelectOptions();
-
-  if (nameInput) nameInput.value = '';
-  if (subCatsInput) subCatsInput.value = '';
-  if (document.getElementById('page-cat-edit-id')) document.getElementById('page-cat-edit-id').value = '';
-
-  switchView('categories');
-  return false;
 }
 
 async function handleCloudBackupNow() {

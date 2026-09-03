@@ -174,6 +174,58 @@ const syncController = {
       console.error('pullSyncChanges error:', error.message);
       res.status(500).json({ success: false, message: 'Failed to pull sync changes', error: error.message });
     }
+  },
+
+  getIncrementalSync: async (req, res) => {
+    try {
+      const companyId = req.user?.companyId || 'shop_default';
+      const cursor = req.query.cursor || req.body.cursor || '1970-01-01T00:00:00.000Z';
+      const cursorDate = new Date(cursor);
+
+      const Product = require('../models/Product');
+      const Category = require('../models/Category');
+      const Client = require('../models/Client');
+      const Invoice = require('../models/Invoice');
+      const Bill = require('../models/Bill');
+
+      const isMongoReady = require('mongoose').connection.readyState === 1;
+      let changes = { products: [], categories: [], clients: [], invoices: [], bills: [] };
+
+      if (isMongoReady) {
+        const queryFilter = {
+          $or: [
+            { updatedAt: { $gt: cursorDate } },
+            { updated_at: { $gt: cursorDate } }
+          ]
+        };
+
+        const [prds, cats, clients, invs, bills] = await Promise.all([
+          Product.find(queryFilter).lean().exec(),
+          Category.find(queryFilter).lean().exec(),
+          Client.find(queryFilter).lean().exec(),
+          Invoice.find(queryFilter).lean().exec(),
+          Bill.find(queryFilter).lean().exec()
+        ]);
+
+        changes = {
+          products: prds || [],
+          categories: cats || [],
+          clients: clients || [],
+          invoices: invs || [],
+          bills: bills || []
+        };
+      }
+
+      const newCursor = new Date().toISOString();
+      res.json({
+        success: true,
+        cursor: newCursor,
+        changes
+      });
+    } catch (error) {
+      console.error('getIncrementalSync error:', error.message);
+      res.status(500).json({ success: false, message: 'Failed to fetch incremental sync changes', error: error.message });
+    }
   }
 };
 

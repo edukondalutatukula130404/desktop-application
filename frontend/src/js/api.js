@@ -273,6 +273,7 @@ export const api = {
   // Sync Status & Device API Endpoints
   getSyncStatus: () => request('/sync/status', { method: 'GET' }),
   triggerSync: () => request('/sync/trigger', { method: 'POST' }),
+  getIncrementalSync: (cursor = '') => request(`/business/sync/incremental?cursor=${encodeURIComponent(cursor || '')}`, { method: 'GET' }),
   getRegisteredDevices: () => request('/business/devices', { method: 'GET' }),
   registerDevice: (payload) => request('/business/devices/register', { method: 'POST', body: JSON.stringify(payload) }),
   revokeDevice: (deviceId) => request(`/business/devices/${encodeURIComponent(deviceId)}`, { method: 'DELETE' }),

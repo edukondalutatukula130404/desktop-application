@@ -9,7 +9,10 @@ const billSchema = new mongoose.Schema({
   dueDate: { type: String, required: true },
   amount: { type: Number, required: true },
   status: { type: String, enum: ['Paid', 'Unpaid', 'Overdue'], default: 'Unpaid' },
-  autoPay: { type: Boolean, default: false }
+  autoPay: { type: Boolean, default: false },
+  version: { type: Number, default: 1 },
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date, default: null }
 }, {
   timestamps: true
 });

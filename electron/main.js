@@ -5,6 +5,7 @@ const { startServer, PORT } = require('../backend/server');
 
 let mainWindow = null;
 let backendServer = null;
+let isQuitting = false;
 
 const isDev = !app.isPackaged && process.env.NODE_ENV !== 'production';
 
@@ -43,6 +44,26 @@ async function createWindow() {
     await mainWindow.loadURL(prodUrl);
   }
 
+  mainWindow.on('close', (e) => {
+    if (isQuitting) return;
+    e.preventDefault();
+
+    const choice = dialog.showMessageBoxSync(mainWindow, {
+      type: 'none',
+      buttons: ['OK', 'Cancel'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+      title: 'invoicepro-desktop',
+      message: 'Are you sure you want to exit application?'
+    });
+
+    if (choice === 0) {
+      isQuitting = true;
+      app.quit();
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -80,7 +101,10 @@ app.on('before-quit', () => {
 
 // IPC handlers for UI interactions
 ipcMain.handle('get-app-version', () => app.getVersion());
-ipcMain.handle('quit-app', () => app.quit());
+ipcMain.handle('quit-app', () => {
+  isQuitting = true;
+  app.quit();
+});
 
 ipcMain.handle('save-pdf-file', async (event, { base64Data, defaultFilename }) => {
   try {

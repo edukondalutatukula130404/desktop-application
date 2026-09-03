@@ -77,6 +77,7 @@ router.post('/backup/restore', h(backupController.restoreBackup, 'restoreBackup'
 // Multi-Device Synchronization Routes
 router.post('/sync/push', h(syncController.pushSyncChanges, 'pushSyncChanges'));
 router.get('/sync/pull', h(syncController.pullSyncChanges, 'pullSyncChanges'));
+router.get('/sync/incremental', h(syncController.getIncrementalSync, 'getIncrementalSync'));
 
 // Device Management Routes
 router.post('/devices/register', h(syncController.registerDevice, 'registerDevice'));

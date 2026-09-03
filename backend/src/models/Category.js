@@ -11,7 +11,10 @@ const categorySchema = new mongoose.Schema({
   seasonTag: { type: String, default: 'All Season' },
   itemCounts: { type: Number, default: 0 },
   totalRevenue: { type: Number, default: 0 },
-  status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' }
+  status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
+  version: { type: Number, default: 1 },
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date, default: null }
 }, {
   timestamps: true
 });

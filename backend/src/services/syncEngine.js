@@ -100,6 +100,7 @@ async function pushLocalChangesToMongo() {
             { id: payload.id || item.entity_id },
             {
               id: payload.id || item.entity_id,
+              companyId: payload.companyId || 'shop_default',
               name: payload.name,
               subCategories: parsedSubCats,
               status: catStatus,
@@ -112,7 +113,8 @@ async function pushLocalChangesToMongo() {
         }
       } else if (item.entity_type === 'CUSTOMER') {
         const clientUpdate = {
-          id: payload.id || item.entity_id
+          id: payload.id || item.entity_id,
+          companyId: payload.companyId || 'shop_default'
         };
         if (payload.name) clientUpdate.name = payload.name;
         if (payload.email !== undefined) clientUpdate.email = payload.email;
@@ -130,10 +132,25 @@ async function pushLocalChangesToMongo() {
         ).exec();
       } else if (item.entity_type === 'PRODUCT') {
         if (item.operation === 'DELETE') {
-          await Product.deleteOne({ id: item.entity_id }).exec();
+          const payload = typeof item.payload === 'string' ? JSON.parse(item.payload || '{}') : (item.payload || {});
+          const idVal = payload.id || item.entity_id;
+          const nameVal = payload.name || '';
+          const deleteConditions = [];
+          if (idVal) {
+            deleteConditions.push({ id: idVal });
+            deleteConditions.push({ id: new RegExp(`^${String(idVal).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+          }
+          if (nameVal) {
+            deleteConditions.push({ name: nameVal });
+            deleteConditions.push({ name: new RegExp(`^${String(nameVal).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+          }
+          if (deleteConditions.length > 0) {
+            await Product.deleteMany({ $or: deleteConditions }).exec();
+          }
         } else {
           const productUpdate = {
-            id: payload.id || item.entity_id
+            id: payload.id || item.entity_id,
+            companyId: payload.companyId || 'shop_default'
           };
           if (payload.name) productUpdate.name = payload.name;
           if (payload.category !== undefined) productUpdate.category = payload.category;
@@ -143,7 +160,6 @@ async function pushLocalChangesToMongo() {
           if (payload.price !== undefined) productUpdate.price = Number(payload.price) || 0;
           if (payload.stock !== undefined) productUpdate.stock = payload.stock;
           if (payload.count !== undefined) productUpdate.count = Number(payload.count) || 50;
-          if (payload.companyId) productUpdate.companyId = payload.companyId;
           productUpdate.updatedAt = payload.updated_at || new Date().toISOString();
           productUpdate.deviceId = deviceId;
 
@@ -159,6 +175,7 @@ async function pushLocalChangesToMongo() {
 
         const invoiceUpdate = {
           id: payload.id || item.entity_id,
+          companyId: payload.companyId || 'shop_default',
           clientId: payload.clientId || '',
           clientName: payload.clientName || 'Walk-in Retail Customer',
           clientEmail: payload.clientEmail || '',
@@ -187,6 +204,7 @@ async function pushLocalChangesToMongo() {
           { id: payload.id || item.entity_id },
           {
             id: payload.id || item.entity_id,
+            companyId: payload.companyId || 'shop_default',
             vendor: payload.vendor,
             category: payload.category,
             dueDate: payload.dueDate,
@@ -217,11 +235,23 @@ async function pullRemoteChangesFromMongo() {
   // 1. Pull Products (Shared Catalog)
   const remotePrds = await Product.find().lean().exec();
   const localPrds = await sqliteStore.getProducts();
+  const deletedKeysList = typeof sqliteStore.getDeletedProductKeys === 'function' ? sqliteStore.getDeletedProductKeys() : [];
+  const deletedKeys = new Set(deletedKeysList.map(k => String(k).toLowerCase().trim()));
   const localPrdMap = new Map((localPrds || []).map(p => [(p.id || '').toLowerCase(), p]));
 
   for (const p of remotePrds || []) {
     if (p.id) {
-      const existing = localPrdMap.get(String(p.id).toLowerCase());
+      const pIdLower = String(p.id).toLowerCase().trim();
+      const pNameLower = p.name ? String(p.name).toLowerCase().trim() : '';
+
+      if (deletedKeys.has(pIdLower) || (pNameLower && deletedKeys.has(pNameLower))) {
+        try {
+          await Product.deleteMany({ $or: [{ id: p.id }, { name: p.name }] }).exec();
+        } catch (e) {}
+        continue;
+      }
+
+      const existing = localPrdMap.get(pIdLower);
       if (!existing || existing.name !== p.name || existing.price !== p.price || existing.stock !== p.stock) {
         hasNewPullData = true;
       }

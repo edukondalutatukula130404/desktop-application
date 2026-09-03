@@ -7,9 +7,20 @@ const { buildAppMenu } = require('./menu.cjs');
 // Global Uncaught Exception Handlers to prevent silent app crashes on new devices
 process.on('uncaughtException', (err) => {
   console.error('[Electron UncaughtException]', err);
+  const msg = String((err && err.message) ? err.message : err);
+  // Safely log non-fatal background service notices without annoying modal dialogs
+  if (
+    msg.includes('Unexpected non-whitespace') ||
+    msg.includes('JSON') ||
+    msg.includes('MongoMemoryServer') ||
+    msg.includes('EADDRINUSE') ||
+    msg.includes('ECONNREFUSED')
+  ) {
+    return;
+  }
   try {
     if (dialog && dialog.showErrorBox) {
-      dialog.showErrorBox('Nexus Suite Application Warning', `Background Service Warning: ${err.message || err}`);
+      dialog.showErrorBox('Nexus Suite Application Notice', `Background Service Notice: ${msg}`);
     }
   } catch (e) {}
 });
@@ -122,20 +133,20 @@ async function createWindow() {
   //   mainWindow.webContents.openDevTools({ mode: 'detach' });
   // }
 
-  // Confirm Exit Dialog on Close
+  // Confirm Exit Dialog on window Cross [X] Close button
   mainWindow.on('close', (e) => {
     if (isQuitting) return;
 
     e.preventDefault();
 
     const choice = dialog.showMessageBoxSync(mainWindow, {
-      type: 'question',
-      buttons: ['Exit Application', 'Cancel'],
-      defaultId: 1,
+      type: 'none',
+      buttons: ['OK', 'Cancel'],
+      defaultId: 0,
       cancelId: 1,
-      title: 'Confirm Exit',
-      message: 'Are you sure you want to exit InvoicePro Desktop?',
-      detail: 'Any active operations will be safely finalized before exit.'
+      noLink: true,
+      title: 'invoicepro-desktop',
+      message: 'Are you sure you want to exit application?'
     });
 
     if (choice === 0) {
@@ -234,7 +245,10 @@ ipcMain.on('window-close', () => {
 });
 
 ipcMain.handle('get-app-version', () => app.getVersion());
-ipcMain.handle('quit-app', () => app.quit());
+ipcMain.handle('quit-app', () => {
+  isQuitting = true;
+  app.quit();
+});
 
 ipcMain.handle('save-pdf-file', async (event, { base64Data, defaultFilename }) => {
   try {
