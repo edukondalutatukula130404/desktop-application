@@ -72,6 +72,8 @@ function loadStore() {
     loaded.bills = [];
   }
 
+  if (!Array.isArray(loaded.sales)) loaded.sales = [];
+  if (!Array.isArray(loaded.inventory_logs)) loaded.inventory_logs = [];
   if (!Array.isArray(loaded.sync_queue)) loaded.sync_queue = [];
   if (!Array.isArray(loaded.processed_operation_ids)) loaded.processed_operation_ids = [];
   if (!loaded.meta) loaded.meta = { device_id: 'DEV-' + Date.now().toString().slice(-6) };
@@ -124,10 +126,17 @@ const sqliteStore = {
     return (store.products || []).filter(p => !p.is_deleted);
   },
 
+  async getProductById(id) {
+    if (!id) return null;
+    const idLower = String(id).toLowerCase().trim();
+    return (store.products || []).find(p => !p.is_deleted && (String(p.id).toLowerCase().trim() === idLower || (p.name && String(p.name).toLowerCase().trim() === idLower))) || null;
+  },
+
   async createProduct(prd, opts = {}) {
     const existingIdx = (store.products || []).findIndex(p => p.id === prd.id || (p.name && p.name.toLowerCase() === (prd.name || '').toLowerCase()));
     const existing = existingIdx >= 0 ? store.products[existingIdx] : null;
     const nextVersion = existing ? ((Number(existing.version) || 1) + 1) : (Number(prd.version) || 1);
+    const countNum = prd.count !== undefined ? Number(prd.count) : 50;
 
     const record = {
       id: prd.id || `PRD-${Date.now()}`,
@@ -137,8 +146,10 @@ const sqliteStore = {
       color: prd.color || 'Black',
       size: prd.size || 'M',
       price: Number(prd.price) || 0,
-      stock: prd.stock || 'In Stock',
-      count: Number(prd.count) || 50,
+      stock: prd.stock || (countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock')),
+      count: countNum,
+      companyId: prd.companyId || 'shop_default',
+      userId: prd.userId || 'user_local',
       version: nextVersion,
       is_deleted: 0,
       updated_at: new Date().toISOString()
@@ -241,8 +252,13 @@ const sqliteStore = {
       id: cat.id || `CAT-${Date.now()}`,
       name: cat.name,
       subCategories: Array.isArray(cat.subCategories) ? cat.subCategories : [],
+      description: cat.description || '',
+      genderType: cat.genderType || 'Unisex',
+      seasonTag: cat.seasonTag || 'All Season',
       status: cat.status || 'Active',
-      productCount: Number(cat.productCount) || 0,
+      productCount: Number(cat.productCount || cat.itemCounts) || 0,
+      companyId: cat.companyId || 'shop_default',
+      userId: cat.userId || 'user_local',
       version: nextVersion,
       is_deleted: 0,
       updated_at: new Date().toISOString()
@@ -496,6 +512,60 @@ const sqliteStore = {
   async clearCompletedSyncQueue() {
     store.sync_queue = (store.sync_queue || []).filter(q => q.status === 'PENDING');
     saveStore();
+  },
+
+  async recordSale(sale) {
+    if (!store.sales) store.sales = [];
+    const record = {
+      id: sale.id || `SALE-${Date.now().toString().slice(-6)}`,
+      companyId: sale.companyId || 'shop_default',
+      invoiceId: sale.invoiceId,
+      clientName: sale.clientName || 'Walk-in Customer',
+      amount: parseFloat(sale.amount) || 0,
+      paymentMode: sale.paymentMode || 'Cash',
+      itemCount: parseInt(sale.itemCount, 10) || 1,
+      saleDate: sale.saleDate || new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString()
+    };
+    store.sales.unshift(record);
+    saveStore();
+    return record;
+  },
+
+  async getSales(companyId) {
+    let list = store.sales || [];
+    if (companyId) {
+      list = list.filter(s => s.companyId === companyId || s.companyId === 'shop_default');
+    }
+    return list;
+  },
+
+  async logInventoryMovement(logData) {
+    if (!store.inventory_logs) store.inventory_logs = [];
+    const record = {
+      id: logData.id || `LOG-${Date.now().toString().slice(-6)}`,
+      companyId: logData.companyId || 'shop_default',
+      productId: logData.productId,
+      productName: logData.productName || 'Product',
+      type: logData.type || 'ADJUSTMENT',
+      quantityChanged: parseInt(logData.quantityChanged, 10) || 0,
+      newStockCount: parseInt(logData.newStockCount, 10) || 0,
+      reason: logData.reason || '',
+      referenceId: logData.referenceId || '',
+      createdAt: new Date().toISOString()
+    };
+    store.inventory_logs.unshift(record);
+    if (store.inventory_logs.length > 200) store.inventory_logs = store.inventory_logs.slice(0, 200);
+    saveStore();
+    return record;
+  },
+
+  async getInventoryLogs(companyId) {
+    let list = store.inventory_logs || [];
+    if (companyId) {
+      list = list.filter(l => l.companyId === companyId || l.companyId === 'shop_default');
+    }
+    return list;
   }
 };
 

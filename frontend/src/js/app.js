@@ -7192,8 +7192,43 @@ window.addEventListener('online', async () => {
   }
 });
 
+function setupRealtimeSocketSync() {
+  try {
+    const userCompanyId = (appData.user && appData.user.companyId) || 'shop_default';
+    initSocketConnection(userCompanyId);
+
+    const realtimeEvents = [
+      'product:created', 'product:updated', 'product:deleted',
+      'category:created', 'category:updated', 'category:deleted',
+      'invoice:created', 'invoice:updated', 'customer:created',
+      'customer:updated', 'dashboard:updated', 'sync:pushed'
+    ];
+
+    realtimeEvents.forEach(evt => {
+      subscribeToRealtimeEvent(evt, async (data) => {
+        console.log(`⚡ [Realtime Cross-Laptop Sync Event] '${evt}':`, data);
+        try {
+          await loadBusinessData();
+          renderProductsTable();
+          renderCategoriesGrid();
+          renderInvoicesTable();
+          renderClientsGrid();
+          if (typeof renderOverview === 'function') renderOverview();
+          if (typeof renderInventoryView === 'function') renderInventoryView();
+          if (typeof renderPosGrid === 'function') renderPosGrid();
+        } catch (err) {
+          console.warn('Realtime UI refresh notice:', err);
+        }
+      });
+    });
+  } catch (e) {
+    console.warn('setupRealtimeSocketSync notice:', e);
+  }
+}
+
 // Poll every 3 seconds — each call triggers a full sync+fetch cycle
 setInterval(pollSyncStatus, 3000);
 pollSyncStatus();
 
+setupRealtimeSocketSync();
 initSession();

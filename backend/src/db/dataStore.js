@@ -592,38 +592,48 @@ const dataStore = {
 
   getProductById: async (id, companyId = null) => {
     if (!id) return null;
-    const filter = companyId ? { id, companyId } : { id };
-    return await Product.findOne(filter).exec();
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
+      try {
+        const filter = companyId ? { id, companyId } : { id };
+        const prd = await Product.findOne(filter).exec();
+        if (prd) return prd;
+      } catch (e) {}
+    }
+    return await sqliteStore.getProductById(id);
   },
-
 
   deleteProduct: async (id, name = '', userId = null) => {
     try {
-      await seedInitialDataIfNeeded(userId);
       const idStr = id ? String(id).trim() : '';
       const nameStr = name ? String(name).trim() : '';
 
-      const orConditions = [];
+      const isOnline = await checkMongoOnlineFast();
+      if (isOnline) {
+        try {
+          const orConditions = [];
 
-      if (idStr) {
-        const safeIdRegex = new RegExp(`^${idStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-        orConditions.push({ id: safeIdRegex });
-        orConditions.push({ id: idStr });
-        if (mongoose.Types.ObjectId.isValid(idStr)) {
-          orConditions.push({ _id: idStr });
+          if (idStr) {
+            const safeIdRegex = new RegExp(`^${idStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+            orConditions.push({ id: safeIdRegex });
+            orConditions.push({ id: idStr });
+            if (mongoose.Types.ObjectId.isValid(idStr)) {
+              orConditions.push({ _id: idStr });
+            }
+          }
+
+          if (nameStr) {
+            const safeNameRegex = new RegExp(`^${nameStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+            orConditions.push({ name: safeNameRegex });
+            orConditions.push({ name: nameStr });
+          }
+
+          if (orConditions.length > 0) {
+            await Product.deleteMany({ $or: orConditions }).exec();
+          }
+        } catch (mErr) {
+          console.warn('MongoDB deleteProduct notice:', mErr.message);
         }
-      }
-
-      if (nameStr) {
-        const safeNameRegex = new RegExp(`^${nameStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-        orConditions.push({ name: safeNameRegex });
-        orConditions.push({ name: nameStr });
-      }
-
-      if (orConditions.length > 0) {
-        console.log(`[dataStore] Automatically deleting product from MongoDB collection:`, idStr || nameStr);
-        const mongoRes = await Product.deleteMany({ $or: orConditions }).exec();
-        console.log(`[dataStore] MongoDB deleteMany result:`, mongoRes);
       }
 
       try {
@@ -676,20 +686,31 @@ const dataStore = {
     const countNum = Math.max(0, parseInt(stockData.count, 10) || 0);
     const stockStatus = stockData.stock || (countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock'));
     
-    let product = await Product.findOneAndUpdate(
-      { id: { $regex: new RegExp(`^${id}$`, 'i') } },
-      { $set: { count: countNum, stock: stockStatus } },
-      { new: true }
-    ).lean().exec();
+    let product = null;
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
+      try {
+        product = await Product.findOneAndUpdate(
+          { id: { $regex: new RegExp(`^${id}$`, 'i') } },
+          { $set: { count: countNum, stock: stockStatus } },
+          { new: true }
+        ).lean().exec();
 
-    if (!product) {
-      product = await Product.findByIdAndUpdate(
-        id,
-        { $set: { count: countNum, stock: stockStatus } },
-        { new: true }
-      ).lean().exec();
+        if (!product) {
+          product = await Product.findByIdAndUpdate(
+            id,
+            { $set: { count: countNum, stock: stockStatus } },
+            { new: true }
+          ).lean().exec();
+        }
+      } catch (e) {}
     }
-    return product;
+
+    try {
+      await sqliteStore.updateProduct(id, { count: countNum, stock: stockStatus });
+    } catch (e) {}
+
+    return product || { id, count: countNum, stock: stockStatus };
   },
 
   cleanupDuplicateCategories: async (userId = null) => {
@@ -857,23 +878,30 @@ const dataStore = {
 
   deleteCategory: async (id, name = '') => {
     try {
-      await seedInitialDataIfNeeded();
-      const queries = [];
       const idStr = id ? String(id).trim() : '';
       const nameStr = name ? String(name).trim() : '';
 
-      if (idStr) {
-        queries.push({ id: { $regex: new RegExp(`^${idStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
-        if (mongoose.Types.ObjectId.isValid(idStr)) {
-          queries.push({ _id: idStr });
+      const isOnline = await checkMongoOnlineFast();
+      if (isOnline) {
+        try {
+          const queries = [];
+          if (idStr) {
+            queries.push({ id: { $regex: new RegExp(`^${idStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+            if (mongoose.Types.ObjectId.isValid(idStr)) {
+              queries.push({ _id: idStr });
+            }
+          }
+          if (nameStr) {
+            queries.push({ name: { $regex: new RegExp(`^${nameStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+          }
+          if (queries.length > 0) {
+            await Category.deleteMany({ $or: queries }).exec();
+          }
+        } catch (mErr) {
+          console.warn('MongoDB deleteCategory notice:', mErr.message);
         }
       }
-      if (nameStr) {
-        queries.push({ name: { $regex: new RegExp(`^${nameStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
-      }
-      if (queries.length > 0) {
-        await Category.deleteMany({ $or: queries }).exec();
-      }
+
       try {
         await sqliteStore.deleteCategory(id, name);
       } catch (e) {}
@@ -1228,45 +1256,89 @@ const dataStore = {
   recordSale: async (saleData, companyId) => {
     const cid = companyId || saleData.companyId || 'shop_default';
     const id = saleData.id || `SALE-${Date.now().toString().slice(-6)}`;
-    const sale = new Sale({
-      id,
-      companyId: cid,
-      invoiceId: saleData.invoiceId,
-      clientName: saleData.clientName || 'Walk-in Customer',
-      amount: parseFloat(saleData.amount) || 0,
-      paymentMode: saleData.paymentMode || 'Cash',
-      itemCount: parseInt(saleData.itemCount, 10) || 1,
-      saleDate: saleData.saleDate || new Date().toISOString().split('T')[0]
-    });
-    return await sale.save();
+    let mongoResult = null;
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
+      try {
+        const sale = new Sale({
+          id,
+          companyId: cid,
+          invoiceId: saleData.invoiceId,
+          clientName: saleData.clientName || 'Walk-in Customer',
+          amount: parseFloat(saleData.amount) || 0,
+          paymentMode: saleData.paymentMode || 'Cash',
+          itemCount: parseInt(saleData.itemCount, 10) || 1,
+          saleDate: saleData.saleDate || new Date().toISOString().split('T')[0]
+        });
+        mongoResult = await sale.save();
+      } catch (e) {}
+    }
+    let localResult = null;
+    try {
+      localResult = await sqliteStore.recordSale({ id, companyId: cid, ...saleData });
+    } catch (e) {}
+    return mongoResult || localResult;
   },
 
   getSales: async (companyId) => {
-    const filter = companyId ? { companyId } : {};
-    return await Sale.find(filter).sort({ saleDate: -1 }).lean().exec();
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
+      try {
+        const filter = companyId ? { companyId } : {};
+        const sales = await Sale.find(filter).sort({ saleDate: -1 }).lean().exec();
+        if (sales && sales.length > 0) return sales;
+      } catch (e) {}
+    }
+    try {
+      return await sqliteStore.getSales(companyId);
+    } catch (e) {
+      return [];
+    }
   },
 
   // Inventory Movements Log
   logInventoryMovement: async (logData, companyId) => {
     const cid = companyId || logData.companyId || 'shop_default';
     const id = logData.id || `LOG-${Date.now().toString().slice(-6)}`;
-    const log = new InventoryLog({
-      id,
-      companyId: cid,
-      productId: logData.productId,
-      productName: logData.productName || 'Product',
-      type: logData.type || 'ADJUSTMENT',
-      quantityChanged: parseInt(logData.quantityChanged, 10) || 0,
-      newStockCount: parseInt(logData.newStockCount, 10) || 0,
-      reason: logData.reason || '',
-      referenceId: logData.referenceId || ''
-    });
-    return await log.save();
+    let mongoResult = null;
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
+      try {
+        const log = new InventoryLog({
+          id,
+          companyId: cid,
+          productId: logData.productId,
+          productName: logData.productName || 'Product',
+          type: logData.type || 'ADJUSTMENT',
+          quantityChanged: parseInt(logData.quantityChanged, 10) || 0,
+          newStockCount: parseInt(logData.newStockCount, 10) || 0,
+          reason: logData.reason || '',
+          referenceId: logData.referenceId || ''
+        });
+        mongoResult = await log.save();
+      } catch (e) {}
+    }
+    let localResult = null;
+    try {
+      localResult = await sqliteStore.logInventoryMovement({ id, companyId: cid, ...logData });
+    } catch (e) {}
+    return mongoResult || localResult;
   },
 
   getInventoryLogs: async (companyId) => {
-    const filter = companyId ? { companyId } : {};
-    return await InventoryLog.find(filter).sort({ createdAt: -1 }).limit(100).lean().exec();
+    const isOnline = await checkMongoOnlineFast();
+    if (isOnline) {
+      try {
+        const filter = companyId ? { companyId } : {};
+        const logs = await InventoryLog.find(filter).sort({ createdAt: -1 }).limit(100).lean().exec();
+        if (logs && logs.length > 0) return logs;
+      } catch (e) {}
+    }
+    try {
+      return await sqliteStore.getInventoryLogs(companyId);
+    } catch (e) {
+      return [];
+    }
   }
 };
 
