@@ -12,5 +12,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternalUrl: (url) => ipcRenderer.invoke('open-external-url', url),
   openPdfFolder: (folderPath) => ipcRenderer.invoke('open-pdf-folder', folderPath),
   sendWhatsappPdf: (base64Data, pdfFilename, phone) => ipcRenderer.invoke('send-whatsapp-pdf', { base64Data, pdfFilename, phone }),
-  isDesktop: true
+  listPrinters: () => ipcRenderer.invoke('list-printers'),
+  printHtml: (html, opts) => ipcRenderer.invoke('print-html', { html, printerName: (opts && opts.printerName) || '', silent: !!(opts && opts.silent), invoiceId: (opts && opts.invoiceId) || '' }),
+  isDesktop: true,
+
+  // ── Licensing ──
+  license: {
+    getState: () => ipcRenderer.invoke('license:get-state'),
+    refresh: () => ipcRenderer.invoke('license:refresh'),
+    activate: (licenseKey) => ipcRenderer.invoke('license:activate', licenseKey),
+    getMachineId: () => ipcRenderer.invoke('license:get-machine-id'),
+    clear: () => ipcRenderer.invoke('license:clear'),
+    onStateChange: (cb) => {
+      const handler = (_e, state) => { try { cb(state); } catch (err) {} };
+      ipcRenderer.on('license:state', handler);
+      return () => ipcRenderer.removeListener('license:state', handler);
+    }
+  }
 });

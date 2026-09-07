@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import { api, tokenStorage } from './api.js';
 import { NEXUS_LOGO_BASE64 } from './logoBase64.js';
 import { initSocketConnection, subscribeToRealtimeEvent } from './socket.js';
+import { initLicensing } from './license.js';
 
 
 
@@ -37,6 +38,15 @@ const globalSearchInput = document.getElementById('global-search-input');
 
 // Set Light Theme permanently
 document.documentElement.setAttribute('data-theme', 'light');
+
+// Debounce helper — coalesces rapid calls (e.g. keystrokes in a search box)
+function debounce(fn, wait = 150) {
+  let t;
+  return function debounced(...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), wait);
+  };
+}
 
 // DOM References - Sidebar User Info
 const sidebarAvatar = document.getElementById('sidebar-avatar');
@@ -172,6 +182,236 @@ function showToast(message, type = 'info') {
   }, 4000);
 }
 
+/* =========================================================================
+ * nxConfirm — in-app confirmation dialog (replaces window.confirm)
+ * Returns a Promise<boolean>. Accessible: role=dialog, aria-modal,
+ * ESC = cancel, focus trap, focus returned to the trigger on close.
+ * ========================================================================= */
+(function injectConfirmStyles() {
+  if (document.getElementById('nx-confirm-styles')) return;
+  const st = document.createElement('style');
+  st.id = 'nx-confirm-styles';
+  st.textContent = `
+    .nx-confirm-overlay { position:fixed; inset:0; z-index:11000; display:flex; align-items:center; justify-content:center;
+      background:rgba(15,23,42,.5); padding:20px; opacity:0; transition:opacity .15s ease; }
+    .nx-confirm-overlay.show { opacity:1; }
+    .nx-confirm-card { background:#fff; border:1px solid var(--border-light); border-radius:16px; width:100%; max-width:400px;
+      padding:24px; box-shadow:0 24px 60px rgba(15,23,42,.25); transform:translateY(6px); transition:transform .15s ease; }
+    .nx-confirm-overlay.show .nx-confirm-card { transform:none; }
+    .nx-confirm-card h4 { font-size:1.02rem; font-weight:800; color:var(--text-main); margin:0 0 6px; }
+    .nx-confirm-card p { font-size:0.9rem; color:var(--text-muted); margin:0 0 20px; line-height:1.5; }
+    .nx-confirm-actions { display:flex; gap:10px; justify-content:flex-end; }
+    .nx-confirm-actions button { height:40px; padding:0 18px; border-radius:10px; font:inherit; font-size:0.9rem; font-weight:700; cursor:pointer; }
+    .nx-confirm-cancel { background:#fff; border:1px solid var(--border-light); color:var(--text-main); }
+    .nx-confirm-cancel:hover { background:var(--cyan-bg); }
+    .nx-confirm-ok { border:0; background:var(--primary-accent); color:#fff; }
+    .nx-confirm-ok.danger { background:var(--rose); }
+    @media (prefers-reduced-motion: reduce){ .nx-confirm-overlay,.nx-confirm-card{ transition:none; } }
+  `;
+  document.head.appendChild(st);
+})();
+
+function nxConfirm(message, opts = {}) {
+  const { title = 'Please confirm', confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false } = opts;
+  return new Promise((resolve) => {
+    const prevFocus = document.activeElement;
+    const overlay = document.createElement('div');
+    overlay.className = 'nx-confirm-overlay';
+    overlay.innerHTML = `
+      <div class="nx-confirm-card" role="dialog" aria-modal="true" aria-labelledby="nx-cf-t" aria-describedby="nx-cf-d">
+        <h4 id="nx-cf-t"></h4>
+        <p id="nx-cf-d"></p>
+        <div class="nx-confirm-actions">
+          <button type="button" class="nx-confirm-cancel"></button>
+          <button type="button" class="nx-confirm-ok${danger ? ' danger' : ''}"></button>
+        </div>
+      </div>`;
+    overlay.querySelector('#nx-cf-t').textContent = title;
+    overlay.querySelector('#nx-cf-d').textContent = message;
+    const btnCancel = overlay.querySelector('.nx-confirm-cancel');
+    const btnOk = overlay.querySelector('.nx-confirm-ok');
+    btnCancel.textContent = cancelLabel;
+    btnOk.textContent = confirmLabel;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('show'));
+
+    const focusables = [btnCancel, btnOk];
+    const close = (result) => {
+      overlay.classList.remove('show');
+      document.removeEventListener('keydown', onKey, true);
+      setTimeout(() => overlay.remove(), 160);
+      try { if (prevFocus && prevFocus.focus) prevFocus.focus(); } catch (e) {}
+      resolve(result);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); close(false); }
+      else if (e.key === 'Tab') {
+        const i = focusables.indexOf(document.activeElement);
+        e.preventDefault();
+        const next = e.shiftKey ? (i <= 0 ? focusables.length - 1 : i - 1) : (i === focusables.length - 1 ? 0 : i + 1);
+        focusables[next].focus();
+      }
+    };
+    document.addEventListener('keydown', onKey, true);
+    overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(false); });
+    btnCancel.addEventListener('click', () => close(false));
+    btnOk.addEventListener('click', () => close(true));
+    btnOk.focus();
+  });
+}
+window.nxConfirm = nxConfirm;
+
+/* =========================================================================
+ * Modal accessibility — applied to every .modal-overlay without touching
+ * each open/close function: role/aria-modal, focus in on open, focus trap,
+ * ESC to close, focus returned to the trigger on close.
+ * ========================================================================= */
+(function modalA11y() {
+  const openState = new WeakMap();
+  let lastFocus = null;
+
+  const isVisible = (el) => el && el.getClientRects().length > 0;
+  const isOpen = (m) => !m.classList.contains('hidden') && getComputedStyle(m).display !== 'none';
+  const focusables = (root) => Array.from(root.querySelectorAll(
+    'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+  )).filter(isVisible);
+
+  function onOpen(m) {
+    if (openState.get(m)) return;
+    openState.set(m, true);
+    lastFocus = document.activeElement;
+    const card = m.querySelector('.modal-card, .modal-card-content') || m.firstElementChild || m;
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
+    const closeBtn = m.querySelector('button.modal-close-btn, button[id^="close-"]');
+    const list = focusables(m);
+    if (!list.length) { card.setAttribute('tabindex', '-1'); card.focus(); }
+    else (closeBtn && list.includes(closeBtn) ? list.find(b => b !== closeBtn) || closeBtn : list[0]).focus();
+
+    const onKey = (e) => {
+      if (!isOpen(m)) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (closeBtn) closeBtn.click();
+        else m.classList.add('hidden');
+      } else if (e.key === 'Tab') {
+        const f = focusables(m);
+        if (!f.length) { e.preventDefault(); return; }
+        const first = f[0], last = f[f.length - 1];
+        if (!m.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+        else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    m.__nxModalKey = onKey;
+    document.addEventListener('keydown', onKey, true);
+  }
+
+  function onClose(m) {
+    if (!openState.get(m)) return;
+    openState.set(m, false);
+    if (m.__nxModalKey) { document.removeEventListener('keydown', m.__nxModalKey, true); m.__nxModalKey = null; }
+    try { if (lastFocus && lastFocus.focus && document.contains(lastFocus)) lastFocus.focus(); } catch (e) {}
+  }
+
+  const scan = () => document.querySelectorAll('.modal-overlay').forEach(m => (isOpen(m) ? onOpen(m) : onClose(m)));
+  const mo = new MutationObserver(scan);
+  document.querySelectorAll('.modal-overlay').forEach(m => mo.observe(m, { attributes: true, attributeFilter: ['class', 'style'] }));
+  scan();
+})();
+
+/* =========================================================================
+ * Shared form validation
+ * Usage:
+ *   const v = validateForm([
+ *     { id: 'bill-vendor', label: 'Vendor name', required: true, min: 2 },
+ *     { id: 'bill-amount', label: 'Amount', required: true, type: 'number', gt: 0 },
+ *     { id: 'login-email', label: 'Email', required: true, type: 'email' },
+ *   ]);
+ *   if (!v.ok) return;              // inline errors + summary toast already shown
+ * ========================================================================= */
+(function injectValidationStyles() {
+  if (document.getElementById('nexus-validation-styles')) return;
+  const st = document.createElement('style');
+  st.id = 'nexus-validation-styles';
+  st.textContent = `
+    .field-invalid { border-color:#f43f5e !important; box-shadow:0 0 0 2px rgba(244,63,94,.15) !important; }
+    .field-error-msg { color:#f43f5e; font-size:.72rem; font-weight:600; margin-top:4px; display:block; line-height:1.3; }
+  `;
+  document.head.appendChild(st);
+})();
+
+function clearFieldError(el) {
+  if (!el) return;
+  el.classList.remove('field-invalid');
+  const sib = el.parentElement ? el.parentElement.querySelector(':scope > .field-error-msg') : null;
+  if (sib) sib.remove();
+  if (el.dataset) delete el.dataset.errorBound;
+}
+
+function setFieldError(el, msg) {
+  if (!el) return;
+  el.classList.add('field-invalid');
+  let holder = el.parentElement;
+  if (holder && !holder.querySelector(':scope > .field-error-msg')) {
+    const span = document.createElement('span');
+    span.className = 'field-error-msg';
+    span.textContent = msg;
+    holder.appendChild(span);
+  } else if (holder) {
+    holder.querySelector(':scope > .field-error-msg').textContent = msg;
+  }
+  if (!el.dataset.errorBound) {
+    el.dataset.errorBound = '1';
+    const clear = () => clearFieldError(el);
+    el.addEventListener('input', clear, { once: true });
+    el.addEventListener('change', clear, { once: true });
+  }
+}
+
+function validateForm(specs) {
+  const errors = [];
+  for (const s of specs) {
+    const el = s.el || (s.id ? document.getElementById(s.id) : null);
+    if (!el) continue;
+    clearFieldError(el);
+    const raw = (el.type === 'checkbox') ? el.checked : (el.value != null ? String(el.value).trim() : '');
+    const label = s.label || s.id || 'This field';
+    let err = '';
+
+    if (s.required && (raw === '' || raw === false)) {
+      err = `${label} is required.`;
+    } else if (raw !== '' && raw !== false) {
+      if (s.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
+        err = `Enter a valid email address.`;
+      } else if (s.type === 'number' || s.gt != null || s.gte != null || s.lte != null) {
+        const n = parseFloat(raw);
+        if (isNaN(n)) err = `${label} must be a number.`;
+        else if (s.gt != null && n <= s.gt) err = `${label} must be greater than ${s.gt}.`;
+        else if (s.gte != null && n < s.gte) err = `${label} must be at least ${s.gte}.`;
+        else if (s.lte != null && n > s.lte) err = `${label} must be ${s.lte} or less.`;
+      }
+      if (!err && s.min && raw.length < s.min) err = `${label} must be at least ${s.min} characters.`;
+      if (!err && s.max && raw.length > s.max) err = `${label} must be ${s.max} characters or fewer.`;
+      if (!err && s.pattern && !s.pattern.test(raw)) err = s.patternMsg || `${label} is not valid.`;
+      if (!err && typeof s.custom === 'function') err = s.custom(raw, el) || '';
+    }
+
+    if (err) {
+      setFieldError(el, err);
+      errors.push(err);
+    }
+  }
+
+  if (errors.length > 0) {
+    const first = document.querySelector('.field-invalid');
+    if (first) { try { first.focus({ preventScroll: false }); } catch (e) { first.focus(); } }
+    showToast(errors.length === 1 ? errors[0] : `Please fix ${errors.length} fields: ${errors[0]}`, 'error');
+  }
+  return { ok: errors.length === 0, errors };
+}
+window.validateForm = validateForm;
+
 // Password Visibility Toggles
 document.querySelectorAll('.toggle-password-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -204,6 +444,14 @@ if (window.location.search) {
 }
 
 // Auth Submissions
+function showLoginError(msg) {
+  const m = msg || 'Incorrect email or password. Please enter valid credentials.';
+  // Toast only — no native popup, no inline field messages.
+  showToast(m, 'error');
+  const pwEl = document.getElementById('login-password');
+  if (pwEl) { pwEl.value = ''; try { pwEl.focus(); } catch (e) {} }
+}
+
 async function handleUserLogin(e) {
   if (e) e.preventDefault();
 
@@ -212,53 +460,75 @@ async function handleUserLogin(e) {
   const rememberEl = document.getElementById('remember-me');
   const submitBtn = document.getElementById('login-submit-btn');
 
-  const email = (emailEl && emailEl.value.trim()) ? emailEl.value.trim() : 'admin@gmail.com';
+  const email = (emailEl && emailEl.value.trim()) || '';
   const password = passwordEl ? passwordEl.value : '';
   const remember = rememberEl ? rememberEl.checked : true;
 
+  // Gate: require a valid email + a password — popup only, no inline errors.
+  if (!email || !password) {
+    showLoginError('Please enter your email and password.');
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showLoginError('Please enter a valid email address.');
+    return;
+  }
+
   if (submitBtn) setButtonLoading(submitBtn, true);
+  // Email of the account that last authenticated against the server ON THIS DEVICE.
+  const lastAuthEmail = localStorage.getItem('nexus_last_auth_email') || '';
+  localStorage.setItem('nexus_user_email', email);
 
-  // Save last logged in user email for offline session restoration
-  if (email) localStorage.setItem('nexus_user_email', email);
-
-  // Instant Offline Login if Navigator is Offline
+  // Offline: allow a local session only for a device that has signed in before
+  // with this exact email (so it is not a blank/guess login).
   if (!navigator.onLine) {
-    const mockToken = 'jwt_token_offline_' + Date.now();
-    tokenStorage.set(mockToken, remember);
-    const nameRaw = (email.split('@')[0] || 'Admin');
+    if (!lastAuthEmail || lastAuthEmail.toLowerCase() !== email.toLowerCase()) {
+      showToast('You are offline. Connect to the internet to sign in for the first time on this device.', 'error');
+      if (submitBtn) setButtonLoading(submitBtn, false);
+      return;
+    }
+    const nameRaw = email.split('@')[0] || 'User';
     const name = nameRaw.charAt(0).toUpperCase() + nameRaw.slice(1);
-    appData.user = { id: 'usr_offline', name, email: email || 'admin@gmail.com' };
+    tokenStorage.set('jwt_token_offline_' + Date.now(), remember);
+    appData.user = { id: 'usr_offline', name, email };
     localStorage.setItem('nexus_auth_user', JSON.stringify(appData.user));
-    showToast('Signed in offline mode successfully!', 'info');
+    showToast('Signed in (offline mode).', 'info');
     await enterWorkspace();
     if (submitBtn) setButtonLoading(submitBtn, false);
     return;
   }
 
   try {
-    const res = await api.login({ email: email || 'admin@gmail.com', password: password || '123456' });
+    const res = await api.login({ email, password });
     if (res && res.token) {
       tokenStorage.set(res.token, remember);
-      appData.user = res.user || { name: (email || 'Admin').split('@')[0], email: email || 'admin@gmail.com' };
+      appData.user = res.user || { name: email.split('@')[0], email };
       localStorage.setItem('nexus_auth_user', JSON.stringify(appData.user));
+      localStorage.setItem('nexus_last_auth_email', email);
       showToast('Signed in successfully!', 'success');
       await enterWorkspace();
     } else {
-      throw new Error(res.message || 'Login failed');
+      showLoginError((res && res.message) || 'Incorrect email or password. Please enter valid credentials.');
     }
   } catch (err) {
+    // The server answered and rejected the credentials → do NOT sign in.
     if (err.status && err.status >= 400 && err.status < 500) {
-      showToast(err.message || 'Invalid email or password.', 'error');
+      showLoginError(err.message || 'Incorrect email or password. Please enter valid credentials.');
       return;
     }
+    // Genuine connectivity failure only: fall back to a local session for a
+    // device that has authenticated with this email before.
     console.warn('Login connection fallback:', err);
-    const mockToken = 'jwt_token_' + Date.now();
-    tokenStorage.set(mockToken, remember);
-    const nameRaw = (email || 'Admin').split('@')[0] || 'Admin';
+    if (!lastAuthEmail || lastAuthEmail.toLowerCase() !== email.toLowerCase()) {
+      showToast('Cannot reach the server. Check your connection and try again.', 'error');
+      return;
+    }
+    const nameRaw = email.split('@')[0] || 'User';
     const name = nameRaw.charAt(0).toUpperCase() + nameRaw.slice(1);
-    appData.user = { id: 'usr_local', name, email: email || 'admin@gmail.com' };
+    tokenStorage.set('jwt_token_offline_' + Date.now(), remember);
+    appData.user = { id: 'usr_offline', name, email };
     localStorage.setItem('nexus_auth_user', JSON.stringify(appData.user));
-    showToast('Signed in successfully!', 'success');
+    showToast('Signed in (offline mode — server unreachable).', 'info');
     await enterWorkspace();
   } finally {
     if (submitBtn) setButtonLoading(submitBtn, false);
@@ -273,14 +543,15 @@ async function handleUserRegister(e) {
   const passwordEl = document.getElementById('signup-password');
   const submitBtn = document.getElementById('signup-submit-btn');
 
-  const name = nameEl ? nameEl.value.trim() : '';
-  const email = emailEl ? emailEl.value.trim() : '';
-  const password = passwordEl ? passwordEl.value : '';
+  if (!validateForm([
+    { id: 'signup-name', label: 'Full name', required: true, min: 2 },
+    { id: 'signup-email', label: 'Email', required: true, type: 'email' },
+    { id: 'signup-password', label: 'Password', required: true, min: 8 }
+  ]).ok) return;
 
-  if (!name || !email || !password) {
-    showToast('Please fill in all fields to sign up.', 'error');
-    return;
-  }
+  const name = nameEl.value.trim();
+  const email = emailEl.value.trim();
+  const password = passwordEl ? passwordEl.value : '';
 
   if (submitBtn) setButtonLoading(submitBtn, true);
 
@@ -290,6 +561,8 @@ async function handleUserRegister(e) {
       tokenStorage.set(res.token, true);
       appData.user = res.user || { name, email };
       localStorage.setItem('nexus_auth_user', JSON.stringify(appData.user));
+      localStorage.setItem('nexus_last_auth_email', email);
+      localStorage.setItem('nexus_user_email', email);
       showToast('Account created & signed in successfully!', 'success');
       await enterWorkspace();
     } else {
@@ -380,26 +653,33 @@ if (tabLoginBtn && tabSignupBtn) {
 });
 
 // Forgot Password Modal
-forgotLink.addEventListener('click', (e) => { e.preventDefault(); forgotModal.classList.remove('hidden'); });
-closeModalBtn.addEventListener('click', () => forgotModal.classList.add('hidden'));
+if (forgotLink && forgotModal) {
+  forgotLink.addEventListener('click', (e) => { e.preventDefault(); forgotModal.classList.remove('hidden'); });
+}
+if (closeModalBtn && forgotModal) {
+  closeModalBtn.addEventListener('click', () => forgotModal.classList.add('hidden'));
+}
 
-forgotForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const email = document.getElementById('reset-email').value;
-  const submitBtn = document.getElementById('reset-submit-btn');
+if (forgotForm && forgotModal) {
+  forgotForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const emailEl = document.getElementById('reset-email');
+    const email = emailEl ? emailEl.value : '';
+    const submitBtn = document.getElementById('reset-submit-btn');
 
-  setButtonLoading(submitBtn, true);
+    if (submitBtn) setButtonLoading(submitBtn, true);
 
-  try {
-    const res = await api.forgotPassword(email);
-    showToast(res.message, 'success');
-    forgotModal.classList.add('hidden');
-  } catch (err) {
-    showToast(err.message || 'Reset request failed.', 'error');
-  } finally {
-    setButtonLoading(submitBtn, false);
-  }
-});
+    try {
+      const res = await api.forgotPassword(email);
+      showToast(res.message, 'success');
+      forgotModal.classList.add('hidden');
+    } catch (err) {
+      showToast(err.message || 'Reset request failed.', 'error');
+    } finally {
+      if (submitBtn) setButtonLoading(submitBtn, false);
+    }
+  });
+}
 
 // ================= SAAS DASHBOARD LOGIC =================
 
@@ -414,7 +694,7 @@ function initPaperSizeCards() {
 
     if (size === currentSize) {
       card.style.border = '2px solid var(--primary-accent)';
-      card.style.background = 'rgba(124, 58, 237, 0.05)';
+      card.style.background = 'color-mix(in srgb, var(--primary-accent) 5%, transparent)';
       if (badge) badge.style.display = 'flex';
     } else {
       card.style.border = '1px solid var(--border-light)';
@@ -604,11 +884,18 @@ async function enterWorkspace() {
       }
 
       initPaperSizeCards();
+      initPrinterSettings();
 
       const saveSettingsBtn = document.getElementById('save-settings-btn');
       if (saveSettingsBtn && !saveSettingsBtn.dataset.bound) {
         saveSettingsBtn.dataset.bound = 'true';
         saveSettingsBtn.addEventListener('click', () => {
+          if (!validateForm([
+            { id: 'settings-name-input', label: 'Name', required: true, min: 2 },
+            { id: 'settings-email-input', label: 'Email', type: 'email' },
+            { id: 'settings-address-input', label: 'Store address', required: true, min: 5 },
+            { id: 'settings-gst-input', label: 'GST rate', required: true, type: 'number', gte: 0, lte: 100 }
+          ]).ok) return;
           const nameVal = document.getElementById('settings-name-input')?.value || 'Admin';
           const addrVal = document.getElementById('settings-address-input')?.value || '';
           const gstVal = document.getElementById('settings-gst-input')?.value || '18';
@@ -639,16 +926,22 @@ async function enterWorkspace() {
       window.__hasBoundSocketListeners = true;
 
       subscribeToRealtimeEvent('device:registered', async (data) => {
-        showToast(`💻 Device "${data.device?.deviceName || 'New Desktop'}" connected!`, 'info');
+        showToast(`Device "${data.device?.deviceName || 'New Desktop'}" connected!`, 'info');
         await renderRegisteredDevices();
       });
 
-      subscribeToRealtimeEvent('device:revoked', async () => {
+      subscribeToRealtimeEvent('device:revoked', async (data) => {
+        const myDeviceId = localStorage.getItem('nexus_device_id');
+        if (data && data.deviceId && myDeviceId && String(data.deviceId) === String(myDeviceId)) {
+          showToast('This device was disconnected from the account. Signing you out…', 'error');
+          setTimeout(() => handleUserLogout(false), 1500);
+          return;
+        }
         await renderRegisteredDevices();
       });
 
       subscribeToRealtimeEvent('invoice:created', async (data) => {
-        showToast(`⚡ Real-Time: New Invoice #${data.invoice?.id || ''} created!`, 'success');
+        showToast(`Real-Time: New Invoice #${data.invoice?.id || ''} created!`, 'success');
         if (data.invoice && data.invoice.id) {
           if (!appData.invoices) appData.invoices = [];
           const exists = appData.invoices.some(i => (i.id || '').toLowerCase() === data.invoice.id.toLowerCase());
@@ -668,7 +961,7 @@ async function enterWorkspace() {
 
 
       subscribeToRealtimeEvent('product:created', async (data) => {
-        showToast(`⚡ Real-Time: Product "${data.product?.name || ''}" added!`, 'info');
+        showToast(`Real-Time: Product "${data.product?.name || ''}" added!`, 'info');
         if (data.product && data.product.name) {
           if (!appData.products) appData.products = [];
           const exists = appData.products.some(p => (p.name || '').toLowerCase() === data.product.name.toLowerCase());
@@ -686,7 +979,7 @@ async function enterWorkspace() {
       });
 
       subscribeToRealtimeEvent('product:updated', async (data) => {
-        showToast(`⚡ Real-Time: Product "${data.product?.name || ''}" updated!`, 'info');
+        showToast(`Real-Time: Product "${data.product?.name || ''}" updated!`, 'info');
         await loadBusinessData();
         renderProductsTable();
         if (typeof renderPosGrid === 'function') renderPosGrid();
@@ -694,7 +987,7 @@ async function enterWorkspace() {
       });
 
       subscribeToRealtimeEvent('stock:updated', async (data) => {
-        showToast(`⚡ Real-Time: Product stock updated!`, 'info');
+        showToast(`Real-Time: Product stock updated!`, 'info');
         await loadBusinessData();
         renderProductsTable();
         if (typeof renderPosGrid === 'function') renderPosGrid();
@@ -702,7 +995,7 @@ async function enterWorkspace() {
       });
 
       subscribeToRealtimeEvent('customer:created', async (data) => {
-        showToast(`⚡ Real-Time: New customer "${data.client?.name || ''}" added!`, 'info');
+        showToast(`Real-Time: New customer "${data.client?.name || ''}" added!`, 'info');
         if (data.client && data.client.name) {
           if (!appData.clients) appData.clients = [];
           const exists = appData.clients.some(c => (c.name || '').toLowerCase() === data.client.name.toLowerCase());
@@ -719,7 +1012,7 @@ async function enterWorkspace() {
       });
 
       subscribeToRealtimeEvent('customer:updated', async (data) => {
-        showToast(`⚡ Real-Time: Customer data updated!`, 'info');
+        showToast(`Real-Time: Customer data updated!`, 'info');
         await loadBusinessData();
         renderClientsGrid(currentCustomerSelectedDate);
         renderOverview();
@@ -738,7 +1031,7 @@ async function enterWorkspace() {
       });
 
       subscribeToRealtimeEvent('category:created', async (data) => {
-        showToast(`⚡ Real-Time: New category created!`, 'info');
+        showToast(`Real-Time: New category created!`, 'info');
         await loadBusinessData();
       });
 
@@ -747,7 +1040,7 @@ async function enterWorkspace() {
       });
 
       subscribeToRealtimeEvent('bill:created', async (data) => {
-        showToast(`⚡ Real-Time: New bill recorded!`, 'info');
+        showToast(`Real-Time: New bill recorded!`, 'info');
         await loadBusinessData();
       });
 
@@ -934,7 +1227,7 @@ async function processOfflineSyncQueue() {
   isProcessingSyncQueue = false;
 
   if (syncedCount > 0) {
-    showToast(`⚡ Network connected! ${syncedCount} offline item(s) automatically synced to MongoDB database.`, 'success');
+    showToast(`Network connected! ${syncedCount} offline item(s) automatically synced to MongoDB database.`, 'success');
     await loadBusinessData();
   }
 }
@@ -1603,6 +1896,16 @@ function switchView(viewKey) {
     }
   });
 
+  // Live printer discovery only runs while Settings is open.
+  if (viewKey === 'settings') {
+    if (typeof initPrinterSettings === 'function') initPrinterSettings();
+    if (typeof activateSettingsTab === 'function') {
+      activateSettingsTab(localStorage.getItem('nexus_settings_tab') || 'profile');
+    }
+  } else if (typeof stopPrinterPolling === 'function') {
+    stopPrinterPolling();
+  }
+
   const meta = VIEW_META[viewKey] || VIEW_META.overview;
   headerTitle.textContent = meta.title;
   headerSubtitle.textContent = meta.subtitle || '';
@@ -1794,17 +2097,11 @@ function getInvoiceSubCategory(inv) {
   // Populate Overview Invoices Table (Top 4)
   const tbody = document.getElementById('overview-invoices-tbody');
   tbody.innerHTML = appData.invoices.slice(0, 4).map(inv => {
-    const subCat = getInvoiceSubCategory(inv);
     return `
       <tr>
-        <td class="font-mono nowrap-cell"><strong>${normalizeInvoiceId(inv)}</strong></td>
-        <td class="nowrap-cell">
-          <span class="status-tag clickable-badge view-category-related-btn" data-category-name="${subCat}" style="background: rgba(124, 58, 237, 0.1); color: var(--primary-accent);" title="Click to view sub-category items">
-            ${subCat}
-          </span>
-        </td>
-        <td class="nowrap-cell">${formatDisplayDate(inv.issueDate || inv.date)}</td>
-        <td class="nowrap-cell text-right"><strong>${formatCurrency(inv.amount)}</strong></td>
+        <td class="font-mono nowrap-cell" data-label="Invoice ID"><strong>${normalizeInvoiceId(inv)}</strong></td>
+        <td class="nowrap-cell" data-label="Date">${formatDisplayDate(inv.issueDate || inv.date)}</td>
+        <td class="nowrap-cell text-right" data-label="Amount"><strong>${formatCurrency(inv.amount)}</strong></td>
       </tr>
     `;
   }).join('');
@@ -1843,13 +2140,13 @@ function getInvoiceSubCategory(inv) {
 
         return `
           <tr onclick="openLowStockInventoryView()" style="cursor: pointer;" title="Click to view Low Stock Inventory">
-            <td><strong>${prd.name}</strong></td>
-            <td>
-              <span class="status-tag clickable-badge view-category-related-btn" data-category-name="${prd.category || 'General'}" style="background: rgba(124, 58, 237, 0.1); color: var(--primary-accent); font-size: 0.75rem;" title="Click to view category">
+            <td data-label="Product"><strong>${prd.name}</strong></td>
+            <td data-label="Category">
+              <span class="status-tag clickable-badge view-category-related-btn" data-category-name="${prd.category || 'General'}" style="background: color-mix(in srgb, var(--primary-accent) 10%, transparent); color: var(--primary-accent); font-size: 0.75rem;" title="Click to view category">
                 ${prd.category || 'General'}
               </span>
             </td>
-            <td class="nowrap-cell text-center">
+            <td class="nowrap-cell text-center" data-label="Stock">
               <span class="status-pill ${statusClass}" style="font-size: 0.75rem; padding: 2px 8px;">
                 ${count} units
               </span>
@@ -1939,14 +2236,14 @@ function renderInvoicesTable(filterStatus = 'all', searchQuery = '') {
     const subCat = getInvoiceSubCategory(inv);
     return `
       <tr>
-        <td class="font-mono nowrap-cell"><strong>${normalizeInvoiceId(inv)}</strong></td>
-        <td class="nowrap-cell">
-          <span class="status-tag clickable-badge view-category-related-btn" data-category-name="${subCat}" style="background: rgba(124, 58, 237, 0.1); color: var(--primary-accent);" title="Click to view sub-category items">
+        <td class="font-mono nowrap-cell" data-label="Invoice ID"><strong>${normalizeInvoiceId(inv)}</strong></td>
+        <td class="nowrap-cell" data-label="Sub-Category">
+          <span class="status-tag clickable-badge view-category-related-btn" data-category-name="${subCat}" style="background: color-mix(in srgb, var(--primary-accent) 10%, transparent); color: var(--primary-accent);" title="Click to view sub-category items">
             ${subCat}
           </span>
         </td>
-        <td class="nowrap-cell">${formatDisplayDate(inv.issueDate || inv.date)}</td>
-        <td class="nowrap-cell text-right"><strong>${formatCurrency(inv.amount)}</strong></td>
+        <td class="nowrap-cell" data-label="Date">${formatDisplayDate(inv.issueDate || inv.date)}</td>
+        <td class="nowrap-cell text-right" data-label="Amount"><strong>${formatCurrency(inv.amount)}</strong></td>
       </tr>
     `;
   }).join('');
@@ -2001,7 +2298,7 @@ function renderBillsTable(searchQuery = '', filterDateStr = null) {
       <tr>
         <td class="font-mono nowrap-cell"><strong>${bill.id}</strong></td>
         <td class="nowrap-cell">
-          <span class="status-tag clickable-badge view-category-related-btn" data-category-name="${bill.category}" style="background: rgba(124, 58, 237, 0.1); color: var(--primary-accent);" title="Click to view category items">
+          <span class="status-tag clickable-badge view-category-related-btn" data-category-name="${bill.category}" style="background: color-mix(in srgb, var(--primary-accent) 10%, transparent); color: var(--primary-accent);" title="Click to view category items">
             ${bill.category}
           </span>
         </td>
@@ -2055,10 +2352,21 @@ function renderProductsTable(filterCategory = 'all', searchQuery = '') {
     );
   }
 
+  const countEl = document.getElementById('prd-count-num');
+  if (countEl) countEl.textContent = list.length;
+
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-subtle); padding: 32px;">No products found matching criteria.</td></tr>`;
+    const searching = !!searchQuery || (filterCategory && filterCategory !== 'all');
+    tbody.innerHTML = `<tr><td colspan="6"><div class="prd-empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 7 12 3 4 7v10l8 4 8-4V7Z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>
+      <h4>${searching ? 'No products match' : 'No products yet'}</h4>
+      <p>${searching ? 'Try a different search or category filter.' : 'Add your first product to start building the catalog.'}</p>
+      ${searching ? '' : '<button type="button" class="primary-action-btn sm" onclick="openProductModal()">Add Product</button>'}
+    </div></td></tr>`;
     return;
   }
+
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   tbody.innerHTML = list.map((prd, idx) => {
     const colorVal = prd.color || 'Navy Blue';
@@ -2067,87 +2375,91 @@ function renderProductsTable(filterCategory = 'all', searchQuery = '') {
       rawSize = ['M', 'L', 'XL', 'S', 'XXL'][idx % 5];
       prd.size = rawSize;
     }
-    const sizeVal = rawSize;
-    const detailsSubtext = `<div style="font-size: 0.82rem; color: #64748b; margin-top: 3px; font-weight: 500;">${colorVal} &bull; Size ${sizeVal}</div>`;
+    const count = prd.count !== undefined ? Number(prd.count) : 50;
+    const stockCls = count <= 0 ? 'out' : (count < 10 ? 'low' : 'ok');
+    const stockLabel = count <= 0 ? 'Out of stock' : (count < 10 ? `Low · ${count}` : `${count} units`);
 
     return `
     <tr>
-      <td class="font-mono nowrap-cell"><strong>${prd.id}</strong></td>
-      <td>
-        <strong style="font-size: 0.95rem; color: #1e293b;">${prd.name}</strong>
-        ${detailsSubtext}
+      <td data-label="SKU"><span class="prd-sku">${esc(prd.id)}</span></td>
+      <td data-label="Product">
+        <div class="prd-name">${esc(prd.name)}</div>
+        <div class="prd-variant">${esc(colorVal)} &bull; Size ${esc(rawSize)}</div>
       </td>
-      <td>
-        <span class="status-tag clickable-badge view-category-related-btn" data-category-name="${prd.category}" style="background: rgba(124, 58, 237, 0.1); color: var(--primary-accent);" title="Click to view category items">
-          ${prd.category}
+      <td data-label="Category">
+        <span class="prd-cat-link view-category-related-btn" data-category-name="${esc(prd.category)}" role="button" tabindex="0" title="View items in ${esc(prd.category)}">${esc(prd.category)}</span>
+      </td>
+      <td data-label="Unit Price" class="text-right"><span class="prd-price">${formatCurrency(prd.price)}</span></td>
+      <td data-label="Stock"><span class="prd-stock ${stockCls}"><span class="dot"></span>${esc(stockLabel)}</span></td>
+      <td data-label="Actions" class="text-right">
+        <span class="prd-actions">
+          <button type="button" class="prd-icon-btn edit-product-btn" data-id="${esc(prd.id)}" data-name="${esc(prd.name)}" aria-label="Edit ${esc(prd.name)}" title="Edit product">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </button>
+          <button type="button" class="prd-icon-btn danger remove-product-btn" data-id="${esc(prd.id)}" data-name="${esc(prd.name)}" aria-label="Delete ${esc(prd.name)}" title="Delete product">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
         </span>
-      </td>
-      <td class="nowrap-cell text-right"><strong>${formatCurrency(prd.price)}</strong></td>
-      <td class="nowrap-cell text-center"><strong>${prd.count !== undefined ? prd.count : 50} units</strong></td>
-      <td class="nowrap-cell text-right">
-        <button type="button" class="edit-product-btn" data-id="${prd.id}" data-name="${prd.name}" style="background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease; margin-right: 6px;" title="Edit Product">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-          </svg>
-        </button>
-        <button type="button" class="remove-product-btn" data-id="${prd.id}" data-name="${prd.name}" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="Remove Product">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path>
-          </svg>
-        </button>
       </td>
     </tr>
   `;
   }).join('');
 
-  // Bind Edit Product Buttons
-  tbody.querySelectorAll('.edit-product-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const prdId = btn.getAttribute('data-id');
-      editProduct(prdId);
-    });
-  });
-
-  // Bind Delete Product Buttons
-  tbody.querySelectorAll('.remove-product-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const prdId = btn.getAttribute('data-id');
-      const prdName = btn.getAttribute('data-name');
-
-      if (confirm(`Are you sure you want to delete product "${prdName}"?`)) {
-        markEntityAsDeleted('PRODUCT', prdId, prdName);
-        appData.products = sortProductsBySku((appData.products || []).filter(p => p.id !== prdId && p.name !== prdName));
-
-        try {
-          localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
-        } catch (err) {}
-
-        const deletePayload = { id: prdId, name: prdName };
-
-        if (!navigator.onLine) {
-          enqueueOfflineSync('DELETE_PRODUCT', deletePayload);
-          showToast(`Product "${prdName}" deleted locally! Will sync deletion when connected.`, 'info');
-        } else {
-          try {
-            await api.deleteProduct(prdId, prdName);
-            showToast(`Product "${prdName}" deleted successfully!`, 'success');
-          } catch (err) {
-            console.warn('api.deleteProduct error, queuing sync:', err);
-            enqueueOfflineSync('DELETE_PRODUCT', deletePayload);
-            showToast(`Product "${prdName}" deleted locally! Will sync deletion when connected.`, 'info');
-          }
-        }
-
-        renderProductsTable(filterCategory, searchQuery);
-        renderInventoryView();
-        updateInvoiceProductSelectOptions();
+  // Row actions via one delegated listener (tbody node persists across re-renders)
+  if (!tbody.dataset.delegated) {
+    tbody.dataset.delegated = '1';
+    tbody.addEventListener('click', (e) => {
+      const editBtn = e.target.closest('.edit-product-btn');
+      if (editBtn) {
+        e.stopPropagation();
+        editProduct(editBtn.getAttribute('data-id'));
+        return;
+      }
+      const delBtn = e.target.closest('.remove-product-btn');
+      if (delBtn) {
+        e.stopPropagation();
+        handleProductDelete(delBtn.getAttribute('data-id'), delBtn.getAttribute('data-name'));
       }
     });
-  });
+  }
+}
+
+async function handleProductDelete(prdId, prdName) {
+  if (!(await nxConfirm(`Delete "${prdName}"? It will be removed from the catalog and inventory.`, { title: 'Delete product', confirmLabel: 'Delete', danger: true }))) return;
+
+  markEntityAsDeleted('PRODUCT', prdId, prdName);
+  appData.products = sortProductsBySku((appData.products || []).filter(p => p.id !== prdId && p.name !== prdName));
+
+  try {
+    localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
+  } catch (err) {}
+
+  const deletePayload = { id: prdId, name: prdName };
+
+  if (!navigator.onLine) {
+    enqueueOfflineSync('DELETE_PRODUCT', deletePayload);
+    showToast(`Product "${prdName}" deleted locally! Will sync deletion when connected.`, 'info');
+  } else {
+    try {
+      await api.deleteProduct(prdId, prdName);
+      showToast(`Product "${prdName}" deleted successfully!`, 'success');
+    } catch (err) {
+      console.warn('api.deleteProduct error, queuing sync:', err);
+      enqueueOfflineSync('DELETE_PRODUCT', deletePayload);
+      showToast(`Product "${prdName}" deleted locally! Will sync deletion when connected.`, 'info');
+    }
+  }
+
+  const activePrdFilter = document.querySelector('.filter-btn.active[data-prd-filter]')?.getAttribute('data-prd-filter') || 'all';
+  renderProductsTable(activePrdFilter, (typeof _prdQuery === 'function' ? _prdQuery() : ''));
+  renderInventoryView();
+  updateInvoiceProductSelectOptions();
 }
 
 // Product Category Filter Button Listeners
@@ -2221,80 +2533,130 @@ function openSizeStockModal(productId) {
   if (catBadge) catBadge.textContent = prd.category || 'General';
   if (nameEl) nameEl.textContent = prd.name;
 
-  function renderGrid() {
-    const breakdown = getProductSizeStockBreakdown(prd);
-    let currentTotal = 0;
+  // ---- Per-size stock editor. Reads/writes prd.sizeStock ({ "M": 12, ... }); ----
+  // count is always the sum. Every change syncs via api.updateProductStock.
+  const SIZE_GROUP = (typeof getCategorySizeGroup === 'function')
+    ? getCategorySizeGroup(prd.name, prd.subCategory, prd.category) : 'tops';
+  const GROUP_KEY = (SIZE_GROUP === 'bottoms' || SIZE_GROUP === 'footwear') ? SIZE_GROUP : 'tops';
+  const SIZE_OPTIONS = (typeof SIZE_SETS === 'object' && SIZE_SETS[GROUP_KEY]) ? SIZE_SETS[GROUP_KEY].map(s => s.value) : ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
 
-    const cardsHtml = Object.keys(breakdown).map(sizeKey => {
-      const szCount = breakdown[sizeKey] || 0;
-      currentTotal += szCount;
+  // Seed from real data: existing sizeStock, else one row = { productSize: count }.
+  let sizeStock = (prd.sizeStock && typeof prd.sizeStock === 'object' && Object.keys(prd.sizeStock).length)
+    ? Object.assign({}, prd.sizeStock)
+    : { [prd.size || SIZE_OPTIONS[0]]: (typeof prd.count === 'number' ? prd.count : parseInt(prd.count || '0', 10)) };
 
-      let pillBg = '#f0fdf4';
-      let pillColor = '#16a34a';
-      let pillText = 'In Stock';
-      if (szCount <= 0) {
-        pillBg = '#fef2f2';
-        pillColor = '#dc2626';
-        pillText = 'Out of Stock';
-      } else if (szCount <= 5) {
-        pillBg = '#fffbeb';
-        pillColor = '#d97706';
-        pillText = 'Low Stock';
+  const total = () => Object.values(sizeStock).reduce((a, b) => a + (parseInt(b, 10) || 0), 0);
+
+  let saveTimer = null;
+  async function persist(immediate) {
+    clearTimeout(saveTimer);
+    const run = async () => {
+      const t = total();
+      prd.sizeStock = Object.assign({}, sizeStock);
+      prd.count = t;
+      prd.stock = t <= 0 ? 'Out of Stock' : (t <= 20 ? 'Low Stock' : 'In Stock');
+      const local = (appData.products || []).find(p => p.id === productId);
+      if (local) { local.sizeStock = prd.sizeStock; local.count = t; local.stock = prd.stock; }
+      try { localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products || [])); } catch (e) {}
+      const payload = { id: productId, count: t, stock: prd.stock, sizeStock: prd.sizeStock };
+      if (!navigator.onLine) {
+        enqueueOfflineSync('UPDATE_PRODUCT_STOCK', payload);
+      } else {
+        try { await api.updateProductStock(productId, payload); }
+        catch (e) { enqueueOfflineSync('UPDATE_PRODUCT_STOCK', payload); }
       }
-
-      return `
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-weight: 800; font-size: 0.95rem; color: #1e293b;">Size ${sizeKey}</span>
-            <span style="background: ${pillBg}; color: ${pillColor}; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 0.72rem;">${pillText}</span>
-          </div>
-
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
-            <div style="font-size: 1.2rem; font-weight: 800; color: #0f172a; font-family: monospace;">${szCount} <span style="font-size: 0.75rem; color: #64748b; font-weight: 500;">units</span></div>
-            
-            <div style="display: flex; align-items: center; gap: 4px;">
-              <button type="button" class="adjust-size-stock-btn" data-sku="${prd.id}" data-size="${sizeKey}" data-change="-1" style="width: 28px; height: 28px; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s ease;">-</button>
-              <button type="button" class="adjust-size-stock-btn" data-sku="${prd.id}" data-size="${sizeKey}" data-change="1" style="width: 28px; height: 28px; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s ease;">+</button>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    prd.count = currentTotal;
-    prd.stock = currentTotal <= 0 ? 'Out of Stock' : (currentTotal <= 20 ? 'Low Stock' : 'In Stock');
-    if (totalUnitsEl) totalUnitsEl.textContent = `${currentTotal} units`;
-    if (gridContainer) gridContainer.innerHTML = cardsHtml;
-
-    try {
-      localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
-    } catch (e) {}
+      renderInventoryView();
+      renderProductsTable(document.querySelector('.filter-btn.active[data-prd-filter]')?.getAttribute('data-prd-filter') || 'all', document.getElementById('prd-page-search')?.value || '');
+    };
+    if (immediate) return run();
+    saveTimer = setTimeout(run, 450);
   }
 
-  renderGrid();
+  function paint() {
+    const t = total();
+    const tone = t <= 0 ? 'var(--rose)' : (t <= 20 ? 'var(--amber)' : 'var(--emerald)');
+    const label = t <= 0 ? 'Out of stock' : (t <= 20 ? 'Low stock' : 'In stock');
+    if (totalUnitsEl) totalUnitsEl.textContent = `${t} units`;
+    if (!gridContainer) return;
+    gridContainer.style.display = 'block';
+
+    const rows = Object.keys(sizeStock).map(sz => {
+      const n = parseInt(sizeStock[sz], 10) || 0;
+      const rTone = n <= 0 ? 'var(--rose)' : (n <= 5 ? 'var(--amber)' : 'var(--emerald)');
+      return `
+        <div class="ss-row" data-size="${sz}" style="display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border-light); border-radius:12px;">
+          <span style="min-width:52px; font-weight:800; color:var(--text-main);">${sz}</span>
+          <span style="width:8px;height:8px;border-radius:50%;background:${rTone};flex:none;"></span>
+          <button type="button" class="ss-sz" data-size="${sz}" data-delta="-1" aria-label="Decrease ${sz}" style="width:36px;height:36px;border-radius:9px;border:1px solid var(--input-border);background:#fff;font-weight:800;color:var(--text-main);cursor:pointer;">&minus;</button>
+          <input type="number" class="ss-sz-input" data-size="${sz}" value="${n}" min="0" aria-label="${sz} quantity" style="width:72px;height:34px;text-align:center;border:1px solid var(--input-border);border-radius:9px;font:inherit;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text-main);outline:none;" />
+          <button type="button" class="ss-sz" data-size="${sz}" data-delta="1" aria-label="Increase ${sz}" style="width:36px;height:36px;border-radius:9px;border:1px solid var(--input-border);background:#fff;font-weight:800;color:var(--text-main);cursor:pointer;">+</button>
+          <span style="flex:1"></span>
+          <button type="button" class="ss-sz-del" data-size="${sz}" aria-label="Remove ${sz}" title="Remove size" style="width:36px;height:36px;border-radius:9px;border:1px solid transparent;background:transparent;color:var(--text-subtle);cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>`;
+    }).join('');
+
+    const remaining = SIZE_OPTIONS.filter(s => !(s in sizeStock));
+    const addRow = remaining.length ? `
+      <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
+        <select id="ss-add-size" style="height:36px;padding:0 10px;border:1px solid var(--input-border);border-radius:9px;font:inherit;font-size:0.85rem;color:var(--text-main);background:#fff;cursor:pointer;">
+          ${remaining.map(s => `<option value="${s}">${s}</option>`).join('')}
+        </select>
+        <button type="button" id="ss-add-btn" style="height:36px;padding:0 14px;border-radius:9px;border:1px dashed color-mix(in srgb, var(--primary-accent) 45%, transparent);background:var(--cyan-bg);color:var(--primary-accent);font-weight:700;font-size:0.83rem;cursor:pointer;">+ Add size</button>
+      </div>` : '';
+
+    gridContainer.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:12px;">
+        <div>
+          <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--text-subtle);">Stock on hand</div>
+          <div style="font-size:1.9rem; font-weight:800; font-variant-numeric:tabular-nums; color:var(--text-main); line-height:1.1;">${t}<span style="font-size:0.9rem; font-weight:600; color:var(--text-subtle); margin-left:6px;">units</span></div>
+        </div>
+        <span style="font-size:0.82rem; font-weight:700; color:${tone};"><span style="width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;background:${tone};"></span>${label}</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">${rows}${addRow}</div>`;
+  }
+
+  paint();
 
   if (gridContainer) {
     gridContainer.onclick = (e) => {
-      const btn = e.target.closest('.adjust-size-stock-btn');
-      if (!btn) return;
-      const sz = btn.getAttribute('data-size');
-      const delta = parseInt(btn.getAttribute('data-change') || '0', 10);
-      const breakdown = getProductSizeStockBreakdown(prd);
-      if (breakdown && sz) {
-        breakdown[sz] = Math.max(0, (breakdown[sz] || 0) + delta);
-        renderGrid();
+      const step = e.target.closest('.ss-sz');
+      if (step) {
+        const sz = step.getAttribute('data-size');
+        const d = parseInt(step.getAttribute('data-delta') || '0', 10);
+        sizeStock[sz] = Math.max(0, (parseInt(sizeStock[sz], 10) || 0) + d);
+        paint(); persist(false); return;
       }
+      const del = e.target.closest('.ss-sz-del');
+      if (del) {
+        const sz = del.getAttribute('data-size');
+        if (Object.keys(sizeStock).length <= 1) { showToast('Keep at least one size.', 'info'); return; }
+        delete sizeStock[sz];
+        paint(); persist(true); return;
+      }
+      if (e.target.closest('#ss-add-btn')) {
+        const sel = document.getElementById('ss-add-size');
+        const sz = sel && sel.value;
+        if (sz && !(sz in sizeStock)) { sizeStock[sz] = 0; paint(); persist(true); }
+      }
+    };
+    gridContainer.oninput = (e) => {
+      const inp = e.target.closest('.ss-sz-input');
+      if (!inp) return;
+      const sz = inp.getAttribute('data-size');
+      sizeStock[sz] = Math.max(0, parseInt(inp.value, 10) || 0);
+      if (totalUnitsEl) totalUnitsEl.textContent = `${total()} units`;
+      persist(false);
     };
   }
 
   if (quickReloadBtn) {
+    quickReloadBtn.textContent = '+ Restock 10 / size';
     quickReloadBtn.onclick = () => {
-      const breakdown = getProductSizeStockBreakdown(prd);
-      Object.keys(breakdown).forEach(sz => {
-        breakdown[sz] = (breakdown[sz] || 0) + 10;
-      });
-      renderGrid();
-      showToast(`Restocked +10 units across all sizes for ${prd.name}!`, 'success');
+      Object.keys(sizeStock).forEach(sz => { sizeStock[sz] = (parseInt(sizeStock[sz], 10) || 0) + 10; });
+      paint(); persist(true);
+      showToast(`Restocked +10 per size for ${prd.name}.`, 'success');
     };
   }
 
@@ -2346,11 +2708,9 @@ function renderInventoryView() {
 
   // Sync Inventory Filter Tabs UI
   document.querySelectorAll('[data-inv-filter]').forEach(b => {
-    if (b.getAttribute('data-inv-filter') === currentInventoryFilter) {
-      b.classList.add('active');
-    } else {
-      b.classList.remove('active');
-    }
+    const on = b.getAttribute('data-inv-filter') === currentInventoryFilter;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
   });
 
   if (!tbody) return;
@@ -2384,42 +2744,39 @@ function renderInventoryView() {
   }
 
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-subtle); padding: 32px;">No inventory items found matching criteria.</td></tr>`;
+    const searching = !!currentInventorySearchQuery || (currentInventoryFilter && currentInventoryFilter !== 'all');
+    tbody.innerHTML = `<tr><td colspan="5"><div class="iv-empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 7 12 3 4 7v10l8 4 8-4V7Z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>
+      <h4>${searching ? 'Nothing in this view' : 'No inventory yet'}</h4>
+      <p>${searching ? 'Try a different search or stock filter.' : 'Products you add to the catalog will show here.'}</p>
+    </div></td></tr>`;
     return;
   }
 
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
   tbody.innerHTML = list.map(prd => {
     const count = typeof prd.count === 'number' ? prd.count : parseInt(prd.count || '50', 10);
-
-    let statusClass = 'in-stock';
-    let statusLabel = '● In Stock';
-
-    if (count <= 0) {
-      statusClass = 'out-stock';
-      statusLabel = '● Out of Stock';
-    } else if (count <= 20) {
-      statusClass = 'low-stock';
-      statusLabel = '▲ Low Stock';
-    }
-
-    const showReloadOption = count <= 20;
+    const cls = count <= 0 ? 'out' : (count <= 20 ? 'low' : 'ok');
+    const label = count <= 0 ? 'Out of stock' : (count <= 20 ? 'Low stock' : 'In stock');
+    const ss = (prd.sizeStock && typeof prd.sizeStock === 'object') ? prd.sizeStock : null;
+    const ssKeys = ss ? Object.keys(ss) : [];
+    const sizeChips = ssKeys.length
+      ? `<div class="iv-size-chips">${ssKeys.map(k => `<span class="iv-size-chip">${esc(k)}<b>${parseInt(ss[k], 10) || 0}</b></span>`).join('')}</div>`
+      : '';
 
     return `
-      <tr class="inventory-product-row" data-id="${prd.id}" style="cursor: pointer; transition: background 0.15s ease;" title="Click to view size-wise stock breakdown">
-        <td class="nowrap-cell"><span class="sku-badge">${prd.id}</span></td>
-        <td>
-          <div style="font-weight: 700; color: #1e293b; font-size: 0.94rem;" class="view-size-stock-trigger">${prd.name}</div>
-          <span class="category-pill" style="margin-top: 3px; display: inline-block;">${prd.category || 'General'}</span>
+      <tr class="inventory-product-row" data-id="${esc(prd.id)}" title="Edit size-wise stock">
+        <td data-label="SKU"><span class="iv-sku">${esc(prd.id)}</span></td>
+        <td data-label="Product">
+          <div class="iv-name view-size-stock-trigger">${esc(prd.name)}</div>
+          <span class="iv-cat-link view-category-related-btn" data-category-name="${esc(prd.category || 'General')}" role="button" tabindex="0" title="View category">${esc(prd.category || 'General')}</span>
         </td>
-        <td class="nowrap-cell text-center">
-          <strong style="font-size: 1rem; color: #1e293b; font-family: monospace;">${count}</strong>
-        </td>
-        <td class="nowrap-cell text-center">
-          <span class="status-pill ${statusClass}">${statusLabel}</span>
-        </td>
-        <td class="nowrap-cell text-right">
-          <button type="button" class="remove-inventory-btn" data-id="${prd.id}" data-name="${prd.name}" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="Remove Item">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <td data-label="On hand" class="text-center"><span class="iv-qty iv-status ${cls}" style="justify-content:center">${count}</span>${sizeChips}</td>
+        <td data-label="Status"><span class="iv-status ${cls}"><span class="dot"></span>${label}</span></td>
+        <td data-label="Actions" class="text-right">
+          <button type="button" class="iv-icon-btn danger remove-inventory-btn" data-id="${esc(prd.id)}" data-name="${esc(prd.name)}" aria-label="Remove ${esc(prd.name)} from inventory" title="Remove item">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <polyline points="3 6 5 6 21 6"></polyline>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path>
             </svg>
@@ -2429,49 +2786,49 @@ function renderInventoryView() {
     `;
   }).join('');
 
-  tbody.querySelectorAll('.remove-inventory-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const prdId = btn.getAttribute('data-id');
-      const prdName = btn.getAttribute('data-name');
-
-      if (confirm(`Are you sure you want to delete product "${prdName}"?`)) {
-        markEntityAsDeleted('PRODUCT', prdId, prdName);
-        appData.products = sortProductsBySku((appData.products || []).filter(p => p.id !== prdId && p.name !== prdName));
-
-        try {
-          localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
-        } catch (e) {}
-
-        const deletePayload = { id: prdId, name: prdName };
-
-        if (!navigator.onLine) {
-          enqueueOfflineSync('DELETE_PRODUCT', deletePayload);
-        } else {
-          try {
-            await api.deleteProduct(prdId, prdName);
-          } catch (e) {
-            console.warn('api.deleteProduct error, queuing sync:', e);
-            enqueueOfflineSync('DELETE_PRODUCT', deletePayload);
-          }
-        }
-
-        renderProductsTable();
-        renderInventoryView();
-        updateInvoiceProductSelectOptions();
-        showToast(`Product "${prdName}" removed from Inventory!`, 'success');
-      }
-    });
-  });
-
-  tbody.querySelectorAll('.inventory-product-row').forEach(tr => {
-    tr.addEventListener('click', (e) => {
-      if (e.target.closest('.reload-stock-btn') || e.target.closest('.remove-inventory-btn')) {
+  // Row actions via one delegated listener (tbody node persists across re-renders)
+  if (!tbody.dataset.delegated) {
+    tbody.dataset.delegated = '1';
+    tbody.addEventListener('click', (e) => {
+      const delBtn = e.target.closest('.remove-inventory-btn');
+      if (delBtn) {
+        handleInventoryRemove(delBtn.getAttribute('data-id'), delBtn.getAttribute('data-name'));
         return;
       }
-      const prdId = tr.getAttribute('data-id');
-      if (prdId) openSizeStockModal(prdId);
+      if (e.target.closest('.reload-stock-btn') || e.target.closest('.view-category-related-btn')) return;
+      const row = e.target.closest('.inventory-product-row');
+      if (row && row.getAttribute('data-id')) openSizeStockModal(row.getAttribute('data-id'));
     });
-  });
+  }
+}
+
+async function handleInventoryRemove(prdId, prdName) {
+  if (!(await nxConfirm(`Delete "${prdName}"? It will be removed from the catalog and inventory.`, { title: 'Delete product', confirmLabel: 'Delete', danger: true }))) return;
+
+  markEntityAsDeleted('PRODUCT', prdId, prdName);
+  appData.products = sortProductsBySku((appData.products || []).filter(p => p.id !== prdId && p.name !== prdName));
+
+  try {
+    localStorage.setItem('nexus_custom_products', JSON.stringify(appData.products));
+  } catch (e) {}
+
+  const deletePayload = { id: prdId, name: prdName };
+
+  if (!navigator.onLine) {
+    enqueueOfflineSync('DELETE_PRODUCT', deletePayload);
+  } else {
+    try {
+      await api.deleteProduct(prdId, prdName);
+    } catch (e) {
+      console.warn('api.deleteProduct error, queuing sync:', e);
+      enqueueOfflineSync('DELETE_PRODUCT', deletePayload);
+    }
+  }
+
+  renderProductsTable();
+  renderInventoryView();
+  updateInvoiceProductSelectOptions();
+  showToast(`Product "${prdName}" removed from Inventory!`, 'success');
 }
 
 async function handleStockStepClick(id, delta) {
@@ -2543,10 +2900,11 @@ function openLowStockInventoryView() {
 }
 window.openLowStockInventoryView = openLowStockInventoryView;
 
+const _renderInventoryViewDebounced = debounce(() => renderInventoryView(), 150);
 function handleInventorySearch() {
   const input = document.getElementById('inventory-search-input');
   currentInventorySearchQuery = input ? input.value : '';
-  renderInventoryView();
+  _renderInventoryViewDebounced();
 }
 
 function openStockAdjustModal(productId) {
@@ -2723,110 +3081,148 @@ function renderCategoriesGrid() {
     appData.categories = sortCategoriesChronologically(Array.from(uniqueMap.values()));
   }
 
-  if (!appData.categories || appData.categories.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-subtle); padding: 32px;">No categories configured.</td></tr>`;
+  const q = (document.getElementById('cg-page-search')?.value || '').toLowerCase().trim();
+  let catList = appData.categories || [];
+  if (q) {
+    catList = catList.filter(c => {
+      const subs = Array.isArray(c.subCategories) ? c.subCategories.join(' ') : '';
+      return (c.name && c.name.toLowerCase().includes(q)) || subs.toLowerCase().includes(q);
+    });
+  }
+
+  const countEl = document.getElementById('cg-count-num');
+  if (countEl) countEl.textContent = catList.length;
+
+  if (catList.length === 0) {
+    const searching = !!q;
+    tbody.innerHTML = `<tr><td colspan="4"><div class="cg-empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+      <h4>${searching ? 'No categories match' : 'No categories yet'}</h4>
+      <p>${searching ? 'Try a different search.' : 'Add a category to organise your product catalog.'}</p>
+      ${searching ? '' : '<button type="button" class="primary-action-btn sm" onclick="openCategoryModal()">Add Category</button>'}
+    </div></td></tr>`;
     return;
   }
 
-  tbody.innerHTML = appData.categories.map((cat, idx) => {
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // Live product count per category from the loaded catalog (case-insensitive).
+  const _allPrds = (typeof getUnifiedProductsList === 'function' ? getUnifiedProductsList() : (appData.products || [])) || [];
+  const prodCountByCat = new Map();
+  _allPrds.forEach(p => {
+    const k = String(p && p.category || '').trim().toLowerCase();
+    if (k) prodCountByCat.set(k, (prodCountByCat.get(k) || 0) + 1);
+  });
+
+  tbody.innerHTML = catList.map((cat, idx) => {
     const subs = Array.isArray(cat.subCategories) && cat.subCategories.length > 0 ? cat.subCategories : ['General'];
     const displayCatId = `CAT-${String(idx + 1).padStart(2, '0')}`;
-
-    const subPills = subs.map(s => `
-      <span style="display: inline-block; font-size: 0.75rem; padding: 3px 9px; background: rgba(124, 58, 237, 0.08); color: var(--primary-accent); border-radius: 6px; font-weight: 500;">
-        ${s}
-      </span>
-    `).join('');
+    const prodCount = prodCountByCat.get(String(cat.name || '').trim().toLowerCase())
+      || Number(cat.productCount != null ? cat.productCount : (cat.itemCounts || 0)) || 0;
+    const subChips = subs.map(s => `<span class="cg-sub">${esc(s)}</span>`).join('');
 
     return `
       <tr>
-        <td class="font-mono nowrap-cell" style="vertical-align: top; padding-top: 14px;"><strong>${displayCatId}</strong></td>
-        <td style="vertical-align: top;">
-          <div style="margin-bottom: 6px;">
-            <span class="clickable-entity view-category-related-btn" data-category-name="${cat.name}" style="cursor: pointer; color: var(--primary-accent); font-size: 0.98rem;" title="Click to view ${cat.name} products">
-              <strong>${cat.name}</strong>
-            </span>
-          </div>
-          <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 5px;">
-            ${subPills}
-          </div>
+        <td data-label="ID"><span class="cg-id">${displayCatId}</span></td>
+        <td data-label="Category">
+          <span class="cg-name view-category-related-btn" data-category-name="${esc(cat.name)}" role="button" tabindex="0" title="View products in ${esc(cat.name)}">${esc(cat.name)}</span>
+          <div class="cg-subs">${subChips}</div>
         </td>
-        <td class="nowrap-cell text-right" style="vertical-align: top; padding-top: 14px;">
-          <button type="button" class="edit-category-btn" data-id="${cat.id}" data-name="${cat.name}" style="background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease; margin-right: 6px;" title="Edit Category">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-          </button>
-          <button type="button" class="remove-category-btn" data-id="${cat.id}" data-name="${cat.name}" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="Delete Category">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-          </button>
+        <td data-label="Products" class="text-right"><span class="cg-prodcount">${prodCount} <span>${prodCount === 1 ? 'item' : 'items'}</span></span></td>
+        <td data-label="Actions" class="text-right">
+          <span class="cg-actions">
+            <button type="button" class="cg-icon-btn edit-category-btn" data-id="${esc(cat.id)}" data-name="${esc(cat.name)}" aria-label="Edit ${esc(cat.name)}" title="Edit category">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </button>
+            <button type="button" class="cg-icon-btn danger remove-category-btn" data-id="${esc(cat.id)}" data-name="${esc(cat.name)}" aria-label="Delete ${esc(cat.name)}" title="Delete category">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </span>
         </td>
       </tr>
     `;
   }).join('');
 
-  // Bind Edit Category Buttons
-  tbody.querySelectorAll('.edit-category-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const catId = btn.getAttribute('data-id');
-      editCategory(catId);
-    });
-  });
-
-  // Bind Delete Category Buttons
-  tbody.querySelectorAll('.remove-category-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const catId = btn.getAttribute('data-id');
-      const catName = btn.getAttribute('data-name');
-      if (confirm(`Are you sure you want to delete category "${catName}"?`)) {
-        markEntityAsDeleted('CATEGORY', catId, catName);
-        appData.categories = (appData.categories || []).filter(c => c.id !== catId && c.name !== catName);
-        try {
-          localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
-        } catch (err) {}
-
-        const deletePayload = { id: catId, name: catName };
-
-        if (!navigator.onLine) {
-          enqueueOfflineSync('DELETE_CATEGORY', deletePayload);
-          showToast(`Category "${catName}" deleted offline! Will sync deletion when connected.`, 'info');
-        } else {
-          try {
-            await api.deleteCategory(catId, catName);
-            showToast(`Category "${catName}" deleted successfully!`, 'success');
-          } catch (err) {
-            console.warn('api.deleteCategory error, queuing sync:', err);
-            enqueueOfflineSync('DELETE_CATEGORY', deletePayload);
-            showToast(`Category "${catName}" deleted locally! Will sync deletion when connected.`, 'info');
-          }
-        }
-
-        renderCategoriesGrid();
-        populatePageProductCategoryOptions();
-        updateInvoiceProductSelectOptions();
+  // Row actions via one delegated listener (tbody node persists across re-renders)
+  if (!tbody.dataset.delegated) {
+    tbody.dataset.delegated = '1';
+    tbody.addEventListener('click', (e) => {
+      const editBtn = e.target.closest('.edit-category-btn');
+      if (editBtn) {
+        e.stopPropagation();
+        editCategory(editBtn.getAttribute('data-id'));
+        return;
+      }
+      const delBtn = e.target.closest('.remove-category-btn');
+      if (delBtn) {
+        e.stopPropagation();
+        handleCategoryDelete(delBtn.getAttribute('data-id'), delBtn.getAttribute('data-name'));
       }
     });
-  });
+  }
+}
+
+async function handleCategoryDelete(catId, catName) {
+  if (!(await nxConfirm(`Delete the "${catName}" category? Products keep their data but lose this grouping.`, { title: 'Delete category', confirmLabel: 'Delete', danger: true }))) return;
+
+  markEntityAsDeleted('CATEGORY', catId, catName);
+  appData.categories = (appData.categories || []).filter(c => c.id !== catId && c.name !== catName);
+  try {
+    localStorage.setItem('nexus_custom_categories', JSON.stringify(appData.categories));
+  } catch (err) {}
+
+  const deletePayload = { id: catId, name: catName };
+
+  if (!navigator.onLine) {
+    enqueueOfflineSync('DELETE_CATEGORY', deletePayload);
+    showToast(`Category "${catName}" deleted offline! Will sync deletion when connected.`, 'info');
+  } else {
+    try {
+      await api.deleteCategory(catId, catName);
+      showToast(`Category "${catName}" deleted successfully!`, 'success');
+    } catch (err) {
+      console.warn('api.deleteCategory error, queuing sync:', err);
+      enqueueOfflineSync('DELETE_CATEGORY', deletePayload);
+      showToast(`Category "${catName}" deleted locally! Will sync deletion when connected.`, 'info');
+    }
+  }
+
+  renderCategoriesGrid();
+  populatePageProductCategoryOptions();
+  updateInvoiceProductSelectOptions();
 }
 
 
 
 // Global Category Click Handler to navigate directly to Category Detail View
+function _openCategoryFromEl(el) {
+  const name = el.getAttribute('data-category-name') || el.getAttribute('data-category-id');
+  if (name) viewCategoryDetail(name);
+}
 document.addEventListener('click', (e) => {
   const categoryBtn = e.target.closest('.view-category-related-btn');
-  if (categoryBtn) {
-    const categoryName = categoryBtn.getAttribute('data-category-name') || categoryBtn.getAttribute('data-category-id');
-    if (categoryName) {
-      viewCategoryDetail(categoryName);
-    }
-  }
+  if (categoryBtn) _openCategoryFromEl(categoryBtn);
 });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const categoryBtn = e.target.closest && e.target.closest('.view-category-related-btn[role="button"]');
+  if (categoryBtn) { e.preventDefault(); _openCategoryFromEl(categoryBtn); }
+});
+
+// Category Management local search
+(function bindCategorySearch() {
+  const el = document.getElementById('cg-page-search');
+  if (el && !el.dataset.bound) {
+    el.dataset.bound = '1';
+    el.addEventListener('input', debounce(() => renderCategoriesGrid(), 150));
+  }
+})();
 
 let currentCustomerSelectedDate = new Date().toISOString().split('T')[0];
 
@@ -2964,7 +3360,8 @@ function renderClientsGrid(filterDateStr = null) {
       amount,
       paymentMode,
       daySeq,
-      exactTime: getItemCreationTime(item)
+      exactTime: getItemCreationTime(item),
+      _src: item
     };
   });
 
@@ -2996,17 +3393,26 @@ function renderClientsGrid(filterDateStr = null) {
     });
   }
 
-  // Sort customerTransactions in ASCENDING order (CUST-...001 at top, newest created appended at LAST row)
+  // Sort ascending first so each row keeps a stable chronological sequence number,
+  // then flip the list so the LATEST invoice shows at the top.
   customerTransactions.sort((a, b) => {
     if (a.exactTime !== b.exactTime) return a.exactTime - b.exactTime;
     return a.daySeq - b.daySeq;
   });
+  customerTransactions.forEach((t, i) => { t.seq = i + 1; });
+  customerTransactions.reverse();
 
 
   if (customerTransactions.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-subtle); padding: 32px; font-weight: 500;">No customer records found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4"><div class="cs-empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <h4>No customer records</h4>
+      <p>No sales match this date or payment filter. Clear the filters or create an invoice.</p>
+    </div></td></tr>`;
     const totalValEl = document.getElementById('customer-total-amount-val');
     if (totalValEl) totalValEl.textContent = formatCurrency(0);
+    const cnt = document.getElementById('cs-count-num');
+    if (cnt) cnt.textContent = '0';
     return;
   }
 
@@ -3016,40 +3422,141 @@ function renderClientsGrid(filterDateStr = null) {
   customerTransactions.forEach((item, idx) => {
     totalCustAmount += item.amount;
     const displayDateStr = formatDisplayDate(item.invDate) || '14-08-2026';
-    const displayId = formatCustomerId(item.clientId, idx + 1, item.invDate);
+    let timeStr = '';
+    if (typeof item.exactTime === 'number' && item.exactTime > 946684800000) {
+      timeStr = new Date(item.exactTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
+    const displayId = formatCustomerId(item.clientId, item.seq || (idx + 1), item.invDate);
     const paymentModeStr = item.paymentMode || 'Cash';
 
     rowsHtml.push(`
-      <tr>
-        <td class="font-mono nowrap-cell"><strong>${displayId}</strong></td>
-        <td class="nowrap-cell">${displayDateStr}</td>
-        <td class="nowrap-cell">
-          <span class="status-pill" style="background: rgba(124, 58, 237, 0.08); color: var(--primary-accent); font-weight: 600; font-size: 0.82rem; padding: 4px 10px; border-radius: 6px;">${paymentModeStr}</span>
-        </td>
-        <td class="nowrap-cell text-right"><strong style="color: var(--emerald);">${formatCurrency(item.amount)}</strong></td>
+      <tr class="cs-row-clickable" data-txn-idx="${idx}" style="cursor: pointer;" title="Click to preview invoice">
+        <td data-label="Customer ID"><span class="cs-id">${displayId}</span></td>
+        <td data-label="Date"><span class="cs-date">${displayDateStr}${timeStr ? ` &middot; ${timeStr}` : ''}</span></td>
+        <td data-label="Payment mode"><span class="cs-mode"><span class="dot"></span>${paymentModeStr}</span></td>
+        <td data-label="Amount" class="text-right"><span class="cs-amt">${formatCurrency(item.amount)}</span></td>
       </tr>
     `);
   });
 
   if (rowsHtml.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-subtle); padding: 32px; font-weight: 500;">No customer records found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4"><div class="cs-empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <h4>No customer records</h4>
+      <p>No sales match this date or payment filter. Clear the filters or create an invoice.</p>
+    </div></td></tr>`;
     const totalValEl = document.getElementById('customer-total-amount-val');
     if (totalValEl) totalValEl.textContent = formatCurrency(0);
+    const cnt = document.getElementById('cs-count-num');
+    if (cnt) cnt.textContent = '0';
     return;
   }
 
   tbody.innerHTML = rowsHtml.join('');
 
+  // Keep the rendered transactions so a row click can preview its invoice
+  window._customerDirectoryTxns = customerTransactions;
+  if (!tbody.dataset.previewBound) {
+    tbody.dataset.previewBound = 'true';
+    tbody.addEventListener('click', (e) => {
+      const row = e.target.closest('tr.cs-row-clickable');
+      if (!row) return;
+      const idx = parseInt(row.getAttribute('data-txn-idx'), 10);
+      const list = window._customerDirectoryTxns || [];
+      const txn = list[idx];
+      if (txn) openCustomerTransactionPreview(txn);
+    });
+  }
+
   const totalValEl = document.getElementById('customer-total-amount-val');
   if (totalValEl) {
     totalValEl.textContent = formatCurrency(totalCustAmount);
   }
+  const cntEl = document.getElementById('cs-count-num');
+  if (cntEl) cntEl.textContent = rowsHtml.length;
 
   const todayElem = document.getElementById('stat-today-revenue');
   if (todayElem) {
     todayElem.textContent = formatCurrency(totalCustAmount);
   }
 }
+
+// Build an invoice-preview draft from a Customers Directory transaction row and
+// show it in the shared Invoice Preview modal.
+function openCustomerTransactionPreview(txn) {
+  const inv = (txn && txn._src) ? txn._src : {};
+  const modal = document.getElementById('invoice-preview-modal');
+  const content = document.getElementById('invoice-preview-content');
+  if (!modal || !content) return;
+
+  const dateStr = inv.issueDate || inv.date || inv.dueDate ||
+    (inv.createdAt ? String(inv.createdAt).split('T')[0] : '') ||
+    txn.invDate || new Date().toISOString().split('T')[0];
+
+  const totalAmount = Number(inv.amount !== undefined ? inv.amount : txn.amount) || 0;
+  const storedGst = localStorage.getItem('storeGstRate');
+  const gstRate = (typeof inv.gstRate === 'number') ? inv.gstRate
+    : (storedGst !== null ? (parseFloat(storedGst) || 0) : 18);
+
+  let items = Array.isArray(inv.items) ? inv.items.map(it => ({
+    name: it.name || it.productName || 'Item',
+    qty: Number(it.qty ?? it.quantity ?? 1) || 1,
+    price: Number(it.price ?? it.unitPrice ?? it.rate ?? 0) || 0,
+    color: it.color || '',
+    size: it.size || ''
+  })) : [];
+
+  let subtotal = (typeof inv.subtotal === 'number')
+    ? inv.subtotal
+    : items.reduce((s, it) => s + it.qty * it.price, 0);
+
+  if (items.length === 0) {
+    // Legacy record without line items – synthesize a single line from the total.
+    subtotal = totalAmount / (1 + gstRate / 100);
+    items = [{ name: 'Sale', qty: 1, price: subtotal, color: '', size: '' }];
+  }
+
+  const gstAmount = (typeof inv.gstAmount === 'number')
+    ? inv.gstAmount
+    : (totalAmount - subtotal);
+
+  const draft = {
+    shopName: inv.clientName || inv.shopName || txn.clientName || 'Walk-in Retail Customer',
+    items,
+    subtotal,
+    gstRate,
+    gstAmount,
+    totalAmount,
+    dateStr,
+    paymentMode: inv.paymentMode || inv.paymentMethod || txn.paymentMode || 'Cash',
+    previewInvId: normalizeInvoiceId(inv)
+  };
+
+  pendingInvoiceDraft = draft;
+  content.innerHTML = renderInvoicePreviewHTML(draft);
+  modal.classList.remove('hidden');
+  modal.style.display = 'flex';
+  modal.style.alignItems = 'flex-start';
+  modal.style.overflowY = 'auto';
+  modal.style.padding = '24px';
+
+  // Keep the tall invoice card inside the viewport and scrollable.
+  const card = modal.querySelector('.modal-card');
+  if (card) {
+    card.style.maxHeight = 'calc(100vh - 48px)';
+    card.style.overflowY = 'auto';
+    card.style.margin = 'auto';
+  }
+
+  const closeBtn = document.getElementById('close-invoice-preview-btn');
+  const editBtn = document.getElementById('edit-invoice-preview-btn');
+  if (closeBtn && !closeBtn.dataset.dirBound) {
+    closeBtn.dataset.dirBound = 'true';
+    closeBtn.addEventListener('click', closeInvoicePreviewModal);
+  }
+  if (editBtn) editBtn.style.display = 'none';
+}
+window.openCustomerTransactionPreview = openCustomerTransactionPreview;
 
 let isPdfGenerating = false;
 
@@ -3110,13 +3617,13 @@ async function savePdfFile(doc, fileName) {
   if (!doc) return;
   const pdfName = fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`;
 
-  // Offline Desktop Application Handler (Electron Native Save Dialog)
+  // Desktop app: write straight into Desktop\Nexus Invoices\ (no dialog).
   if (window.electronAPI && typeof window.electronAPI.savePdfFile === 'function') {
     try {
       const dataUri = doc.output('datauristring');
       const base64Data = dataUri.split(',')[1] || '';
-      await window.electronAPI.savePdfFile(base64Data, pdfName);
-      return;
+      const res = await window.electronAPI.savePdfFile(base64Data, pdfName);
+      return res || { success: true };
     } catch (err) {
       console.warn('Electron IPC savePdfFile error, falling back:', err);
     }
@@ -3253,7 +3760,7 @@ function downloadCustomerDirectoryPDF(filterDateStr = null) {
     const rightX = pageWidth - margin;
     const tableWidth = pageWidth - (margin * 2);
 
-    const purplePrimary = [124, 58, 237];
+    const purplePrimary = [147, 51, 234];
     const textDark = [15, 23, 42];
     const textMuted = [100, 116, 139];
     const borderLight = [226, 232, 240];
@@ -3492,25 +3999,38 @@ document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
 });
 
 // Filter Tabs Handler for Products Page
+const _prdPageSearch = document.getElementById('prd-page-search');
+function _prdQuery() {
+  return (_prdPageSearch && _prdPageSearch.value) || (globalSearchInput && globalSearchInput.value) || '';
+}
 document.querySelectorAll('.filter-btn[data-prd-filter]').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.filter-btn[data-prd-filter]').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.filter-btn[data-prd-filter]').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-selected', 'false');
+    });
     btn.classList.add('active');
-    const filter = btn.getAttribute('data-prd-filter');
-    renderProductsTable(filter, globalSearchInput?.value || '');
+    btn.setAttribute('aria-selected', 'true');
+    renderProductsTable(btn.getAttribute('data-prd-filter'), _prdQuery());
   });
 });
+if (_prdPageSearch) {
+  _prdPageSearch.addEventListener('input', debounce(() => {
+    const activePrdFilter = document.querySelector('.filter-btn.active[data-prd-filter]')?.getAttribute('data-prd-filter') || 'all';
+    renderProductsTable(activePrdFilter, _prdQuery());
+  }, 150));
+}
 
 // Global Search Filter Input
 if (globalSearchInput) {
-  globalSearchInput.addEventListener('input', (e) => {
+  globalSearchInput.addEventListener('input', debounce((e) => {
     const query = e.target.value;
     const activeInvFilter = document.querySelector('.filter-btn.active[data-filter]')?.getAttribute('data-filter') || 'all';
     const activePrdFilter = document.querySelector('.filter-btn.active[data-prd-filter]')?.getAttribute('data-prd-filter') || 'all';
     renderInvoicesTable(activeInvFilter, query);
     renderBillsTable(query);
     renderProductsTable(activePrdFilter, query);
-  });
+  }, 150));
 }
 
 // MODAL OPEN & CLOSE HELPERS
@@ -3815,8 +4335,8 @@ function viewCategoryDetail(categoryIdOrName) {
     } else {
       invTbody.innerHTML = invoices.map(inv => `
         <tr>
-          <td class="font-mono"><strong>${inv.id}</strong></td>
-          <td class="text-right"><strong style="color: var(--emerald);">${formatCurrency(inv.amount || 0)}</strong></td>
+          <td class="font-mono" data-label="Invoice ID"><strong>${inv.id}</strong></td>
+          <td class="text-right" data-label="Amount"><strong style="color: var(--emerald);">${formatCurrency(inv.amount || 0)}</strong></td>
         </tr>
       `).join('');
     }
@@ -3830,10 +4350,10 @@ function viewCategoryDetail(categoryIdOrName) {
     } else {
       prdTbody.innerHTML = products.map(prd => `
         <tr>
-          <td class="font-mono"><strong>${prd.id}</strong></td>
-          <td><strong>${prd.name}</strong></td>
-          <td class="text-right"><strong>${formatCurrency(prd.price || 0)}</strong></td>
-          <td class="text-center"><span class="status-pill paid">${prd.stock || 'In Stock'}</span></td>
+          <td class="font-mono" data-label="SKU ID"><strong>${prd.id}</strong></td>
+          <td data-label="Product"><strong>${prd.name}</strong></td>
+          <td class="text-right" data-label="Price"><strong>${formatCurrency(prd.price || 0)}</strong></td>
+          <td class="text-center" data-label="Stock"><span class="status-pill paid">${prd.stock || 'In Stock'}</span></td>
         </tr>
       `).join('');
     }
@@ -4117,7 +4637,21 @@ function calculatePageInvoiceTotal() {
     subtotal += itemSubtotal;
   });
 
-  pageInvTotalDisplay.textContent = formatCurrency(subtotal);
+  // GST rate: prefer the on-page input, fall back to saved store setting (default 18%).
+  const gstInput = document.getElementById('page-inv-gst-rate');
+  let gstRate = gstInput && gstInput.value !== '' ? parseFloat(gstInput.value) : parseFloat(localStorage.getItem('storeGstRate') || '18');
+  if (isNaN(gstRate) || gstRate < 0) gstRate = 0;
+  // Keep the store setting in sync so the invoice preview / PDF use the same rate.
+  try { localStorage.setItem('storeGstRate', String(gstRate)); } catch (e) {}
+
+  const gstAmount = subtotal * (gstRate / 100);
+  const grandTotal = subtotal + gstAmount;
+
+  const subEl = document.getElementById('page-inv-subtotal-display');
+  const gstEl = document.getElementById('page-inv-gst-display');
+  if (subEl) subEl.textContent = formatCurrency(subtotal);
+  if (gstEl) gstEl.textContent = formatCurrency(gstAmount);
+  pageInvTotalDisplay.textContent = formatCurrency(grandTotal);
   return subtotal;
 }
 
@@ -4910,12 +5444,8 @@ function renderInvoicePreviewHTML(draft) {
     <div style="background: #faf5ff; padding: ${isThermal50 ? '20px 10px' : '40px 20px'}; border-radius: 20px; display: flex; justify-content: center; width: 100%; box-sizing: border-box;">
       <div style="background: #ffffff; border-radius: 16px; padding: ${cardPadding}; border: 1.5px solid #e9d5ff; box-shadow: 0 15px 40px rgba(168, 85, 247, 0.12); max-width: ${maxW}; width: 100%; box-sizing: border-box; font-family: 'Times New Roman', Georgia, serif; color: #1a1a1a;">
         
-        <!-- Nexus Suite Glassmorphic Logo "N" -->
         <div style="text-align: center; margin-bottom: 16px;">
-          <div style="display: inline-flex; align-items: center; justify-content: center; width: ${isThermal50 ? '80px' : '115px'}; height: ${isThermal50 ? '80px' : '115px'}; margin-bottom: 12px;">
-            <img src="/icon.png?v=6" alt="Nexus Suite Logo" style="width: ${isThermal50 ? '76px' : '108px'}; height: ${isThermal50 ? '76px' : '108px'}; object-fit: contain; filter: drop-shadow(0 8px 20px rgba(147, 51, 234, 0.25));" />
-          </div>
-
+          <img src="${NEXUS_LOGO_BASE64}" alt="" style="width: ${isThermal50 ? '54px' : '84px'}; height: ${isThermal50 ? '54px' : '84px'}; object-fit: contain; display: block; margin: 0 auto 10px;" />
           <h1 style="font-size: ${titleFontSize}; font-weight: 700; color: #9333ea; margin: 0 0 4px 0; letter-spacing: 1.5px; text-transform: uppercase; font-family: 'Times New Roman', Georgia, serif;">NEXUS SUITE</h1>
           <p style="font-size: ${isThermal50 ? '0.85rem' : '1rem'}; color: #1a1a1a; margin: 0 0 12px 0; font-family: 'Times New Roman', Georgia, serif;">Enterprise Billing Suite</p>
           
@@ -5076,9 +5606,29 @@ function openInvoicePreviewModal() {
   const gstAmount = subtotal * (gstRate / 100);
   const totalAmount = subtotal + gstAmount;
 
-  if (totalAmount <= 0) {
+  // Per-row validation: every product line must have a name, qty > 0 and price > 0.
+  const rowSpecs = [];
+  if (listEl) {
+    listEl.querySelectorAll('.page-invoice-item-row').forEach((row, i) => {
+      const nameEl = row.querySelector('.item-name-input');
+      const qtyEl = row.querySelector('.item-qty-input');
+      const priceEl = row.querySelector('.item-price-input');
+      if (nameEl) rowSpecs.push({ el: nameEl, label: `Row ${i + 1} product`, required: true });
+      if (qtyEl) rowSpecs.push({ el: qtyEl, label: `Row ${i + 1} quantity`, required: true, type: 'number', gt: 0 });
+      if (priceEl) rowSpecs.push({ el: priceEl, label: `Row ${i + 1} unit price`, required: true, type: 'number', gt: 0 });
+    });
+  }
+  const phoneEl = document.getElementById('page-inv-client-phone');
+  if (phoneEl && phoneEl.value.trim()) {
+    rowSpecs.push({ el: phoneEl, label: 'Customer phone', pattern: /^\d{10}$/, patternMsg: 'Customer phone must be 10 digits.' });
+  }
+
+  if (rowSpecs.length === 0 || totalAmount <= 0) {
     showToast('Please select a product or enter a unit price to preview the invoice.', 'info');
-    return;
+    return false;
+  }
+  if (!validateForm(rowSpecs).ok) {
+    return false;
   }
 
   const dateStr = new Date().toISOString().split('T')[0];
@@ -5107,6 +5657,21 @@ function openInvoicePreviewModal() {
   // Switch to full dedicated Invoice Preview page
   switchView('preview_invoice');
   bindPreviewFormatButtons();
+  return true;
+}
+
+// Returns true only when the invoice form has at least one product row with a
+// positive quantity and unit price (i.e. a printable, non-zero invoice).
+function invoiceFormHasPrintableItems() {
+  const listEl = document.getElementById('page-invoice-items-list');
+  if (!listEl) return false;
+  let total = 0;
+  listEl.querySelectorAll('.page-invoice-item-row').forEach(row => {
+    const qty = parseFloat(row.querySelector('.item-qty-input')?.value || 0);
+    const price = parseFloat(row.querySelector('.item-price-input')?.value || 0);
+    if (qty > 0 && price > 0) total += qty * price;
+  });
+  return total > 0;
 }
 
 function closeInvoicePreviewModal() {
@@ -5121,13 +5686,318 @@ window.openInvoicePreviewModal = openInvoicePreviewModal;
 window.closeInvoicePreviewModal = closeInvoicePreviewModal;
 
 function printInvoiceDirect() {
-  openInvoicePreviewModal();
-  setTimeout(() => {
-    window.print();
-  }, 150);
+  // Guard: never print an empty / zero-value invoice.
+  if (!invoiceFormHasPrintableItems()) {
+    showToast('Cannot print an empty invoice. Add a product and enter its quantity and unit price first.', 'error');
+    return;
+  }
+
+  const base = (pendingInvoiceDraft && Number(pendingInvoiceDraft.totalAmount) > 0)
+    ? pendingInvoiceDraft
+    : buildInvoiceDraftFromForm();
+  const draft = {
+    ...base,
+    dateStr: base.dateStr || base.date,
+    previewInvId: base.previewInvId || base.invoiceId
+  };
+
+  // Desktop: render the invoice to an off-screen window and print it directly —
+  // no in-app preview page. Silent (straight to the chosen printer) when the user
+  // has picked one in Settings; otherwise Windows shows its print dialog once.
+  if (window.electronAPI && typeof window.electronAPI.printHtml === 'function') {
+    const html = renderInvoicePreviewHTML(draft);
+    const printerName = localStorage.getItem('nexus_printer_name') || '';
+    const silent = printerName ? (localStorage.getItem('nexus_printer_silent') === '1') : false;
+    const invId = draft.invoiceId || draft.previewInvId || '';
+    showToast(printerName ? 'Sending invoice to printer…' : 'Saving invoice PDF…', 'info');
+    window.electronAPI.printHtml(html, { printerName, silent, invoiceId: invId })
+      .then(async (r) => {
+        if (r && r.success) {
+          if (r.pdf && r.savedPath) {
+            showToast(`Saved to Desktop \\ Nexus Invoices \\ ${invId}.pdf`, 'success');
+            if (r.folderPath && window.electronAPI && typeof window.electronAPI.openPdfFolder === 'function') {
+              try { await window.electronAPI.openPdfFolder(r.folderPath); } catch (e) {}
+            }
+          }
+          await finalizePrintedInvoice(draft);
+        } else if (r && r.failureReason && !/cancel/i.test(r.failureReason)) {
+          showToast('Print failed: ' + r.failureReason, 'error');
+        }
+      })
+      .catch((e) => { console.warn('printHtml error:', e); showToast('Print failed. Please try again.', 'error'); });
+    return;
+  }
+
+  // Web fallback: show preview then browser print.
+  const opened = openInvoicePreviewModal();
+  if (opened === false) return;
+  setTimeout(() => { window.print(); }, 150);
 }
 
+// After a successful print: record the sale, clear the form, roll to the next number.
+async function finalizePrintedInvoice(draft) {
+  try {
+    const dateStr = draft.date || draft.dateStr || new Date().toISOString().split('T')[0];
+    const dateMerged = dateStr.replace(/-/g, '');
+    const payload = {
+      id: draft.invoiceId || draft.previewInvId,
+      clientName: draft.shopName || 'Walk-in Retail Customer',
+      clientId: '',
+      clientEmail: '',
+      amount: Number(draft.totalAmount) || 0,
+      subtotal: Number(draft.subtotal) || Number(draft.totalAmount) || 0,
+      issueDate: dateStr, dueDate: dateStr, date: dateStr,
+      category: (Array.isArray(draft.items) ? draft.items.map(i => i.name).join(', ') : '') || 'Retail Sale',
+      paymentMode: draft.paymentMode || 'Cash',
+      items: Array.isArray(draft.items) ? draft.items : []
+    };
+
+    let savedId = payload.id;
+    if (navigator.onLine) {
+      try {
+        const res = await api.createInvoice(payload);
+        if (res && res.invoice && res.invoice.id) savedId = res.invoice.id;
+      } catch (e) {
+        console.warn('finalizePrintedInvoice createInvoice failed, queuing:', e);
+        enqueueOfflineSync('INVOICE', payload);
+      }
+    } else {
+      enqueueOfflineSync('INVOICE', payload);
+    }
+
+    // Roll the local daily counter forward so the next invoice gets the next number.
+    const m = String(savedId || '').match(/^INV-(\d{8})(\d{3})/);
+    if (m) {
+      const key = `inv_seq_${m[1]}`;
+      const seen = parseInt(m[2], 10);
+      const cur = parseInt(localStorage.getItem(key) || '0', 10);
+      if (seen > cur) localStorage.setItem(key, String(seen));
+    } else {
+      incrementDailyInvoiceSequence(dateMerged);
+    }
+
+    // Reset the form for the next sale.
+    pendingInvoiceDraft = null;
+    initPageInvoiceForm();
+    const phoneEl = document.getElementById('page-inv-client-phone');
+    if (phoneEl) phoneEl.value = '';
+    const modeEl = document.getElementById('page-inv-payment-mode');
+    if (modeEl) modeEl.value = 'Cash';
+    calculatePageInvoiceTotal();
+
+    try {
+      await loadBusinessData();
+      if (typeof renderInvoicesTable === 'function') renderInvoicesTable();
+      if (typeof renderClientsGrid === 'function') renderClientsGrid();
+      if (typeof renderProductsTable === 'function') renderProductsTable();
+      if (typeof renderInventoryView === 'function') renderInventoryView();
+      if (typeof renderOverview === 'function') renderOverview();
+    } catch (e) {}
+
+    showToast(`Invoice ${savedId} printed & saved. Ready for the next one.`, 'success');
+  } catch (err) {
+    console.warn('finalizePrintedInvoice error:', err);
+    showToast('Invoice printed. (Could not auto-save — check the invoices list.)', 'info');
+  }
+}
+
+// Build an invoice draft straight from the Create-Invoice form (no save).
+function buildInvoiceDraftFromForm() {
+  const shopNameInput = document.getElementById('page-inv-client-name');
+  const shopName = (shopNameInput && shopNameInput.value.trim()) ? shopNameInput.value.trim() : 'Walk-in Retail Customer';
+  const listEl = document.getElementById('page-invoice-items-list');
+  const items = [];
+  let subtotal = 0;
+  if (listEl) {
+    listEl.querySelectorAll('.page-invoice-item-row').forEach(row => {
+      const nameInput = row.querySelector('.item-name-input');
+      const name = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : 'Product Item';
+      const qty = parseFloat(row.querySelector('.item-qty-input')?.value || 1);
+      const price = parseFloat(row.querySelector('.item-price-input')?.value || 0);
+      const itemSubtotal = qty * price;
+      subtotal += itemSubtotal;
+      items.push({ name, qty, price, itemSubtotal });
+    });
+  }
+  const gstInp = document.getElementById('page-inv-gst-rate');
+  const gstRate = gstInp && gstInp.value !== '' ? (parseFloat(gstInp.value) || 0) : (parseFloat(localStorage.getItem('storeGstRate') || '18') || 0);
+  const gstAmount = subtotal * (gstRate / 100);
+  const totalAmount = subtotal + gstAmount;
+  const dateStr = new Date().toISOString().split('T')[0];
+  const phoneInputEl = document.getElementById('page-inv-client-phone');
+  const clientPhone = phoneInputEl ? phoneInputEl.value.replace(/[^0-9]/g, '') : '';
+  const paymentModeSelectEl = document.getElementById('page-inv-payment-mode');
+  const paymentMode = paymentModeSelectEl ? paymentModeSelectEl.value : 'Cash';
+  return {
+    shopName, items, subtotal, gstRate, gstAmount, totalAmount,
+    date: dateStr, paymentMode, clientPhone,
+    invoiceId: formatInvoiceIdWithDate(dateStr)
+  };
+}
+
+async function downloadInvoicePdfDirect() {
+  if (!invoiceFormHasPrintableItems()) {
+    showToast('Cannot download an empty invoice. Add a product and enter its quantity and unit price first.', 'error');
+    return;
+  }
+  const draft = (pendingInvoiceDraft && Number(pendingInvoiceDraft.totalAmount) > 0)
+    ? {
+        shopName: pendingInvoiceDraft.shopName,
+        items: pendingInvoiceDraft.items || [],
+        subtotal: pendingInvoiceDraft.subtotal,
+        gstRate: pendingInvoiceDraft.gstRate,
+        gstAmount: pendingInvoiceDraft.gstAmount,
+        totalAmount: pendingInvoiceDraft.totalAmount,
+        paymentMode: pendingInvoiceDraft.paymentMode || 'Cash',
+        clientPhone: pendingInvoiceDraft.clientPhone || '',
+        invoiceId: pendingInvoiceDraft.previewInvId || pendingInvoiceDraft.invoiceId || formatInvoiceIdWithDate(),
+        date: pendingInvoiceDraft.dateStr || pendingInvoiceDraft.date || new Date().toISOString().split('T')[0]
+      }
+    : buildInvoiceDraftFromForm();
+
+  showToast('Generating Invoice PDF...', 'info');
+  try {
+    const { doc, pdfFilename } = buildInvoiceJsPdfDocument(draft);
+    const res = await savePdfFile(doc, pdfFilename);
+    if (res && res.folderPath) {
+      showToast(`Saved to Desktop \\ Nexus Invoices \\ ${pdfFilename}`, 'success');
+      if (window.electronAPI && typeof window.electronAPI.openPdfFolder === 'function') {
+        try { await window.electronAPI.openPdfFolder(res.folderPath); } catch (e) {}
+      }
+    } else {
+      showToast('Invoice PDF downloaded.', 'success');
+    }
+  } catch (err) {
+    console.error('Download PDF error:', err);
+    showToast('Failed to generate Invoice PDF. Please try again.', 'error');
+  }
+}
+window.downloadInvoicePdfDirect = downloadInvoicePdfDirect;
+
+// Cancel the invoice in progress: wipe every field, then leave the screen.
+function cancelInvoiceForm() {
+  pendingInvoiceDraft = null;
+  if (typeof initPageInvoiceForm === 'function') initPageInvoiceForm();
+  const phoneEl = document.getElementById('page-inv-client-phone');
+  if (phoneEl) phoneEl.value = '';
+  const nameEl = document.getElementById('page-inv-client-name');
+  if (nameEl) nameEl.value = '';
+  const modeEl = document.getElementById('page-inv-payment-mode');
+  if (modeEl) modeEl.value = 'Cash';
+  const gstEl = document.getElementById('page-inv-gst-rate');
+  if (gstEl) gstEl.value = String(parseFloat(localStorage.getItem('storeGstRate') || '18') || 18);
+  if (typeof calculatePageInvoiceTotal === 'function') calculatePageInvoiceTotal();
+  switchView('invoices');
+}
+window.cancelInvoiceForm = cancelInvoiceForm;
+
+/* ---- Live printer discovery for Settings ---- */
+let _printerPollTimer = null;
+
+function stopPrinterPolling() {
+  if (_printerPollTimer) { clearInterval(_printerPollTimer); _printerPollTimer = null; }
+}
+
+async function initPrinterSettings() {
+  const sel = document.getElementById('settings-printer-select');
+  const refreshBtn = document.getElementById('settings-printer-refresh-btn');
+  const statusEl = document.getElementById('settings-printer-status');
+  const silentEl = document.getElementById('settings-printer-silent');
+  if (!sel) return;
+
+  if (silentEl && !silentEl.dataset.bound) {
+    silentEl.dataset.bound = '1';
+    silentEl.checked = localStorage.getItem('nexus_printer_silent') === '1';
+    silentEl.onchange = () => localStorage.setItem('nexus_printer_silent', silentEl.checked ? '1' : '0');
+  }
+
+  if (sel && !sel.dataset.bound) {
+    sel.dataset.bound = '1';
+    sel.onchange = () => {
+      localStorage.setItem('nexus_printer_name', sel.value || '');
+      showToast(sel.value ? `Printer set to "${sel.value}".` : 'Printer set to system default (print dialog).', 'success');
+    };
+  }
+
+  if (refreshBtn && !refreshBtn.dataset.bound) {
+    refreshBtn.dataset.bound = '1';
+    refreshBtn.addEventListener('click', () => loadPrinterList(true));
+  }
+
+  async function loadPrinterList(announce) {
+    // Only poll while the Settings view is on screen.
+    const settingsPanel = document.getElementById('view-settings');
+    if (!settingsPanel || !settingsPanel.classList.contains('active')) { stopPrinterPolling(); return; }
+
+    if (!(window.electronAPI && typeof window.electronAPI.listPrinters === 'function')) {
+      if (statusEl) statusEl.textContent = 'Printer selection is only available in the desktop app.';
+      sel.disabled = true;
+      stopPrinterPolling();
+      return;
+    }
+
+    let printers = [];
+    try { printers = await window.electronAPI.listPrinters(); } catch (e) { console.warn('listPrinters error:', e); }
+    printers = printers || [];
+
+    const savedName = localStorage.getItem('nexus_printer_name') || '';
+    const prev = sel.value;
+
+    // Rebuild options in place, preserving the current selection.
+    sel.innerHTML = '<option value="">System default (show print dialog)</option>';
+    printers.forEach((p) => {
+      const opt = document.createElement('option');
+      opt.value = p.name;
+      const offline = p.status && Number(p.status) !== 0;
+      const loc = p.location ? ` — ${p.location}` : '';
+      opt.textContent = `${p.displayName}${p.isDefault ? '  (default)' : ''}${loc}${offline ? '  • offline' : ''}`;
+      sel.appendChild(opt);
+    });
+    if (savedName && !printers.some(p => p.name === savedName)) {
+      const opt = document.createElement('option');
+      opt.value = savedName;
+      opt.textContent = `${savedName}  • not detected`;
+      sel.appendChild(opt);
+    }
+    sel.value = prev || savedName || '';
+
+    if (statusEl) {
+      const online = printers.filter(p => !p.status || Number(p.status) === 0).length;
+      const stamp = new Date().toLocaleTimeString('en-GB');
+      statusEl.textContent = printers.length
+        ? `${printers.length} printer${printers.length > 1 ? 's' : ''} nearby (${online} ready) · updated ${stamp}`
+        : `No printers found · scanning… (${stamp})`;
+    }
+    if (announce) showToast(`${printers.length} printer(s) detected.`, 'info');
+  }
+
+  stopPrinterPolling();
+  await loadPrinterList(false);
+  _printerPollTimer = setInterval(() => loadPrinterList(false), 4000);
+}
+window.initPrinterSettings = initPrinterSettings;
+
+// Settings page tabs
+function activateSettingsTab(key) {
+  const wrap = document.getElementById('view-settings');
+  if (!wrap) return;
+  wrap.querySelectorAll('.settings-tab').forEach(b => b.classList.toggle('active', b.dataset.settingsTab === key));
+  wrap.querySelectorAll('.settings-tab-pane').forEach(p => p.classList.toggle('active', p.id === `settings-pane-${key}`));
+  try { localStorage.setItem('nexus_settings_tab', key); } catch (e) {}
+}
+document.addEventListener('click', (e) => {
+  const tabBtn = e.target.closest ? e.target.closest('.settings-tab[data-settings-tab]') : null;
+  if (tabBtn) activateSettingsTab(tabBtn.dataset.settingsTab);
+});
+
 async function shareInvoiceWhatsApp() {
+  // 0. Guard: nothing to share for an empty / zero-value invoice.
+  const draftTotal = pendingInvoiceDraft ? Number(pendingInvoiceDraft.totalAmount) || 0 : 0;
+  if (draftTotal <= 0 && !invoiceFormHasPrintableItems()) {
+    showToast('Cannot share an empty invoice. Add a product and enter its quantity and unit price first.', 'error');
+    return;
+  }
+
   // 1. Check Internet Connectivity
   if (!navigator.onLine) {
     showToast('No Internet Connection. Please connect to the internet to share via WhatsApp.', 'error');
@@ -5184,7 +6054,7 @@ async function shareInvoiceWhatsApp() {
   }
 
   // 3. Show generating toast
-  showToast('⏳ Generating Invoice PDF...', 'info');
+  showToast('Generating Invoice PDF...', 'info');
 
   // 4. Generate Invoice PDF using the correct field names
   let docResult;
@@ -5220,75 +6090,39 @@ async function shareInvoiceWhatsApp() {
   if (rawPhone && rawPhone.length === 10) rawPhone = '91' + rawPhone;
 
   if (!rawPhone || rawPhone.length < 12) {
-    showToast('⚠️ Please enter a valid 10-digit WhatsApp number before sharing.', 'warning');
+    showToast('Please enter a valid 10-digit WhatsApp number before sharing.', 'warning');
     return;
   }
 
-  // 7. Save PDF silently to Desktop and backend server for direct download link
-  let downloadPdfUrl = '';
-  if (window.electronAPI && typeof window.electronAPI.savePdfFileSilent === 'function' && base64Data) {
+  // 7. Share the PDF file over WhatsApp: save it, copy it to the clipboard as a
+  //    file, and open the chat. The user presses Ctrl+V to attach it.
+  if (window.electronAPI && typeof window.electronAPI.sendWhatsappPdf === 'function' && base64Data) {
     try {
-      await window.electronAPI.savePdfFileSilent(base64Data, pdfFilename);
-    } catch (err) {
-      console.warn('IPC savePdfFileSilent error:', err);
-    }
-  }
-
-  try {
-    const saveRes = await fetch('http://127.0.0.1:5050/api/business/invoices/save-pdf', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invoiceId: cleanInvId, base64Data })
-    });
-    if (saveRes.ok) {
-      const data = await saveRes.json();
-      if (data && data.downloadUrl) {
-        downloadPdfUrl = data.downloadUrl;
+      const res = await window.electronAPI.sendWhatsappPdf(base64Data, pdfFilename, rawPhone);
+      if (res && res.success) {
+        showToast(
+          `📎 WhatsApp opened for +${rawPhone}. The invoice PDF is on your clipboard — click the chat's message box and press Ctrl+V, then Enter.`,
+          'success'
+        );
+        return;
       }
-    }
-  } catch (err) {
-    console.warn('Server PDF upload skipped:', err);
-  }
-
-  // 8. Build rich WhatsApp message
-  let itemsSummary = '';
-  if (draft.items && draft.items.length > 0) {
-    itemsSummary = draft.items.map(it => {
-      const sub = (it.itemSubtotal != null ? it.itemSubtotal : (it.qty * it.price)) || 0;
-      return `• ${it.name} (x${it.qty}) - Rs. ${sub.toLocaleString('en-IN')}`;
-    }).join('\n');
-  }
-
-  let message =
-    `🧾 *INVOICE STATEMENT - NEXUS SUITE*\n\n` +
-    `*Invoice No:* ${cleanInvId}\n` +
-    `*Customer:* ${draft.shopName || 'Customer'}\n` +
-    `*Date:* ${new Date().toLocaleDateString('en-GB')}\n\n` +
-    `📦 *Items Purchased:*\n${itemsSummary}\n\n` +
-    `💰 *TOTAL AMOUNT: Rs. ${(cleanTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}*\n\n`;
-
-  if (downloadPdfUrl) {
-    message += `📥 *Download Invoice PDF Statement:*\n${downloadPdfUrl}\n\n`;
-  } else {
-    message += `📄 *PDF Statement saved to Desktop (Nexus Invoices)*\n\n`;
-  }
-  message += `Thank you for your business! 🙏`;
-
-  const encodedMsg = encodeURIComponent(message);
-  const whatsappUrl = `https://api.whatsapp.com/send?phone=${rawPhone}&text=${encodedMsg}`;
-
-  // 9. Open WhatsApp Web safely in system browser / desktop app
-  if (window.electronAPI && typeof window.electronAPI.openExternalUrl === 'function') {
-    try {
-      await window.electronAPI.openExternalUrl(whatsappUrl);
+      console.warn('sendWhatsappPdf returned:', res);
     } catch (e) {
-      window.open(whatsappUrl, '_blank');
+      console.warn('sendWhatsappPdf error:', e);
     }
-  } else {
-    window.open(whatsappUrl, '_blank');
   }
 
-  showToast(`✅ WhatsApp opened for +${rawPhone}! PDF saved & message pre-filled.`, 'success');
+  // Fallback (no desktop IPC): save the PDF and open the WhatsApp chat.
+  if (window.electronAPI && typeof window.electronAPI.savePdfFileSilent === 'function' && base64Data) {
+    try { await window.electronAPI.savePdfFileSilent(base64Data, pdfFilename); } catch (err) {}
+  }
+  const waUrl = `https://api.whatsapp.com/send?phone=${rawPhone}`;
+  if (window.electronAPI && typeof window.electronAPI.openExternalUrl === 'function') {
+    try { await window.electronAPI.openExternalUrl(waUrl); } catch (e) { window.open(waUrl, '_blank'); }
+  } else {
+    window.open(waUrl, '_blank');
+  }
+  showToast(`WhatsApp opened for +${rawPhone}. The PDF is in Desktop \\ Nexus Invoices — attach it in the chat.`, 'info');
 }
 
 window.shareInvoiceWhatsApp = shareInvoiceWhatsApp;
@@ -5332,7 +6166,7 @@ function showWhatsAppPdfHelperModal(pdfPath, folderPath, pdfFilename, phone) {
         </div>
         <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
           <span style="background:#dbeafe;color:#1d4ed8;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:800;flex-shrink:0;">3</span>
-          <p style="font-size:0.85rem;color:#334155;margin:0;line-height:1.5;">Navigate to <strong>Desktop → Nexus Invoices</strong> folder and select <strong style="color:#7c3aed;">${fileDisplay}</strong></p>
+          <p style="font-size:0.85rem;color:#334155;margin:0;line-height:1.5;">Navigate to <strong>Desktop → Nexus Invoices</strong> folder and select <strong style="color:var(--primary-accent);">${fileDisplay}</strong></p>
         </div>
         <div style="display:flex;align-items:flex-start;gap:12px;">
           <span style="background:#dcfce7;color:#166534;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:800;flex-shrink:0;">✓</span>
@@ -5348,7 +6182,7 @@ function showWhatsAppPdfHelperModal(pdfPath, folderPath, pdfFilename, phone) {
           if(window.electronAPI && window.electronAPI.openPdfFolder) {
             window.electronAPI.openPdfFolder('${(folderPath||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}');
           }
-        " style="padding:10px 20px;background:linear-gradient(135deg,#7c3aed,#9333ea);color:#fff;border:none;border-radius:10px;font-size:0.88rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+        " style="padding:10px 20px;background:var(--gradient-primary);color:#fff;border:none;border-radius:10px;font-size:0.88rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
           📂 Open PDF Folder
         </button>` : ''}
         <button onclick="document.getElementById('whatsapp-pdf-helper-modal').remove();"
@@ -5488,11 +6322,25 @@ async function handleConfirmDownloadPDF() {
       items: items || []
     };
 
+  let serverInvId = finalInvId;
   if (!navigator.onLine) {
     enqueueOfflineSync('INVOICE', invoicePayload);
   } else {
     try {
-      await api.createInvoice(invoicePayload);
+      const createRes = await api.createInvoice(invoicePayload);
+      // The backend may re-assign the id to avoid clashing with an invoice that
+      // already exists in the cloud (e.g. created on another device). Adopt it.
+      if (createRes && createRes.invoice && createRes.invoice.id) {
+        serverInvId = createRes.invoice.id;
+        // Keep this device's local daily counter from lagging behind the cloud.
+        const m = String(serverInvId).match(/^INV-(\d{8})(\d{3})/);
+        if (m) {
+          const key = `inv_seq_${m[1]}`;
+          const seen = parseInt(m[2], 10);
+          const cur = parseInt(localStorage.getItem(key) || '0', 10);
+          if (seen > cur) localStorage.setItem(key, String(seen));
+        }
+      }
       await loadBusinessData();
     } catch (e) {
       console.warn('api.createInvoice failed/offline, queuing sync:', e);
@@ -5502,10 +6350,10 @@ async function handleConfirmDownloadPDF() {
 
   // Push created invoice locally to appData.invoices only if not already added by loadBusinessData
   if (!appData.invoices) appData.invoices = [];
-  const existingInv = appData.invoices.find(i => (i.id || '').toLowerCase() === finalInvId.toLowerCase());
+  const existingInv = appData.invoices.find(i => (i.id || '').toLowerCase() === serverInvId.toLowerCase());
   if (!existingInv) {
     appData.invoices.push({
-      id: finalInvId,
+      id: serverInvId,
       clientId: customer.id,
       clientName: shopName,
       clientEmail: '',
@@ -5536,7 +6384,7 @@ async function handleConfirmDownloadPDF() {
     shopName,
     items,
     totalAmount,
-    invoiceId: finalInvId,
+    invoiceId: serverInvId,
     date: dateStr,
     paymentMode: (pendingInvoiceDraft && pendingInvoiceDraft.paymentMode) ? pendingInvoiceDraft.paymentMode : 'Cash'
   });
@@ -6059,8 +6907,24 @@ createInvoiceForm.addEventListener('submit', async (e) => {
   isProcessingInvoiceCreation = true;
 
   try {
+    const invRowSpecs = [
+      { id: 'inv-client-name', label: 'Customer name', required: true, min: 2 }
+    ];
+    invoiceItemsList.querySelectorAll('.invoice-item-row').forEach((row, i) => {
+      const nEl = row.querySelector('.item-name-input');
+      const qEl = row.querySelector('.item-qty-input');
+      const pEl = row.querySelector('.item-price-input');
+      if (nEl) invRowSpecs.push({ el: nEl, label: `Row ${i + 1} product`, required: true });
+      if (qEl) invRowSpecs.push({ el: qEl, label: `Row ${i + 1} quantity`, required: true, type: 'number', gt: 0 });
+      if (pEl) invRowSpecs.push({ el: pEl, label: `Row ${i + 1} unit price`, required: true, type: 'number', gt: 0 });
+    });
+    if (!validateForm(invRowSpecs).ok) {
+      isProcessingInvoiceCreation = false;
+      return;
+    }
+
     const shopName = document.getElementById('inv-client-name').value.trim();
-    
+
     // Gather Products List
     const items = [];
     invoiceItemsList.querySelectorAll('.invoice-item-row').forEach(row => {
@@ -6275,6 +7139,14 @@ window.addNewBillToSystem = addNewBillToSystem;
 if (createBillForm) {
   createBillForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    if (!validateForm([
+      { id: 'bill-vendor', label: 'Vendor / supplier name', required: true, min: 2 },
+      { id: 'bill-category', label: 'Category', required: true },
+      { id: 'bill-amount', label: 'Amount', required: true, type: 'number', gt: 0 },
+      { id: 'bill-due-date', label: 'Due date', required: true }
+    ]).ok) return;
+
     const vendor = document.getElementById('bill-vendor').value;
     const category = document.getElementById('bill-category').value;
     const amount = document.getElementById('bill-amount').value;
@@ -6472,7 +7344,7 @@ async function restoreFromCloudDatabase() {
   try {
     showToast('Syncing & restoring all backup data from Cloud Database...', 'info');
     await loadBusinessData();
-    showToast('⚡ All backup data restored successfully from Cloud Database!', 'success');
+    showToast('All backup data restored successfully from Cloud Database!', 'success');
   } catch (err) {
     console.error('Cloud restore error:', err);
     showToast('Failed to restore data from cloud database.', 'error');
@@ -6535,7 +7407,7 @@ async function handleRestoreFileSelected(event) {
       await loadBusinessData();
       processOfflineSyncQueue();
 
-      showToast('⚡ System database restored successfully & synced to Cloud Database!', 'success');
+      showToast('System database restored successfully & synced to Cloud Database!', 'success');
     } catch (err) {
       console.error('Restore error:', err);
       showToast('Error restoring backup file. Please check JSON format.', 'error');
@@ -6592,48 +7464,57 @@ if (sidebarLogoutBtn) {
   });
 }
 
-// Application Startup Session Initialization — Restore Session if Valid Token Exists
+// Application Startup — resume ONLY a real, verified session. Never fabricate one.
 async function initSession() {
-  let token = tokenStorage.get();
-  let savedUserStr = localStorage.getItem('nexus_auth_user');
+  const token = tokenStorage.get();
 
-  if (!token) {
-    token = 'jwt_token_offline_session';
-    tokenStorage.set(token, true);
-  }
+  // No credentials stored at all → must sign in.
+  if (!token) { showLoginView(); return; }
 
-  if (!savedUserStr) {
-    const offlineUser = { id: 'usr_offline', name: 'Admin', email: 'admin@nexus.local', companyId: 'shop_default' };
-    localStorage.setItem('nexus_auth_user', JSON.stringify(offlineUser));
-    savedUserStr = JSON.stringify(offlineUser);
-  }
+  // A server-issued JWT has three dot-separated segments. Our offline
+  // placeholders ("jwt_token_offline_…", "jwt_token_…") are not real sessions.
+  const isRealJwt = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token);
+
+  let savedUser = null;
+  try { savedUser = JSON.parse(localStorage.getItem('nexus_auth_user') || 'null'); } catch (e) {}
+  const lastAuthEmail = localStorage.getItem('nexus_last_auth_email');
 
   if (navigator.onLine) {
+    if (!isRealJwt) { showLoginView(); return; }
     try {
       const res = await api.getMe();
-      if (res && res.user) {
-        appData.user = res.user;
-        localStorage.setItem('nexus_auth_user', JSON.stringify(res.user));
+      const u = res && res.user;
+      if (u && u.id && u.id !== 'usr_default') {
+        appData.user = u;
+        localStorage.setItem('nexus_auth_user', JSON.stringify(u));
         await enterWorkspace();
         return;
       }
+      // Server did not confirm a real user.
+      showLoginView();
+      showToast('Please sign in to continue.', 'info');
+      return;
     } catch (err) {
       if (err.status === 401 || err.status === 403) {
-        // Only show login view if backend explicitly returns 401/403 status
         showLoginView();
         showToast('Session expired. Please sign in again.', 'info');
         return;
       }
+      // Fall through to the offline check on a genuine network error.
     }
   }
 
-  // Offline or network error fallback: Use stored session user and open workspace directly
-  try {
-    appData.user = JSON.parse(savedUserStr);
-  } catch (e) {
-    appData.user = { id: 'usr_offline', name: 'Admin', email: 'admin@nexus.local', companyId: 'shop_default' };
+  // Offline / server unreachable: resume only if this device previously
+  // completed a real server login for this exact account.
+  const offlineOk = savedUser && savedUser.email && lastAuthEmail &&
+    savedUser.email.toLowerCase() === lastAuthEmail.toLowerCase();
+  if (offlineOk) {
+    appData.user = savedUser;
+    await enterWorkspace();
+    return;
   }
-  await enterWorkspace();
+
+  showLoginView();
 }
 
 // Bind autocomplete to all existing item rows on page startup
@@ -6790,14 +7671,14 @@ async function handleSaveProductForm(e) {
     focusTarget = isPageSource ? document.getElementById('page-prd-name') : document.getElementById('prd-name');
     focusPriceTarget = isPageSource ? document.getElementById('page-prd-price') : document.getElementById('prd-price');
 
-    if (!name) {
-      showToast('Please enter a product name', 'error');
-      if (focusTarget) focusTarget.focus();
-      return false;
-    }
-    if (isNaN(price) || price <= 0) {
-      showToast('Please enter a valid price for the product (e.g. 499.00)', 'error');
-      if (focusPriceTarget) focusPriceTarget.focus();
+    const prdNameId = isPageSource ? 'page-prd-name' : 'prd-name';
+    const prdPriceId = isPageSource ? 'page-prd-price' : 'prd-price';
+    const prdStockId = isPageSource ? 'page-prd-stock' : 'prd-stock';
+    if (!validateForm([
+      { id: prdNameId, label: 'Product name', required: true, min: 2 },
+      { id: prdPriceId, label: 'Unit price', required: true, type: 'number', gt: 0 },
+      { id: prdStockId, label: 'Stock count', type: 'number', gte: 0 }
+    ]).ok) {
       return false;
     }
 
@@ -6921,10 +7802,10 @@ async function handleSaveCategoryForm(e) {
       status = (modalStatusInp?.value || pageStatusInp?.value || 'Active');
     }
 
-    if (!name) {
-      showToast('Please enter a category name', 'error');
-      const focusEl = isModalForm ? modalNameInp : (pageNameInp || modalNameInp);
-      if (focusEl) focusEl.focus();
+    const catNameEl = isModalForm ? modalNameInp : (pageNameInp || modalNameInp);
+    if (!validateForm([
+      { el: catNameEl, label: 'Category name', required: true, min: 2 }
+    ]).ok) {
       return false;
     }
 
@@ -7003,7 +7884,7 @@ async function handleSaveCategoryForm(e) {
 
 async function handleCloudBackupNow() {
   try {
-    showToast('⚡ Preparing local data & uploading to MongoDB database...', 'info');
+    showToast('Preparing local data & uploading to MongoDB database...', 'info');
 
     if (navigator.onLine) {
       try {
@@ -7028,12 +7909,18 @@ async function handleCloudBackupNow() {
 
     const res = await api.backupDatabase(backupPayload);
 
+    if (!res || res.success !== true) {
+      const msg = (res && res.message) ? res.message : 'Cloud backup failed. Data was NOT uploaded. Check your internet connection and try again.';
+      showToast('' + msg, 'error');
+      return;
+    }
+
     if (res && res.success) {
       try {
         localStorage.removeItem('nexus_offline_sync_queue');
       } catch (e) {}
 
-      showToast('☁️ Cloud Backup complete! All local data uploaded & saved into MongoDB database.', 'success');
+      showToast('Cloud Backup complete! All local data uploaded & saved into MongoDB database.', 'success');
 
       const timeEl = document.getElementById('last-backup-timestamp-text');
       const detailsEl = document.getElementById('last-backup-details-text');
@@ -7046,17 +7933,17 @@ async function handleCloudBackupNow() {
         detailsEl.textContent = `Backup ID: ${res.backup?.backupId || 'BKP_SUCCESS'} • ${prdLen} Products, ${catLen} Categories, ${invLen} Invoices, ${clLen} Customers`;
       }
     } else {
-      showToast('☁️ All local data uploaded & saved into MongoDB database.', 'success');
+      showToast('All local data uploaded & saved into MongoDB database.', 'success');
     }
   } catch (err) {
     console.error('Cloud backup error:', err);
-    showToast('☁️ All local data saved into MongoDB database.', 'success');
+    showToast('Cloud backup failed: ' + (err && err.message ? err.message : 'could not reach the cloud database.') + ' Data was NOT uploaded.', 'error');
   }
 }
 
 async function handleSyncDevicesNow() {
   try {
-    showToast('🔄 Synchronizing all connected devices with MongoDB Atlas...', 'info');
+    showToast('Synchronizing all connected devices with MongoDB Atlas...', 'info');
     await api.triggerSync();
     await loadBusinessData();
     renderProductsTable();
@@ -7066,7 +7953,7 @@ async function handleSyncDevicesNow() {
     renderInvoicesTable();
     renderCategoriesGrid();
     renderOverview();
-    showToast('🔄 All devices synchronized with MongoDB Atlas cloud database!', 'success');
+    showToast('All devices synchronized with MongoDB Atlas cloud database!', 'success');
   } catch (err) {
     console.error('Sync devices error:', err);
     await loadBusinessData();
@@ -7079,13 +7966,18 @@ async function handleSyncDevicesNow() {
 
 async function handleRestoreBackupNow() {
   try {
-    showToast('📥 Restoring latest products, categories & data from MongoDB Atlas cloud database...', 'info');
+    showToast('Restoring latest products, categories & data from MongoDB Atlas cloud database...', 'info');
     localStorage.removeItem('nexus_custom_products');
     localStorage.removeItem('nexus_custom_invoices');
     localStorage.removeItem('nexus_custom_clients');
     localStorage.removeItem('nexus_custom_categories');
 
     const res = await api.restoreBackup();
+    if (!res || res.success !== true) {
+      const msg = (res && res.message) ? res.message : 'Restore failed. Connect to the internet and try again.';
+      showToast('' + msg, 'error');
+      return;
+    }
     if (res && res.restoredData) {
       if (Array.isArray(res.restoredData.products) && res.restoredData.products.length > 0) {
         appData.products = sortProductsBySku(res.restoredData.products);
@@ -7113,14 +8005,14 @@ async function handleRestoreBackupNow() {
     renderOverview();
     const prdCount = (appData.products || []).length;
     const catCount = (appData.categories || []).length;
-    showToast(`📥 Restored ${prdCount} products, ${catCount} categories & latest data from MongoDB Atlas!`, 'success');
+    showToast(`Restored ${prdCount} products, ${catCount} categories & latest data from MongoDB Atlas!`, 'success');
   } catch (err) {
     console.error('Restore backup error:', err);
     await loadBusinessData();
     renderProductsTable();
     renderCategoriesGrid();
     renderOverview();
-    showToast('Latest data restored & synchronized from MongoDB Atlas database!', 'success');
+    showToast('Restore failed: ' + (err && err.message ? err.message : 'could not reach the cloud database.'), 'error');
   }
 }
 
@@ -7129,7 +8021,7 @@ document.addEventListener('click', async (e) => {
   if (revokeBtn) {
     e.preventDefault();
     const devId = revokeBtn.getAttribute('data-device-id');
-    if (devId && confirm(`Disconnect device ${devId} from your cloud account?`)) {
+    if (devId && await nxConfirm(`Disconnect device ${devId}? It will be signed out and must sign in again to sync.`, { title: 'Disconnect device', confirmLabel: 'Disconnect', danger: true })) {
       try {
         await api.revokeDevice(devId);
         showToast(`Device ${devId} disconnected.`, 'info');
@@ -7231,4 +8123,34 @@ setInterval(pollSyncStatus, 3000);
 pollSyncStatus();
 
 setupRealtimeSocketSync();
-initSession();
+
+// Device-disconnect fallback: the socket 'device:revoked' event handles this
+// instantly, but if real-time is down (e.g. port-collision on that machine),
+// poll the registered-devices list — if THIS device is no longer in it, sign out.
+let _sawSelfInDeviceList = false;
+setInterval(async () => {
+  if (!appData.user || !navigator.onLine) return;
+  try {
+    const res = await api.getRegisteredDevices();
+    const list = (res && Array.isArray(res.devices)) ? res.devices : null;
+    if (!list) return; // endpoint unavailable — don't act
+    const myId = localStorage.getItem('nexus_device_id');
+    const stillListed = list.some((d) => String(d.deviceId) === String(myId));
+    if (stillListed) { _sawSelfInDeviceList = true; return; }
+    if (_sawSelfInDeviceList && list.length > 0) {
+      showToast('This device was disconnected from the account. Signing you out…', 'error');
+      _sawSelfInDeviceList = false;
+      setTimeout(() => handleUserLogout(false), 1200);
+    }
+  } catch (e) { /* ignore transient errors */ }
+}, 30000);
+
+// License gate — runs BEFORE any session restore. initSession() (and therefore
+// the login screen / workspace) only runs once the license is valid. If the
+// license lapses while running, onLock tears down the in-memory session.
+initLicensing({
+  onContinue: () => { initSession(); },
+  onLock: () => {
+    try { appData.user = null; } catch (e) {}
+  }
+});

@@ -15,6 +15,7 @@ const productSchema = new mongoose.Schema({
   costPrice: { type: Number, default: 0 },
   stock: { type: String, default: 'In Stock' },
   count: { type: Number, default: 0 },
+  sizeStock: { type: mongoose.Schema.Types.Mixed, default: {} },
   minStock: { type: Number, default: 5 },
   version: { type: Number, default: 1 },
   isDeleted: { type: Boolean, default: false },

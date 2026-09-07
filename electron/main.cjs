@@ -1,6 +1,42 @@
 const { app, BrowserWindow, ipcMain, dialog, clipboard, shell, nativeImage } = require('electron');
 const fs = require('fs');
 const path = require('path');
+
+// Load configuration (MONGO_URI, JWT_SECRET, PORT) BEFORE anything reads process.env.
+// In a packaged build there is no project-root .env, so we also look next to the
+// executable and in the app resources folder for a shipped config file.
+(function loadEnvConfig() {
+  // Secrets first (dotenv keeps the first value seen per key), then non-secret
+  // runtime config, then dev fallbacks.
+  const candidates = [
+    process.resourcesPath ? path.join(process.resourcesPath, 'app.secret.env') : null,
+    process.execPath ? path.join(path.dirname(process.execPath), 'app.secret.env') : null,
+    path.join(__dirname, 'app.secret.env'),
+    process.resourcesPath ? path.join(process.resourcesPath, 'app.env') : null,
+    process.execPath ? path.join(path.dirname(process.execPath), 'app.env') : null,
+    path.join(__dirname, '../.env'),
+    path.join(__dirname, '../backend/.env')
+  ].filter(Boolean);
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) {
+        require('dotenv').config({ path: p });
+      }
+    } catch (e) {}
+  }
+})();
+
+// Packaged builds must not be weakenable via environment: strip dev/test license
+// toggles and pin production mode regardless of a hand-edited app.env.
+try {
+  const { app: _app } = require('electron');
+  if (_app && _app.isPackaged) {
+    delete process.env.LICENSE_ENFORCE;
+    delete process.env.LICENSE_FORCE_OFFLINE;
+    process.env.NODE_ENV = 'production';
+  }
+} catch (e) {}
+
 const { startMongo, stopMongo } = require('./mongoManager.cjs');
 const { buildAppMenu } = require('./menu.cjs');
 
@@ -67,7 +103,7 @@ async function createWindow() {
     title: 'Nexus Suite | Enterprise Invoices & Bills Dashboard',
     icon: appIcon || iconPath,
     show: true,
-    autoHideMenuBar: false,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -84,7 +120,13 @@ async function createWindow() {
     }
   }
 
-  buildAppMenu(mainWindow);
+  // No application menu bar (File / Edit / View / Window / Help) in the shipped app.
+  try {
+    const { Menu } = require('electron');
+    Menu.setApplicationMenu(null);
+    mainWindow.setMenuBarVisibility(false);
+    mainWindow.removeMenu();
+  } catch (e) {}
 
   const distIndexPath = path.join(__dirname, '../frontend/dist/index.html');
   const hasDistFile = fs.existsSync(distIndexPath);
@@ -185,7 +227,10 @@ app.whenReady().then(async () => {
   try {
     console.log('[Electron Main] Starting MongoDB database...');
     startMongo().then((mongoUri) => {
-      if (mongoUri) process.env.MONGO_URI = mongoUri;
+      // Never let the embedded/local Mongo fallback overwrite a real cloud URI.
+      const existing = process.env.MONGO_URI || '';
+      const isCloud = existing && !existing.includes('127.0.0.1') && !existing.includes('localhost');
+      if (mongoUri && !isCloud) process.env.MONGO_URI = mongoUri;
     }).catch((e) => {
       console.warn('[Electron Main] startMongo non-blocking error:', e.message);
     });
@@ -199,6 +244,62 @@ app.whenReady().then(async () => {
       }
     } catch (srvErr) {
       console.error('[Electron Main] Express server launch error:', srvErr.stack || srvErr.message);
+    }
+
+    // ── License enforcement: bind the DPAPI vault + real machine fingerprint,
+    //    then run the authoritative monotonic watchdog in the main process. ──
+    try {
+      const licenseState = require('../backend/src/licensing/licenseState');
+      const { readVault, writeVault } = require('./licensing/vault');
+      const { getMachineFingerprint } = require('./licensing/machineFingerprint');
+      const watchdog = require('./licensing/watchdog');
+
+      licenseState.init({ readVault, writeVault, getMachineFingerprint });
+      await licenseState.evaluate().catch(() => {});
+
+      // Per-client builds bundle a license so the customer types nothing.
+      // Register it with licenseState — evaluate()/the watchdog then adopt it,
+      // retry it if this device previously held a different license, and
+      // auto-recover if it was blocked by the activation limit and a slot frees.
+      try {
+        const licCandidates = [
+          path.join(__dirname, 'embedded-license.lic'),
+          process.resourcesPath ? path.join(process.resourcesPath, 'embedded-license.lic') : null,
+          process.execPath ? path.join(path.dirname(process.execPath), 'embedded-license.lic') : null
+        ].filter(Boolean);
+        for (const p of licCandidates) {
+          if (!fs.existsSync(p)) continue;
+          licenseState.setEmbeddedLicense(fs.readFileSync(p, 'utf8').trim());
+          const st = await licenseState.evaluate({ force: true }).catch(() => null);
+          console.log('[Electron Main] Embedded license ->', st && st.status);
+          if (st && mainWindow && !mainWindow.isDestroyed()) {
+            const { ENFORCED: _E } = require('../backend/src/licensing/enforcement');
+            mainWindow.webContents.send('license:state', Object.assign({ enforced: _E }, st));
+          }
+          break;
+        }
+      } catch (e) {}
+
+      const { ENFORCED } = require('../backend/src/licensing/enforcement');
+      watchdog.start({
+        intervalMs: 20000,
+        onChange: (st) => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('license:state', Object.assign({ enforced: ENFORCED }, st));
+          }
+        }
+      });
+
+      try {
+        const { powerMonitor } = require('electron');
+        powerMonitor.on('resume', () => watchdog.forceCheck());
+        powerMonitor.on('unlock-screen', () => watchdog.forceCheck());
+      } catch (e) {}
+
+      global.__license = { licenseState, watchdog, getMachineFingerprint };
+      console.log('[Electron Main] License watchdog active.');
+    } catch (licErr) {
+      console.error('[Electron Main] License wiring error:', licErr.stack || licErr.message);
     }
   } catch (err) {
     console.error('[Electron Main] Error initializing backend services:', err.stack || err.message);
@@ -223,6 +324,42 @@ app.on('before-quit', async () => {
     try { backendServer.close(); } catch (e) {}
   }
   await stopMongo();
+});
+
+// ── License IPC (renderer <-> main). Not gated: reachable pre-login / while locked. ──
+function withEnforced(state) {
+  try {
+    const { ENFORCED } = require('../backend/src/licensing/enforcement');
+    return Object.assign({ enforced: ENFORCED }, state);
+  } catch (e) {
+    return state;
+  }
+}
+ipcMain.handle('license:get-state', () => {
+  try { return withEnforced(require('../backend/src/licensing/licenseState').getState()); }
+  catch (e) { return { ok: false, status: 'INVALID', code: 'LICENSE_INTERNAL', reason: e.message }; }
+});
+ipcMain.handle('license:refresh', async () => {
+  try { return withEnforced(await require('../backend/src/licensing/licenseState').evaluate({ force: true })); }
+  catch (e) { return { ok: false, status: 'INVALID', code: 'LICENSE_INTERNAL', reason: e.message }; }
+});
+ipcMain.handle('license:activate', async (event, licenseKey) => {
+  try {
+    const st = await require('../backend/src/licensing/licenseState').activate({ licString: String(licenseKey || '').trim() });
+    const payload = withEnforced(st);
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('license:state', payload);
+    return { success: true, license: payload };
+  } catch (err) {
+    return { success: false, code: err.code || 'ACTIVATION_FAILED', message: err.message || 'Activation failed.' };
+  }
+});
+ipcMain.handle('license:get-machine-id', () => {
+  try { return require('./licensing/machineFingerprint').getMachineFingerprint().hash; }
+  catch (e) { return ''; }
+});
+ipcMain.handle('license:clear', () => {
+  try { return require('../backend/src/licensing/licenseState').clearLocal(); }
+  catch (e) { return { ok: false, status: 'NOT_ACTIVATED', code: 'LICENSE_NOT_ACTIVATED' }; }
 });
 
 // Window IPC Handlers
@@ -250,24 +387,119 @@ ipcMain.handle('quit-app', () => {
   app.quit();
 });
 
+// List printers connected to this machine
+ipcMain.handle('list-printers', async () => {
+  try {
+    if (mainWindow && mainWindow.webContents && typeof mainWindow.webContents.getPrintersAsync === 'function') {
+      const printers = await mainWindow.webContents.getPrintersAsync();
+      return (printers || []).map((p) => ({
+        name: p.name,
+        displayName: p.displayName || p.name,
+        isDefault: !!p.isDefault,
+        status: p.status,
+        location: (p.options && (p.options['printer-location'] || p.options['location'])) || p.description || ''
+      }));
+    }
+    if (mainWindow && mainWindow.webContents && typeof mainWindow.webContents.getPrinters === 'function') {
+      return (mainWindow.webContents.getPrinters() || []).map((p) => ({
+        name: p.name, displayName: p.displayName || p.name, isDefault: !!p.isDefault, status: p.status
+      }));
+    }
+  } catch (e) {
+    console.warn('[Print] list-printers error:', e.message);
+  }
+  return [];
+});
+
+// Print invoice HTML directly (optionally silent, optionally to a named printer)
+ipcMain.handle('print-html', async (event, { html, printerName, silent, invoiceId }) => {
+  return await new Promise((resolve) => {
+    let win = new BrowserWindow({
+      show: false,
+      webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false }
+    });
+    let settled = false;
+    const done = (result) => {
+      if (settled) return;
+      settled = true;
+      try { if (win && !win.isDestroyed()) win.close(); } catch (e) {}
+      win = null;
+      resolve(result);
+    };
+
+    const fullDoc = `<!doctype html><html><head><meta charset="utf-8">
+      <style>@page{margin:8mm} html,body{margin:0;padding:0;background:#fff;font-family:Arial,Helvetica,sans-serif} *{box-sizing:border-box}</style>
+      </head><body>${html || ''}</body></html>`;
+
+    // No physical printer chosen (or a PDF/XPS "printer") → generate a PDF file
+    // ourselves and drop it straight into Downloads, named by the invoice number.
+    // No "Save as" dialog.
+    const isPdfTarget = !printerName || /pdf|xps|onenote|fax/i.test(String(printerName));
+
+    win.webContents.once('did-finish-load', async () => {
+      if (isPdfTarget) {
+        try {
+          const data = await win.webContents.printToPDF({
+            printBackground: true,
+            margins: { top: 0.4, bottom: 0.4, left: 0.4, right: 0.4 }
+          });
+          const invoicesDir = path.join(app.getPath('desktop'), 'Nexus Invoices');
+          if (!fs.existsSync(invoicesDir)) fs.mkdirSync(invoicesDir, { recursive: true });
+          const safe = String(invoiceId || `Invoice_${Date.now()}`).replace(/[^A-Za-z0-9._-]/g, '_');
+          let outPath = path.join(invoicesDir, `${safe}.pdf`);
+          let n = 1;
+          while (fs.existsSync(outPath)) { outPath = path.join(invoicesDir, `${safe} (${n++}).pdf`); }
+          fs.writeFileSync(outPath, data);
+          done({ success: true, pdf: true, savedPath: outPath, folderPath: invoicesDir });
+        } catch (e) {
+          done({ success: false, failureReason: e.message });
+        }
+        return;
+      }
+
+      const opts = {
+        silent: !!silent,
+        printBackground: true,
+        margins: { marginType: 'custom', top: 20, bottom: 20, left: 20, right: 20 },
+        deviceName: printerName
+      };
+      try {
+        win.webContents.print(opts, (success, failureReason) => {
+          done({ success: !!success, failureReason: failureReason || '' });
+        });
+      } catch (e) {
+        done({ success: false, failureReason: e.message });
+      }
+    });
+
+    win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(fullDoc)).catch((e) => {
+      done({ success: false, failureReason: e.message });
+    });
+
+    setTimeout(() => done({ success: false, failureReason: 'timeout' }), 20000);
+  });
+});
+
 ipcMain.handle('save-pdf-file', async (event, { base64Data, defaultFilename }) => {
   try {
-    const downloadsDir = app.getPath('downloads');
-    const filename = defaultFilename || `Invoice_${Date.now()}.pdf`;
-    let targetPath = path.join(downloadsDir, filename);
+    // Save into Desktop\Nexus Invoices so the shop owner can find it instantly.
+    const invoicesDir = path.join(app.getPath('desktop'), 'Nexus Invoices');
+    if (!fs.existsSync(invoicesDir)) fs.mkdirSync(invoicesDir, { recursive: true });
 
-    let counter = 1;
+    const filename = defaultFilename || `Invoice_${Date.now()}.pdf`;
     const ext = path.extname(filename);
     const base = path.basename(filename, ext);
+    let targetPath = path.join(invoicesDir, filename);
+    let counter = 1;
     while (fs.existsSync(targetPath)) {
-      targetPath = path.join(downloadsDir, `${base}_(${counter})${ext}`);
+      targetPath = path.join(invoicesDir, `${base} (${counter})${ext}`);
       counter++;
     }
 
     const buffer = Buffer.from(base64Data, 'base64');
     await fs.promises.writeFile(targetPath, buffer);
-    console.log(`[Electron] PDF automatically saved to: ${targetPath}`);
-    return { success: true, filePath: targetPath };
+    console.log(`[Electron] PDF saved to: ${targetPath}`);
+    return { success: true, filePath: targetPath, folderPath: invoicesDir };
   } catch (err) {
     console.error('Error auto-saving PDF file in desktop app:', err);
     return { success: false, error: err.message };
@@ -352,213 +584,49 @@ let whatsappWindow = null;
 
 ipcMain.handle('send-whatsapp-pdf', async (event, { base64Data, pdfFilename, phone }) => {
   try {
-    // 1. Save PDF to Desktop/Nexus Invoices/
-    const desktopDir = app.getPath('desktop');
-    const invoicesDir = path.join(desktopDir, 'Nexus Invoices');
+    // 1. Save PDF to Desktop\Nexus Invoices (overwrite — no (1)(2)(3) clutter).
+    const invoicesDir = path.join(app.getPath('desktop'), 'Nexus Invoices');
     if (!fs.existsSync(invoicesDir)) fs.mkdirSync(invoicesDir, { recursive: true });
-    const pdfFilePath = path.join(invoicesDir, pdfFilename || 'Invoice.pdf');
-    const buffer = Buffer.from(base64Data, 'base64');
-    await fs.promises.writeFile(pdfFilePath, buffer);
+    const cleanName = String(pdfFilename || 'Invoice.pdf').replace(/[^A-Za-z0-9._-]/g, '_');
+    const pdfFilePath = path.join(invoicesDir, cleanName);
+    await fs.promises.writeFile(pdfFilePath, Buffer.from(base64Data, 'base64'));
     console.log('[WA] PDF saved:', pdfFilePath);
 
-    // 2. Close previous WhatsApp window if open
-    if (whatsappWindow && !whatsappWindow.isDestroyed()) {
-      try { whatsappWindow.close(); } catch(e) {}
+    // 2. Put the PDF on the clipboard as a real file so Ctrl+V attaches it.
+    let clipCopied = false;
+    if (process.platform === 'win32') {
+      try {
+        const { execFileSync } = require('child_process');
+        execFileSync('powershell', [
+          '-NoProfile', '-NonInteractive', '-Command',
+          `Set-Clipboard -LiteralPath ${JSON.stringify(pdfFilePath)}`
+        ], { timeout: 8000, windowsHide: true });
+        clipCopied = true;
+      } catch (e) {
+        console.warn('[WA] Set-Clipboard failed:', e.message);
+        try {
+          clipboard.writeBuffer('FileNameW', Buffer.from(pdfFilePath + '\0', 'ucs2'));
+          clipCopied = true;
+        } catch (e2) {}
+      }
     }
 
-    // 3. Open WhatsApp Web in dedicated BrowserWindow — phone number only, no text
-    whatsappWindow = new BrowserWindow({
-      width: 1200, height: 800,
-      title: 'WhatsApp',
-      autoHideMenuBar: true,
-      webPreferences: {
-        contextIsolation: false,
-        nodeIntegration: false,
-        sandbox: false,
-        webSecurity: true,
-      }
-    });
+    // 3. Open the WhatsApp chat for this number. wa.me works for both the
+    //    desktop app and WhatsApp Web.
+    const num = String(phone || '').replace(/[^0-9]/g, '');
+    let opened = false;
+    if (num) {
+      try { await shell.openExternal(`https://wa.me/${num}`); opened = true; } catch (e) {}
+      if (!opened) { try { await shell.openExternal(`whatsapp://send?phone=${num}`); opened = true; } catch (e) {} }
+    }
 
-    // 4. Attach CDP debugger & enable file chooser interception BEFORE navigation
-    const dbg = whatsappWindow.webContents.debugger;
-    try { dbg.attach('1.3'); } catch(e) {}
-    await dbg.sendCommand('Page.enable');
-    await dbg.sendCommand('Page.setInterceptFileChooserDialog', { enabled: true });
-
-    // 5. When CDP fires fileChooserOpened → auto-select our PDF
-    dbg.on('message', async (evt, method, params) => {
-      if (method === 'Page.fileChooserOpened') {
-        console.log('[WA CDP] fileChooserOpened — injecting PDF:', pdfFilePath);
-        try {
-          await dbg.sendCommand('Page.handleFileChooser', {
-            action: 'accept',
-            files: [pdfFilePath]
-          });
-          console.log('[WA CDP] PDF injected into file chooser.');
-        } catch (cdpErr) {
-          console.error('[WA CDP] handleFileChooser error:', cdpErr.message);
-        }
-      }
-    });
-
-    // 6. Load WhatsApp Web — phone only, no pre-filled text
-    const waUrl = `https://web.whatsapp.com/send?phone=${phone}`;
-    console.log('[WA] Loading:', waUrl);
-    await whatsappWindow.loadURL(waUrl, {
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-    });
-
-    // 7. Automation script — injected via dom-ready, polls for each UI element
-    const automationScript = `
-      (async function autoSendPdf() {
-        const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-        async function waitFor(selectors, timeoutMs = 60000) {
-          const sels = Array.isArray(selectors) ? selectors : [selectors];
-          const deadline = Date.now() + timeoutMs;
-          while (Date.now() < deadline) {
-            for (const sel of sels) {
-              const el = document.querySelector(sel);
-              if (el) return el;
-            }
-            await sleep(600);
-          }
-          return null;
-        }
-
-        function clickEl(el) {
-          if (!el) return false;
-          try {
-            el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-            el.dispatchEvent(new MouseEvent('mouseup',   { bubbles: true }));
-            el.click();
-            return true;
-          } catch(e) { return false; }
-        }
-
-        console.log('[WA-Auto] Waiting for WhatsApp chat UI...');
-
-        // Wait for the compose box (proves WhatsApp is fully loaded and chat is open)
-        const compose = await waitFor([
-          '[data-testid="conversation-compose-box-input"]',
-          'div[contenteditable="true"][data-tab]',
-          'div[role="textbox"]'
-        ], 90000);
-
-        if (!compose) {
-          console.warn('[WA-Auto] Compose box not found. User may need to log in (scan QR).');
-          return;
-        }
-        console.log('[WA-Auto] WhatsApp loaded. Compose box found.');
-        await sleep(1200);
-
-        // Clear any pre-filled text in compose box (don't send text, only PDF)
-        try {
-          compose.focus();
-          document.execCommand('selectAll', false, null);
-          document.execCommand('delete', false, null);
-        } catch(e) {}
-        await sleep(400);
-
-        // Click attachment button (paperclip / plus icon)
-        const attachBtn = await waitFor([
-          '[data-testid="attach-menu-plus"]',
-          '[data-icon="attach-menu-plus"]',
-          'button[title="Attach"]',
-          'span[data-icon="attach"]',
-          'span[data-icon="plus"]',
-          '[aria-label="Attach"]',
-        ], 10000);
-
-        if (attachBtn) {
-          clickEl(attachBtn.closest('button') || attachBtn.closest('[role="button"]') || attachBtn);
-          console.log('[WA-Auto] Attach button clicked.');
-        } else {
-          // Fallback: iterate all spans to find attach/clip icon
-          const allSpans = document.querySelectorAll('span[data-icon]');
-          let clicked = false;
-          for (const sp of allSpans) {
-            const icon = sp.getAttribute('data-icon') || '';
-            if (icon === 'attach-menu-plus' || icon === 'attach' || icon === 'clip' || icon === 'plus') {
-              clickEl(sp.closest('button, [role="button"]') || sp);
-              console.log('[WA-Auto] Attach icon clicked via fallback:', icon);
-              clicked = true;
-              break;
-            }
-          }
-          if (!clicked) {
-            console.warn('[WA-Auto] Attach button NOT found. Trying direct file input...');
-          }
-        }
-        await sleep(800);
-
-        // Click "Document" option from attachment menu
-        const docOption = await waitFor([
-          '[data-testid="mi-attach-document"]',
-          '[aria-label="Document"]',
-          'li[aria-label="Document"]',
-        ], 5000);
-
-        if (docOption) {
-          clickEl(docOption);
-          console.log('[WA-Auto] Document option clicked.');
-          await sleep(600);
-        }
-
-        // Trigger the file input (CDP intercepts and injects our PDF)
-        const fileInput = await waitFor('input[type="file"]', 5000);
-        if (fileInput) {
-          fileInput.click();
-          console.log('[WA-Auto] File input triggered — CDP will inject PDF.');
-        } else {
-          console.warn('[WA-Auto] File input not found after document click.');
-        }
-
-        // Wait for preview to render after CDP injects the file
-        await sleep(3500);
-
-        // Click the Send button
-        const sendBtn = await waitFor([
-          '[data-testid="send"]',
-          'button[aria-label="Send"]',
-          'span[data-testid="send"]',
-          '[data-icon="send"]',
-        ], 8000);
-
-        if (sendBtn) {
-          clickEl(sendBtn.closest('button, [role="button"]') || sendBtn);
-          console.log('[WA-Auto] SEND clicked — PDF sent successfully!');
-        } else {
-          // Last resort: find send button by icon
-          const allIcons = document.querySelectorAll('span[data-icon]');
-          for (const ic of allIcons) {
-            if (ic.getAttribute('data-icon') === 'send') {
-              clickEl(ic.closest('button, [role="button"]') || ic);
-              console.log('[WA-Auto] Send icon clicked via fallback.');
-              break;
-            }
-          }
-        }
-      })();
-    `;
-
-    // Run automation on dom-ready (earlier than did-finish-load, WhatsApp loads progressively)
-    whatsappWindow.webContents.on('dom-ready', () => {
-      console.log('[WA] dom-ready — scheduling automation...');
-      // Small delay then inject; WhatsApp still loads React after dom-ready
-      setTimeout(async () => {
-        try {
-          await whatsappWindow.webContents.executeJavaScript(automationScript);
-        } catch(jsErr) {
-          console.error('[WA] Automation injection error:', jsErr.message);
-        }
-      }, 3000);
-    });
-
-    return { success: true, pdfPath: pdfFilePath };
+    // (Auto keystroke-send removed: it is unreliable across WhatsApp Web tabs /
+    //  the Store app. The PDF is on the clipboard — one Ctrl+V in the chat.)
+    return { success: true, pdfPath: pdfFilePath, folderPath: invoicesDir, opened, clipboard: clipCopied, autoSent: false };
   } catch (err) {
     console.error('[WA] send-whatsapp-pdf error:', err);
     return { success: false, error: err.message };
   }
 });
+
 

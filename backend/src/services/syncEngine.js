@@ -163,6 +163,7 @@ async function pushLocalChangesToMongo() {
           if (payload.price !== undefined) productUpdate.price = Number(payload.price) || 0;
           if (payload.stock !== undefined) productUpdate.stock = payload.stock;
           if (payload.count !== undefined) productUpdate.count = Number(payload.count) || 50;
+          if (payload.sizeStock && typeof payload.sizeStock === 'object') productUpdate.sizeStock = payload.sizeStock;
           productUpdate.updatedAt = payload.updated_at || new Date().toISOString();
           productUpdate.deviceId = deviceId;
 
@@ -267,7 +268,8 @@ async function pullRemoteChangesFromMongo() {
         size: p.size,
         price: p.price,
         stock: p.stock,
-        count: p.count
+        count: p.count,
+        sizeStock: p.sizeStock
       }, pullOpts);
     }
   }

@@ -148,6 +148,7 @@ const sqliteStore = {
       price: Number(prd.price) || 0,
       stock: prd.stock || (countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock')),
       count: countNum,
+      sizeStock: (prd.sizeStock && typeof prd.sizeStock === 'object') ? prd.sizeStock : (existing && existing.sizeStock) || {},
       companyId: prd.companyId || 'shop_default',
       userId: prd.userId || 'user_local',
       version: nextVersion,

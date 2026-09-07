@@ -6,8 +6,13 @@ const Category = require('../models/Category');
 const Client = require('../models/Client');
 const Bill = require('../models/Bill');
 const dataStore = require('../db/dataStore');
+const sqliteStore = require('../db/sqliteStore');
 const mongoose = require('mongoose');
 const { emitToCompany } = require('../services/socketService');
+
+function isCloudConnected() {
+  return !!(mongoose.connection && mongoose.connection.readyState === 1);
+}
 
 const backupController = {
   createBackup: async (req, res) => {
@@ -17,94 +22,96 @@ const backupController = {
       const email = String(req.user?.email || req.body?.email || 'owner@shop.com').trim() || 'owner@shop.com';
       const deviceId = String(req.deviceId || req.body?.deviceId || 'DEV_DEFAULT').trim() || 'DEV_DEFAULT';
 
+      // A backup only counts if it actually reaches the cloud. Never report
+      // success for a snapshot that was not uploaded.
+      if (!isCloudConnected()) {
+        return res.status(503).json({
+          success: false,
+          offline: true,
+          message: 'Cloud database not connected. Backup was NOT uploaded. Reconnect to the internet and click Backup again.'
+        });
+      }
+
       let { invoices, products, categories, clients, bills } = req.body || {};
 
+      // For any section the client did not send, fall back to the full local dataset.
       if (!Array.isArray(invoices) || invoices.length === 0) {
-        try { invoices = await dataStore.getInvoices(userId); } catch (e) { invoices = []; }
+        try { invoices = await dataStore.getInvoices(userId, companyId); } catch (e) { invoices = Array.isArray(invoices) ? invoices : []; }
       }
       if (!Array.isArray(products) || products.length === 0) {
-        try { products = await dataStore.getProducts(userId); } catch (e) { products = []; }
+        try { products = await dataStore.getProducts(userId, companyId); } catch (e) { products = Array.isArray(products) ? products : []; }
       }
       if (!Array.isArray(categories) || categories.length === 0) {
-        try { categories = await dataStore.getCategories(userId); } catch (e) { categories = []; }
+        try { categories = await dataStore.getCategories(userId); } catch (e) { categories = Array.isArray(categories) ? categories : []; }
       }
       if (!Array.isArray(clients) || clients.length === 0) {
-        try { clients = await dataStore.getClients(companyId); } catch (e) { clients = []; }
+        try { clients = await dataStore.getClients(companyId); } catch (e) { clients = Array.isArray(clients) ? clients : []; }
       }
       if (!Array.isArray(bills) || bills.length === 0) {
-        try { bills = await dataStore.getBills(userId); } catch (e) { bills = []; }
+        try { bills = await dataStore.getBills(userId); } catch (e) { bills = Array.isArray(bills) ? bills : []; }
       }
 
-      try {
-        await dataStore.backupAllData({ invoices, products, categories, clients, bills }, userId);
-      } catch (saveErr) {
-        console.warn('dataStore.backupAllData notice:', saveErr.message);
-      }
+      invoices = Array.isArray(invoices) ? invoices : [];
+      products = Array.isArray(products) ? products : [];
+      categories = Array.isArray(categories) ? categories : [];
+      clients = Array.isArray(clients) ? clients : [];
+      bills = Array.isArray(bills) ? bills : [];
 
       const recordCounts = {
-        invoices: Array.isArray(invoices) ? invoices.length : 0,
-        products: Array.isArray(products) ? products.length : 0,
-        categories: Array.isArray(categories) ? categories.length : 0,
-        clients: Array.isArray(clients) ? clients.length : 0,
-        bills: Array.isArray(bills) ? bills.length : 0
+        invoices: invoices.length,
+        products: products.length,
+        categories: categories.length,
+        clients: clients.length,
+        bills: bills.length
       };
 
       const backupId = `BKP_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-      if (mongoose.connection && mongoose.connection.readyState === 1) {
-        try {
-          const backup = new Backup({
-            backupId,
-            companyId,
-            userId,
-            email,
-            deviceId,
-            version: 1,
-            recordCounts,
-            snapshotData: {
-              invoices: Array.isArray(invoices) ? invoices : [],
-              products: Array.isArray(products) ? products : [],
-              categories: Array.isArray(categories) ? categories : [],
-              clients: Array.isArray(clients) ? clients : [],
-              bills: Array.isArray(bills) ? bills : []
-            }
-          });
-          await backup.save();
-        } catch (mErr) {
-          console.warn('MongoDB backup save notice:', mErr.message);
-        }
+      // Pure snapshot upload. This must NOT touch or delete any live cloud
+      // collection — a device with a partial local cache must never be able to
+      // shrink the shared cloud data.
+      try {
+        await Backup.create({
+          backupId, companyId, userId, email, deviceId, version: 1, recordCounts,
+          snapshotData: { invoices, products, categories, clients, bills }
+        });
+      } catch (mErr) {
+        console.error('createBackup cloud save failed:', mErr.message);
+        return res.status(502).json({
+          success: false,
+          message: `Backup upload to cloud failed: ${mErr.message}`
+        });
       }
 
-      // Broadcast real-time event to all connected devices in company room
+      // Verify the snapshot is really persisted before telling the user it worked.
+      const verify = await Backup.findOne({ backupId }).select('backupId recordCounts createdAt').lean().exec();
+      if (!verify) {
+        return res.status(502).json({ success: false, message: 'Backup could not be verified in the cloud. Please retry.' });
+      }
+
+      // Retention: keep the 30 most recent backups for this account.
+      try {
+        const stale = await Backup.find({ $or: [{ companyId }, { userId }, { email }] })
+          .sort({ createdAt: -1 }).skip(30).select('_id').lean().exec();
+        if (stale.length > 0) {
+          await Backup.deleteMany({ _id: { $in: stale.map(s => s._id) } });
+        }
+      } catch (e) {}
+
       try {
         emitToCompany(companyId, 'backup:created', { backup: { backupId, recordCounts } });
       } catch (e) {}
 
-      // Asynchronously update Device status
       Device.findOneAndUpdate(
         { deviceId },
-        {
-          $set: {
-            companyId,
-            userId,
-            email,
-            lastSync: new Date(),
-            status: 'Online'
-          }
-        },
+        { $set: { companyId, userId, email, lastSync: new Date(), status: 'Online' } },
         { upsert: true }
       ).catch(e => console.warn('Device update notice:', e.message));
 
       return res.status(201).json({
         success: true,
-        message: 'Cloud backup created & synchronized successfully!',
-        backup: {
-          backupId,
-          createdAt: new Date().toISOString(),
-          recordCounts,
-          deviceId,
-          email
-        }
+        message: 'Cloud backup uploaded & verified successfully.',
+        backup: { backupId, createdAt: verify.createdAt, recordCounts, deviceId, email }
       });
     } catch (error) {
       console.error('createBackup error:', error.message);
@@ -195,123 +202,66 @@ const backupController = {
       const email = String(req.user?.email || req.body?.email || 'owner@shop.com').trim() || 'owner@shop.com';
       const { backupId } = req.body || {};
 
+      if (!isCloudConnected()) {
+        return res.status(503).json({
+          success: false,
+          offline: true,
+          message: 'Cloud database not connected. Connect to the internet and try Restore again.'
+        });
+      }
+
+      // Pick exactly one backup snapshot to restore.
       let targetBackup = null;
-      if (mongoose.connection && mongoose.connection.readyState === 1) {
-        try {
-          if (backupId) {
-            targetBackup = await Backup.findOne({ backupId }).lean().exec();
-          }
-          if (!targetBackup) {
-            targetBackup = await Backup.findOne({
-              $or: [{ companyId }, { userId }, { email }]
-            }).sort({ createdAt: -1 }).lean().exec();
-          }
-          if (!targetBackup) {
-            targetBackup = await Backup.findOne({}).sort({ createdAt: -1 }).lean().exec();
-          }
-        } catch (e) {}
+      if (backupId) {
+        targetBackup = await Backup.findOne({ backupId }).lean().exec();
+      }
+      if (!targetBackup) {
+        targetBackup = await Backup.findOne({ $or: [{ companyId }, { userId }, { email }] })
+          .sort({ createdAt: -1 }).lean().exec();
+      }
+      if (!targetBackup) {
+        targetBackup = await Backup.findOne({}).sort({ createdAt: -1 }).lean().exec();
+      }
+      if (!targetBackup) {
+        return res.status(404).json({ success: false, message: 'No cloud backup found to restore.' });
       }
 
-      // 1. Fetch live MongoDB Atlas data directly across all collections
-      let liveProducts = [];
-      let liveInvoices = [];
-      let liveCategories = [];
-      let liveClients = [];
-      let liveBills = [];
-
-      if (mongoose.connection && mongoose.connection.readyState === 1) {
-        try {
-          liveProducts = await Product.find({}).lean().exec();
-          liveInvoices = await Invoice.find({}).sort({ createdAt: -1 }).lean().exec();
-          liveCategories = await Category.find({}).lean().exec();
-          liveClients = await Client.find({}).lean().exec();
-          liveBills = await Bill.find({}).lean().exec();
-        } catch (e) {
-          console.warn('Live MongoDB query warning during restore:', e.message);
-        }
-      }
-
-      // 2. Merge snapshot data with live MongoDB Atlas data (deduplicate by ID / name)
-      const snapshot = targetBackup ? (targetBackup.snapshotData || {}) : {};
-
-      const mergedProductsMap = new Map();
-      (liveProducts || []).concat(snapshot.products || []).forEach(p => {
-        if (p && (p.id || p.name)) {
-          const key = String(p.id || p.name).toLowerCase().trim();
-          mergedProductsMap.set(key, p);
-        }
-      });
-
-      const mergedInvoicesMap = new Map();
-      (liveInvoices || []).concat(snapshot.invoices || []).forEach(i => {
-        if (i && (i.id || i.clientName)) {
-          const key = String(i.id || (i.clientName + i.amount)).toLowerCase().trim();
-          mergedInvoicesMap.set(key, i);
-        }
-      });
-
-      const mergedCategoriesMap = new Map();
-      (liveCategories || []).concat(snapshot.categories || []).forEach(c => {
-        if (c && (c.id || c.name)) {
-          const key = String(c.id || c.name).toLowerCase().trim();
-          mergedCategoriesMap.set(key, c);
-        }
-      });
-
-      const mergedClientsMap = new Map();
-      (liveClients || []).concat(snapshot.clients || []).forEach(cl => {
-        if (cl && (cl.id || cl.name)) {
-          const key = String(cl.id || cl.name).toLowerCase().trim();
-          mergedClientsMap.set(key, cl);
-        }
-      });
-
-      const mergedBillsMap = new Map();
-      (liveBills || []).concat(snapshot.bills || []).forEach(b => {
-        if (b && (b.id || b.vendor)) {
-          const key = String(b.id || b.vendor).toLowerCase().trim();
-          mergedBillsMap.set(key, b);
-        }
-      });
-
+      // Restore the snapshot verbatim. Do NOT merge with the live cloud
+      // collections and do NOT delete anything from the cloud — the result must
+      // be exactly the data that was backed up on the other device.
+      const snapshot = targetBackup.snapshotData || {};
       const finalSnapshot = {
-        products: Array.from(mergedProductsMap.values()),
-        invoices: Array.from(mergedInvoicesMap.values()),
-        categories: Array.from(mergedCategoriesMap.values()),
-        clients: Array.from(mergedClientsMap.values()),
-        bills: Array.from(mergedBillsMap.values())
+        products: Array.isArray(snapshot.products) ? snapshot.products : [],
+        invoices: Array.isArray(snapshot.invoices) ? snapshot.invoices : [],
+        categories: Array.isArray(snapshot.categories) ? snapshot.categories : [],
+        clients: Array.isArray(snapshot.clients) ? snapshot.clients : [],
+        bills: Array.isArray(snapshot.bills) ? snapshot.bills : []
       };
 
-      // 3. Save all restored items to local storage
-      let result = null;
-      try {
-        result = await dataStore.backupAllData(finalSnapshot, userId);
-      } catch (e) {
-        console.warn('dataStore.backupAllData notice:', e.message);
-      }
+      // Apply to the local store (upsert by id, no sync-queue noise). Non-destructive.
+      const opts = { skipSyncQueue: true };
+      const applied = { products: 0, invoices: 0, categories: 0, clients: 0, bills: 0 };
+      for (const c of finalSnapshot.categories) { try { await sqliteStore.createCategory(c, opts); applied.categories++; } catch (e) {} }
+      for (const p of finalSnapshot.products) { try { await sqliteStore.createProduct(p, opts); applied.products++; } catch (e) {} }
+      for (const cl of finalSnapshot.clients) { try { await sqliteStore.createClient(cl, opts); applied.clients++; } catch (e) {} }
+      for (const inv of finalSnapshot.invoices) { try { await sqliteStore.createInvoice(inv, opts); applied.invoices++; } catch (e) {} }
+      for (const b of finalSnapshot.bills) { try { await sqliteStore.createBill(b, opts); applied.bills++; } catch (e) {} }
 
-      // 4. Broadcast real-time restore event to all connected devices in company room
       try {
-        emitToCompany(companyId, 'backup:restored', { backup: targetBackup || { backupId: 'BKP_LIVE_RESTORED' } });
+        emitToCompany(companyId, 'backup:restored', { backup: { backupId: targetBackup.backupId } });
         emitToCompany(companyId, 'dashboard:updated', { trigger: 'backup_restored' });
       } catch (e) {}
 
       return res.json({
         success: true,
-        message: `Successfully restored and synchronized ${finalSnapshot.products.length} products and data from MongoDB Atlas!`,
+        message: `Restored backup ${targetBackup.backupId} from ${new Date(targetBackup.createdAt).toLocaleString()}.`,
         backup: {
-          backupId: targetBackup ? targetBackup.backupId : 'BKP_LIVE_SYNC',
-          createdAt: targetBackup ? targetBackup.createdAt : new Date().toISOString(),
-          recordCounts: {
-            products: finalSnapshot.products.length,
-            invoices: finalSnapshot.invoices.length,
-            categories: finalSnapshot.categories.length,
-            clients: finalSnapshot.clients.length,
-            bills: finalSnapshot.bills.length
-          }
+          backupId: targetBackup.backupId,
+          createdAt: targetBackup.createdAt,
+          recordCounts: targetBackup.recordCounts || applied
         },
         restoredData: finalSnapshot,
-        result
+        applied
       });
     } catch (error) {
       console.error('restoreBackup error:', error.message);

@@ -14,7 +14,19 @@
     "electron:build": "npm run dist:installer",
     "dist:win": "npm run frontend:build && npx cross-env CSC_IDENTITY_AUTO_DISCOVERY=false WIN_CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win nsis portable",
     "dist:installer": "npm run frontend:build && npx cross-env CSC_IDENTITY_AUTO_DISCOVERY=false WIN_CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win nsis",
-    "dist:portable": "npm run frontend:build && npx cross-env CSC_IDENTITY_AUTO_DISCOVERY=false WIN_CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win portable"
+    "dist:portable": "npm run frontend:build && npx cross-env CSC_IDENTITY_AUTO_DISCOVERY=false WIN_CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win portable",
+    "license:keygen": "node tools/license-cli/keygen.js",
+    "license:issue": "node tools/license-cli/issue.js",
+    "license:revoke": "node tools/license-cli/revoke.js",
+    "license:extend": "node tools/license-cli/extend.js",
+    "license:update": "node tools/license-cli/update.js",
+    "license:deactivate": "node tools/license-cli/deactivate.js",
+    "license:list": "node tools/license-cli/list.js",
+    "license:selftest": "node tools/license-cli/selftest.js",
+    "license:statetest": "node tools/license-cli/state-test.js",
+    "test": "node --test \"tests/**/*.test.js\"",
+    "test:licensing": "node --test \"tests/licensing/*.test.js\"",
+    "client:build": "node scripts/client-build.cjs"
   },
   "build": {
     "appId": "com.nexussuite.desktop",
@@ -24,11 +36,21 @@
     "directories": {
       "output": "dist-installer"
     },
+    "afterPack": "scripts/afterPack.cjs",
     "files": [
       "electron/**/*",
       "backend/**/*",
       "frontend/dist/**/*",
-      "package.json"
+      "package.json",
+      "!**/.env",
+      "!**/.env.*",
+      "!electron/app.env",
+      "!electron/app.secret.env",
+      "!electron/app.secret.env.example",
+      "!tools/**",
+      "!dist-licenses/**",
+      "!**/*.private.pem",
+      "!backend/src/scripts/**"
     ],
     "extraFiles": [
       {
@@ -37,6 +59,16 @@
         "filter": [
           "**/*"
         ]
+      }
+    ],
+    "extraResources": [
+      {
+        "from": "electron/app.env",
+        "to": "app.env"
+      },
+      {
+        "from": "electron/app.secret.env",
+        "to": "app.secret.env"
       }
     ],
     "asar": true,

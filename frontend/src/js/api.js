@@ -19,7 +19,7 @@ export const tokenStorage = {
   }
 };
 
-let ACTIVE_PORT = 5000;
+let ACTIVE_PORT = 5050;
 let PRODUCTION_API_URL = typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env.VITE_API_URL || '') : '';
 
 async function detectActivePort() {
@@ -30,13 +30,15 @@ async function detectActivePort() {
     if (parsedP) ACTIVE_PORT = parsedP;
   }
 
-  const ports = [ACTIVE_PORT, 5000, 5001, 5002, 5003, 5004, 5005, 5050, 5051, 5052];
+  // 5050 is the app's real default port — probe it first so a fresh install
+  // does not waste seconds timing out on 5000-5005 before finding the backend.
+  const ports = [ACTIVE_PORT, 5050, 5051, 5052, 5000, 5001, 5002, 5003, 5004, 5005];
   const uniquePorts = Array.from(new Set(ports));
 
   for (const p of uniquePorts) {
     try {
       const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 2500);
+      const t = setTimeout(() => controller.abort(), 900);
       const res = await fetch(`http://127.0.0.1:${p}/api/health`, { method: 'GET', signal: controller.signal });
       clearTimeout(t);
       if (res.ok) {
@@ -118,8 +120,30 @@ async function request(endpoint, options = {}) {
     }));
 
     if (!response.ok) {
+      // A 404 with no JSON body from our API almost always means we hit the
+      // WRONG service (port 5050 taken by something else, our backend on 5051).
+      // Re-detect the port once, verifying it's really our backend, and retry.
+      const looksWrongService = response.status === 404 && !data.success && !data.code;
+      if (looksWrongService && !options.__portRetried) {
+        try { localStorage.removeItem('nexus_active_api_port'); } catch (e) {}
+        initialPortDetected = false;
+        const p = await detectActivePort();
+        if (p && p !== ACTIVE_PORT) {
+          ACTIVE_PORT = p;
+          return await request(endpoint, { ...options, __portRetried: true });
+        }
+      }
+
+      // Surface license blocks to the licensing layer so it can lock the app.
+      if (data && (data.licenseBlocked === true || (typeof data.code === 'string' && data.code.startsWith('LICENSE_')))) {
+        try {
+          window.dispatchEvent(new CustomEvent('license:blocked', { detail: data }));
+        } catch (e) {}
+      }
       const err = new Error(data.message || `HTTP Error ${response.status}`);
       err.status = response.status;
+      err.licenseBlocked = !!(data && data.licenseBlocked);
+      err.code = data && data.code;
       throw err;
     }
 
@@ -277,6 +301,14 @@ export const api = {
   getRegisteredDevices: () => request('/business/devices', { method: 'GET' }),
   registerDevice: (payload) => request('/business/devices/register', { method: 'POST', body: JSON.stringify(payload) }),
   revokeDevice: (deviceId) => request(`/business/devices/${encodeURIComponent(deviceId)}`, { method: 'DELETE' }),
+
+  // Licensing (local, on-device)
+  licenseStatus: () => request('/license/status', { method: 'GET' }),
+  licenseActivate: (licenseKey) => request('/license/activate', {
+    method: 'POST',
+    body: JSON.stringify({ licenseKey })
+  }),
+  licenseRefresh: () => request('/license/refresh', { method: 'POST' }),
 
   checkHealth: async () => {
     try {

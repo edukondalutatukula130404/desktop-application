@@ -172,28 +172,23 @@ const dataStore = {
     if (isOnline) {
       try {
         await seedInitialDataIfNeeded(userId);
-        const filter = userId ? { userId } : {};
-        let invoices = await Invoice.find(filter).sort({ createdAt: -1 }).lean().exec();
+        // Single shared shop: never scope reads by userId, otherwise cloud data
+        // created/backed-up on one device is invisible on another device that
+        // logs in with a different account. Matches getProducts()/getClients().
+        const filter = {};
+        // Cap the read so a growing history can't turn every dashboard load into
+        // a multi-thousand-doc fetch. Newest 2000 invoices is plenty for the UI.
+        let invoices = await Invoice.find(filter).sort({ createdAt: -1 }).limit(2000).lean().exec();
 
+        // De-duplicate for display only, keyed by the EXACT id. Never delete
+        // invoices from the database here — a bad key once wiped real sales.
         const uniqueMap = new Map();
-        const duplicateIds = [];
-
         (invoices || []).forEach(inv => {
           if (inv && inv.id) {
-            const key = String(inv.id).replace(/-/g, '').toLowerCase().trim();
-            if (!uniqueMap.has(key)) {
-              uniqueMap.set(key, inv);
-            } else {
-              duplicateIds.push(inv._id);
-            }
+            const key = String(inv.id).toLowerCase().trim();
+            if (!uniqueMap.has(key)) uniqueMap.set(key, inv);
           }
         });
-
-        if (duplicateIds.length > 0) {
-          try {
-            await Invoice.deleteMany({ _id: { $in: duplicateIds } });
-          } catch (e) {}
-        }
         mongoList = Array.from(uniqueMap.values());
       } catch (e) {
         console.warn('MongoDB getInvoices notice:', e.message);
@@ -206,15 +201,17 @@ const dataStore = {
     const invMap = new Map();
     (mongoList || []).forEach(inv => {
       if (inv && inv.id) {
-        const key = String(inv.id).replace(/-/g, '').toLowerCase().trim();
+        const key = String(inv.id).toLowerCase().trim();
         invMap.set(key, { ...inv });
-        try { sqliteStore.createInvoice(inv); } catch (e) {}
+        // (Local cache is kept warm by the background sync engine's pull cycle;
+        //  writing every invoice back to the JSON store on each read rewrote the
+        //  whole file N times per dashboard load — removed.)
       }
     });
 
     (localList || []).forEach(inv => {
       if (inv && inv.id) {
-        const key = String(inv.id).replace(/-/g, '').toLowerCase().trim();
+        const key = String(inv.id).toLowerCase().trim();
         if (!invMap.has(key)) {
           invMap.set(key, { ...inv });
         } else {
@@ -227,29 +224,62 @@ const dataStore = {
   },
 
   createInvoice: async (invoiceData, userId = null) => {
-    // 1. Save to local SQLite database & enqueue sync item
+    const isOnline = await checkMongoOnlineFast();
+
+    const d = invoiceData.issueDate ? new Date(invoiceData.issueDate) : (invoiceData.dueDate ? new Date(invoiceData.dueDate) : new Date());
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateMerged = `${year}${month}${day}`;
+    const dateStr = `${year}-${month}-${day}`;
+
+    // --- Resolve a COLLISION-SAFE invoice id BEFORE writing anywhere. ---
+    // The client generates the id from a per-device localStorage counter, so two
+    // devices (or a reinstall) can both mint "INV-<date>004". Without this guard
+    // the second one silently overwrites the first sale via upsert.
+    let resolvedId = String(invoiceData.id || '').trim();
+    if (isOnline) {
+      try {
+        const taken = resolvedId ? await Invoice.exists({ id: resolvedId }) : true;
+        if (taken) {
+          const sameDay = await Invoice.find({ id: new RegExp('^INV-' + dateMerged) }).select('id').lean().exec();
+          let maxSeq = 0;
+          for (const it of (sameDay || [])) {
+            const m = String(it.id).match(/^INV-\d{8}(\d{3})/);
+            if (m) { const n = parseInt(m[1], 10); if (n > maxSeq) maxSeq = n; }
+          }
+          let candidate = `INV-${dateMerged}${String(maxSeq + 1).padStart(3, '0')}`;
+          if (await Invoice.exists({ id: candidate })) {
+            candidate = `${candidate}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+          }
+          resolvedId = candidate;
+        }
+      } catch (e) {
+        console.warn('Invoice id resolution notice:', e.message);
+        if (!resolvedId) resolvedId = `INV-${dateMerged}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      }
+    } else if (!resolvedId) {
+      resolvedId = `INV-${dateMerged}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    }
+
+    const invoiceWithId = { ...invoiceData, id: resolvedId };
+
+    // 1. Save to local store (with the resolved id so both stores agree).
     let sqliteResult = null;
     try {
-      sqliteResult = await sqliteStore.createInvoice(invoiceData);
+      sqliteResult = await sqliteStore.createInvoice(invoiceWithId);
     } catch (e) {
       console.warn('SQLite createInvoice warning:', e.message);
     }
 
     // 2. Save directly to MongoDB Atlas ONLY if connected
     let mongoResult = null;
-    const isOnline = await checkMongoOnlineFast();
     if (isOnline) {
       try {
-        const d = invoiceData.issueDate ? new Date(invoiceData.issueDate) : (invoiceData.dueDate ? new Date(invoiceData.dueDate) : new Date());
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const dateMerged = `${year}${month}${day}`;
-        const customId = invoiceData.id || `INV-${dateMerged}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        const customId = resolvedId;
 
         const clientName = (invoiceData.clientName || 'Walk-in Retail Customer').trim();
         const amount = parseFloat(invoiceData.amount) || 0;
-        const dateStr = `${year}-${month}-${day}`;
 
         const invFields = {
           id: customId,
@@ -284,7 +314,7 @@ const dataStore = {
       try { syncEngine.runSyncCycle(); } catch (e) {}
     }
 
-    const finalInv = mongoResult ? (mongoResult.toObject ? mongoResult.toObject() : mongoResult) : (sqliteResult || invoiceData);
+    const finalInv = mongoResult ? (mongoResult.toObject ? mongoResult.toObject() : mongoResult) : (sqliteResult || invoiceWithId);
     return finalInv;
   },
 
@@ -311,8 +341,10 @@ const dataStore = {
     if (isOnline) {
       try {
         await seedInitialDataIfNeeded(userId);
-        const filter = userId ? { userId } : {};
-        let bills = await Bill.find(filter).sort({ createdAt: -1 }).lean().exec();
+        // Single shared shop: keep bill reads unscoped so cloud/restored data is
+        // visible regardless of which account logs in on this device.
+        const filter = {};
+        let bills = await Bill.find(filter).sort({ createdAt: -1 }).limit(2000).lean().exec();
         mongoList = bills || [];
       } catch (e) {
         console.warn('MongoDB getBills notice:', e.message);
@@ -496,7 +528,7 @@ const dataStore = {
     const isOnline = await checkMongoOnlineFast();
     if (isOnline) {
       try {
-        mongoList = await Product.find({}).lean().exec() || [];
+        mongoList = await Product.find({}).limit(5000).lean().exec() || [];
       } catch (e) {
         console.warn('MongoDB getProducts notice:', e.message);
       }
@@ -683,23 +715,38 @@ const dataStore = {
   },
 
   updateProductStock: async (id, stockData) => {
-    const countNum = Math.max(0, parseInt(stockData.count, 10) || 0);
+    // Optional per-size stock map. When present, `count` is its sum.
+    let sizeStock = null;
+    if (stockData.sizeStock && typeof stockData.sizeStock === 'object') {
+      sizeStock = {};
+      for (const [k, v] of Object.entries(stockData.sizeStock)) {
+        const n = Math.max(0, parseInt(v, 10) || 0);
+        if (String(k).trim()) sizeStock[String(k).trim()] = n;
+      }
+    }
+
+    const countNum = sizeStock
+      ? Object.values(sizeStock).reduce((a, b) => a + b, 0)
+      : Math.max(0, parseInt(stockData.count, 10) || 0);
     const stockStatus = stockData.stock || (countNum > 10 ? 'In Stock' : (countNum > 0 ? 'Low Stock' : 'Out of Stock'));
-    
+
+    const setFields = { count: countNum, stock: stockStatus };
+    if (sizeStock) setFields.sizeStock = sizeStock;
+
     let product = null;
     const isOnline = await checkMongoOnlineFast();
     if (isOnline) {
       try {
         product = await Product.findOneAndUpdate(
           { id: { $regex: new RegExp(`^${id}$`, 'i') } },
-          { $set: { count: countNum, stock: stockStatus } },
+          { $set: setFields },
           { new: true }
         ).lean().exec();
 
         if (!product) {
           product = await Product.findByIdAndUpdate(
             id,
-            { $set: { count: countNum, stock: stockStatus } },
+            { $set: setFields },
             { new: true }
           ).lean().exec();
         }
@@ -707,10 +754,10 @@ const dataStore = {
     }
 
     try {
-      await sqliteStore.updateProduct(id, { count: countNum, stock: stockStatus });
+      await sqliteStore.updateProduct(id, setFields);
     } catch (e) {}
 
-    return product || { id, count: countNum, stock: stockStatus };
+    return product || { id, ...setFields };
   },
 
   cleanupDuplicateCategories: async (userId = null) => {

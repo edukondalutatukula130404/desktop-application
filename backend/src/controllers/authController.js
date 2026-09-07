@@ -87,7 +87,8 @@ const authController = {
   // POST /api/auth/login
   login: async (req, res) => {
     try {
-      const { email, password } = req.body;
+      const email = (req.body && typeof req.body.email === 'string') ? req.body.email.trim() : '';
+      const password = (req.body && typeof req.body.password === 'string') ? req.body.password : '';
 
       if (!email || !password) {
         return res.status(400).json({
@@ -95,29 +96,28 @@ const authController = {
           message: 'Please provide both email and password.'
         });
       }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ success: false, message: 'Please enter a valid email address.' });
+      }
+      if (password.length < 6) {
+        return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+      }
 
       let user = await userStore.findByEmail(email);
 
-      // Auto-register first-time login users seamlessly
       if (!user) {
+        // First time this email is used → create the account (no Sign-Up screen).
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
         const nameRaw = email.split('@')[0] || 'User';
         const name = nameRaw.charAt(0).toUpperCase() + nameRaw.slice(1);
         const companyId = 'shop_' + Date.now() + Math.random().toString(36).substring(2, 6);
-        user = await userStore.createUser({
-          name,
-          email,
-          passwordHash,
-          companyId,
-          shopName: `${name}'s Clothing Shop`
-        });
+        user = await userStore.createUser({ name, email, passwordHash, companyId, shopName: `${name}'s Shop` });
       } else {
+        // Existing account → the password must match. No silent reset.
         const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch) {
-          const salt = await bcrypt.genSalt(10);
-          user.passwordHash = await bcrypt.hash(password, salt);
-          await userStore.updateUser(user);
+          return res.status(401).json({ success: false, message: 'Incorrect email or password. Please enter valid credentials.' });
         }
       }
 
@@ -148,7 +148,7 @@ const authController = {
       if (mongoose.connection && mongoose.connection.readyState === 1) {
         try {
           const Product = require('../models/Product');
-          const cloudCount = await Product.countDocuments({ companyId }).maxTimeMS(1500).exec();
+          const cloudCount = await Product.countDocuments({ companyId }).maxTimeMS(800).exec();
           hasCloudData = cloudCount > 0;
         } catch (e) {
           console.warn('Cloud data check warning:', e.message);

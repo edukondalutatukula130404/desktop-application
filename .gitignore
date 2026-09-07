@@ -10,3 +10,16 @@ mongo-data/
 *.log
 scripts/*.zip
 
+# ── Licensing: never commit private signing material or generated licenses ──
+tools/license-cli/keys/
+tools/license-cli/.env.license
+*.private.pem
+dist-licenses/
+*.lic
+
+# ── Shipped secrets: provided by the operator, never committed ──
+electron/app.secret.env
+electron/embedded-license.lic
+
+
+dist-installer/

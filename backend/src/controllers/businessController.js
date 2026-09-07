@@ -205,9 +205,9 @@ const businessController = {
       const companyId = getCompanyId(req);
       const userId = getUserId(req);
       const { id } = req.params;
-      const { count, stock } = req.body;
+      const { count, stock, sizeStock } = req.body;
 
-      const updated = await dataStore.updateProductStock(id, { count, stock }, userId);
+      const updated = await dataStore.updateProductStock(id, { count, stock, sizeStock }, userId);
       if (!updated) {
         return res.status(404).json({ success: false, message: 'Product not found' });
       }

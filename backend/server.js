@@ -9,6 +9,9 @@ const { startSyncEngine } = require('./src/services/syncEngine');
 const authRoutes = require('./src/routes/authRoutes');
 const businessRoutes = require('./src/routes/businessRoutes');
 const syncRoutes = require('./src/routes/syncRoutes');
+const licenseClientRoutes = require('./src/routes/licenseClientRoutes');
+const licenseMiddleware = require('./src/middleware/licenseMiddleware');
+const licenseState = require('./src/licensing/licenseState');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -46,8 +49,11 @@ if (!fs.existsSync(invoicesDir)) {
   fs.mkdirSync(invoicesDir, { recursive: true });
 }
 
+// Local (on-device) license endpoints — reachable before login and while locked.
+app.use('/api/license', licenseClientRoutes);
+
 // Route to save PDF from base64
-app.post('/api/business/invoices/save-pdf', (req, res) => {
+app.post('/api/business/invoices/save-pdf', licenseMiddleware, (req, res) => {
   try {
     const { invoiceId, base64Data } = req.body;
     if (!invoiceId || !base64Data) {
@@ -67,7 +73,7 @@ app.post('/api/business/invoices/save-pdf', (req, res) => {
 });
 
 // Route to download PDF file
-app.get('/api/business/invoices/download-pdf/:invoiceId', (req, res) => {
+app.get('/api/business/invoices/download-pdf/:invoiceId', licenseMiddleware, (req, res) => {
   try {
     const cleanId = String(req.params.invoiceId).replace(/[^a-zA-Z0-9_-]/g, '');
     const pdfPath = path.join(invoicesDir, `${cleanId}.pdf`);
@@ -83,9 +89,11 @@ app.get('/api/business/invoices/download-pdf/:invoiceId', (req, res) => {
 });
 
 // Authentication, Business & Sync Routes
+// Business + sync data APIs are gated by the license layer (defense-in-depth:
+// they stop responding the moment the license lapses, independent of the UI).
 app.use('/api/auth', authRoutes);
-app.use('/api/business', businessRoutes);
-app.use('/api/sync', syncRoutes);
+app.use('/api/business', licenseMiddleware, businessRoutes);
+app.use('/api/sync', licenseMiddleware, syncRoutes);
 
 // Serve Frontend Static Dist Assets (Production Desktop App)
 const frontendDist = path.join(__dirname, '../frontend/dist');
@@ -118,6 +126,23 @@ async function startServer(port = PORT) {
     await connectDB();
   } catch (dbErr) {
     console.warn('[Express Server] MongoDB Atlas offline mode active:', dbErr.message);
+  }
+
+  // License enforcement: load any activated license and start a coarse refresh
+  // loop. In the packaged app, electron/main.cjs calls licenseState.init() again
+  // with the DPAPI-backed vault + real machine fingerprint and owns the
+  // authoritative monotonic watchdog (Phase 4); this timer is the fallback.
+  try {
+    licenseState.init();
+    await licenseState.evaluate().catch(() => {});
+    if (!global.__licenseRefreshTimer) {
+      global.__licenseRefreshTimer = setInterval(() => {
+        licenseState.evaluate().catch(() => {});
+      }, 20 * 1000);
+      global.__licenseRefreshTimer.unref && global.__licenseRefreshTimer.unref();
+    }
+  } catch (licErr) {
+    console.warn('[Express Server] license init warning:', licErr.message);
   }
 
   // Start background 2-way sync engine

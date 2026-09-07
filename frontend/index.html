@@ -8,7 +8,7 @@
   <meta name="description" content="A sleek, modern full-stack SaaS portal featuring Invoice management, Bills tracking, customer directory, and JWT authentication." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/src/styles/main.css">
 </head>
 <body>
@@ -25,104 +25,148 @@
 
   <!-- ================= AUTHENTICATION VIEW (LOGIN / REGISTER) ================= -->
   <main id="auth-viewport" class="app-viewport">
-    <div id="auth-card" class="auth-card">
+    <div class="auth-split-wrapper">
       
-      <!-- Brand Logo Header -->
-      <div class="brand-header" style="text-align: center; margin-bottom: 24px;">
-        <div style="display: inline-flex; align-items: center; justify-content: center; width: 68px; height: 68px; margin-bottom: 8px;">
-          <img src="/icon.png?v=6" alt="Nexus Suite Logo" style="width: 60px; height: 60px; object-fit: contain; filter: drop-shadow(0 6px 15px rgba(147, 51, 234, 0.22));" />
-        </div>
-        <h1 style="font-size: 1.8rem; font-weight: 800; color: #9333ea; font-family: 'Times New Roman', Georgia, serif; letter-spacing: 2px; text-transform: uppercase; margin: 4px 0 2px 0;">NEXUS SUITE</h1>
-        <p class="brand-subtitle" style="margin-top: 4px;">Financial & Invoicing Enterprise Portal</p>
-      </div>
-
-      <!-- LOGIN FORM -->
-      <form id="login-form" class="auth-form active">
-        <div class="input-group">
-          <label for="login-email">Email Address</label>
-          <div class="input-wrapper">
-            <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-              <polyline points="22,6 12,13 2,6"></polyline>
-            </svg>
-            <input type="email" id="login-email" placeholder="name@company.com" required autocomplete="email" />
+      <!-- LEFT HALF: IMAGE & CONTENT SHOWCASE -->
+      <div class="auth-split-left">
+        <div class="auth-visual-decor-glow"></div>
+        <div class="auth-left-content">
+          
+          <div class="auth-left-top">
+            <h2 class="auth-left-heading">
+              Intelligent Invoicing & Financial Operations
+            </h2>
+            <div class="auth-feature-tags">
+              <span class="auth-tag">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Real-Time Cloud Sync
+              </span>
+              <span class="auth-tag">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                GST & Multi-Category Billing
+              </span>
+              <span class="auth-tag">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Offline-First Engine
+              </span>
+            </div>
           </div>
-        </div>
 
-        <div class="input-group">
-          <div class="label-row">
-            <label for="login-password">Password</label>
-            <a href="#" id="forgot-password-link" class="forgot-link">Forgot?</a>
-          </div>
-          <div class="input-wrapper">
-            <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-            <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password" />
-            <button type="button" class="toggle-password-btn" data-target="login-password" title="Toggle password visibility">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
+          <div class="auth-visual-image-container">
+            <img src="/auth-banner.jpg" alt="Nexus Financial Operations Visual" class="auth-visual-img" />
+            <div class="auth-visual-overlay"></div>
+            <!-- Floating Interactive Metric Badges -->
+            <div class="auth-floating-badge badge-top-left">
+              <span class="pulse-dot"></span>
+              <span>Live Invoicing Active</span>
+            </div>
+            <div class="auth-floating-badge badge-bottom-right">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.4">
+                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                <polyline points="16 7 22 7 22 13"></polyline>
               </svg>
-            </button>
+              <span>Instant GST Tax Calculations</span>
+            </div>
           </div>
+
+          <div class="auth-features-grid">
+            <div class="auth-feature-item">
+              <div class="auth-feature-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+              </div>
+              <div class="auth-feature-text">
+                <div class="auth-feature-title">High-Speed Invoicing</div>
+                <div class="auth-feature-desc">1-click automated PDF generation & receipts</div>
+              </div>
+            </div>
+            
+            <div class="auth-feature-item">
+              <div class="auth-feature-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                  <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+              </div>
+              <div class="auth-feature-text">
+                <div class="auth-feature-title">Stock Intelligence</div>
+                <div class="auth-feature-desc">Real-time stock alerts & multi-category audits</div>
+              </div>
+            </div>
+          </div>
+
         </div>
-
-        <div class="form-options">
-          <label class="checkbox-container">
-            <input type="checkbox" id="remember-me" checked />
-            <span class="custom-checkmark"></span>
-            <span class="checkbox-label">Keep me signed in</span>
-          </label>
-        </div>
-
-        <button type="submit" id="login-submit-btn" class="submit-btn">
-          <span class="btn-text">Sign In to Dashboard</span>
-          <div class="btn-spinner hidden"></div>
-        </button>
-      </form>
-
-      <div class="card-footer">
-        <p>Protected by end-to-end JWT encryption & 256-bit SSL</p>
       </div>
+
+      <!-- RIGHT HALF: AUTH FORM -->
+      <div class="auth-split-right">
+        <div id="auth-card" class="auth-card-panel">
+          
+          <!-- Brand Logo Header -->
+          <div class="brand-header">
+            <div class="auth-brand-icon-box">
+              <img src="/icon.png?v=6" alt="Nexus Suite Logo" class="auth-brand-logo-img" />
+            </div>
+            <h1 class="auth-brand-name">NEXUS SUITE</h1>
+            <p class="auth-brand-portal-title">Financial & Invoicing Enterprise Portal</p>
+          </div>
+
+          <div class="auth-welcome-block">
+            <h2 class="auth-welcome-heading">Sign In to Dashboard</h2>
+            <p class="auth-welcome-sub">Enter your credentials to access your financial workspace</p>
+          </div>
+
+          <!-- LOGIN FORM -->
+          <form id="login-form" class="auth-form active">
+            <div class="input-group">
+              <label for="login-email">Email Address</label>
+              <div class="input-wrapper">
+                <svg class="input-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                <input type="email" id="login-email" required autocomplete="email" />
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="login-password">Password</label>
+              <div class="input-wrapper">
+                <svg class="input-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <input type="password" id="login-password" required autocomplete="current-password" />
+                <button type="button" class="toggle-password-btn" data-target="login-password" title="Toggle password visibility">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-options">
+              <label class="checkbox-container">
+                <input type="checkbox" id="remember-me" checked />
+                <span class="custom-checkmark"></span>
+                <span class="checkbox-label">Keep me signed in</span>
+              </label>
+            </div>
+
+            <button type="submit" id="login-submit-btn" class="submit-btn">
+              <span class="btn-text">Sign In to Dashboard</span>
+              <div class="btn-spinner hidden"></div>
+            </button>
+          </form>
+
+        </div>
+      </div>
+
     </div>
   </main>
-
-
-
-  <!-- FORGOT PASSWORD MODAL -->
-  <div id="forgot-modal" class="modal-overlay hidden">
-    <div class="modal-card">
-      <button id="close-modal-btn" class="modal-close-btn">&times;</button>
-      <div class="brand-logo sm">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="16" x2="12" y2="12"></line>
-          <line x1="12" y1="8" x2="12.01" y2="8"></line>
-        </svg>
-      </div>
-      <h2 class="modal-title">Reset Password</h2>
-      <p class="modal-subtitle">Enter your registered email address to receive recovery instructions.</p>
-
-      <form id="forgot-form">
-        <div class="input-group">
-          <label for="reset-email">Email Address</label>
-          <div class="input-wrapper">
-            <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-              <polyline points="22,6 12,13 2,6"></polyline>
-            </svg>
-            <input type="email" id="reset-email" placeholder="name@company.com" required />
-          </div>
-        </div>
-
-        <button type="submit" id="reset-submit-btn" class="submit-btn">
-          <span class="btn-text">Send Instructions</span>
-        </button>
-      </form>
-    </div>
-  </div>
 
   <!-- ================= FULL-SCREEN SAAS DASHBOARD WORKSPACE ================= -->
   <div id="saas-dashboard" class="saas-container hidden">
@@ -347,11 +391,10 @@
                 <button class="link-btn" data-target="all_invoices">View All &rarr;</button>
               </div>
               <div class="table-responsive">
-                <table class="data-table">
+                <table class="data-table stackable">
                   <thead>
                     <tr>
                       <th class="nowrap-cell">Invoice ID</th>
-                      <th class="nowrap-cell">Sub-Category</th>
                       <th class="nowrap-cell">Date</th>
                       <th class="nowrap-cell text-right">Amount</th>
                     </tr>
@@ -373,7 +416,7 @@
                 <button class="link-btn" onclick="openLowStockInventoryView()" style="font-weight: 600;">Manage Inventory &rarr;</button>
               </div>
               <div class="table-responsive">
-                <table class="data-table">
+                <table class="data-table stackable">
                   <thead>
                     <tr>
                       <th>Product Name</th>
@@ -405,7 +448,7 @@
             </div>
 
             <div class="table-responsive">
-              <table class="data-table">
+              <table class="data-table stackable">
                 <thead>
                   <tr>
                     <th class="nowrap-cell">Invoice ID</th>
@@ -424,14 +467,75 @@
 
         <!-- VIEW 4: PRODUCTS CATALOG -->
         <div id="view-products" class="view-panel">
-          <div class="panel-card">
-            <div class="table-toolbar">
-              <div class="filter-tabs">
-                <button class="filter-btn active" data-prd-filter="all">All Apparel</button>
-                <button class="filter-btn" data-prd-filter="Men's Apparel">Men's Apparel</button>
-                <button class="filter-btn" data-prd-filter="Women's Fashion">Women's Fashion</button>
+          <style id="products-page-styles">
+            #view-products .prd-surface { background: transparent; }
+            #view-products .prd-toolbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+            #view-products .prd-count { font-size: 0.9rem; font-weight: 600; color: var(--text-muted); }
+            #view-products .prd-count b { color: var(--text-main); font-variant-numeric: tabular-nums; }
+            #view-products .prd-search { position: relative; flex: 1 1 240px; max-width: 320px; }
+            #view-products .prd-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-subtle); pointer-events: none; }
+            #view-products .prd-search input { width: 100%; height: 40px; padding: 0 12px 0 36px; border: 1px solid var(--input-border); border-radius: 9px; background: #fff; font: inherit; font-size: 0.9rem; color: var(--text-main); outline: none; }
+            #view-products .prd-search input:focus-visible { border-color: var(--primary-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 15%, transparent); }
+            #view-products .prd-seg { display: inline-flex; border: 1px solid var(--input-border); border-radius: 9px; overflow: hidden; }
+            #view-products .prd-seg .filter-btn { background: #fff; border: 0; border-right: 1px solid var(--input-border); border-radius: 0; box-shadow: none; padding: 9px 14px; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
+            #view-products .prd-seg .filter-btn:last-child { border-right: 0; }
+            #view-products .prd-seg .filter-btn:hover { background: var(--cyan-bg); color: var(--text-main); }
+            #view-products .prd-seg .filter-btn.active { background: var(--primary-accent); color: #fff; box-shadow: none; }
+            #view-products .prd-seg .filter-btn:focus-visible { outline: 2px solid var(--primary-accent); outline-offset: -2px; }
+            #view-products .prd-add { margin-left: auto; }
+
+            #view-products .prd-table-wrap { border: 1px solid var(--border-light); border-radius: 12px; overflow: auto; }
+            #view-products .prd-table-wrap::-webkit-scrollbar { height: 8px; width: 8px; display: block !important; }
+            #view-products .prd-table-wrap::-webkit-scrollbar-thumb { background: var(--input-border); border-radius: 8px; }
+            #view-products table.prd-table { width: 100%; min-width: 760px; border-collapse: collapse; }
+            #view-products .prd-table thead th { position: sticky; top: 0; z-index: 1; background: #faf7fe; text-align: left; padding: 12px 18px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-light); white-space: nowrap; }
+            #view-products .prd-table tbody td { padding: 14px 18px; font-size: 0.9rem; color: var(--text-main); border-bottom: 1px solid #f4eefc; vertical-align: middle; }
+            #view-products .prd-table tbody tr:last-child td { border-bottom: 0; }
+            #view-products .prd-table tbody tr:hover { background: color-mix(in srgb, var(--primary-accent) 4%, transparent); }
+            #view-products .prd-sku { font-family: 'JetBrains Mono','SFMono-Regular',ui-monospace,monospace; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+            #view-products .prd-name { font-weight: 700; color: var(--text-main); }
+            #view-products .prd-variant { font-size: 0.8rem; color: var(--text-subtle); margin-top: 2px; }
+            #view-products .prd-cat-link { color: var(--primary-accent); font-weight: 600; font-size: 0.85rem; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--primary-accent) 35%, transparent); text-underline-offset: 3px; cursor: pointer; }
+            #view-products .prd-cat-link:hover { text-decoration-color: var(--primary-accent); }
+            #view-products .prd-price { font-weight: 700; font-variant-numeric: tabular-nums; }
+            #view-products .prd-stock { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+            #view-products .prd-stock .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+            #view-products .prd-stock.ok { color: var(--emerald); } #view-products .prd-stock.ok .dot { background: var(--emerald); }
+            #view-products .prd-stock.low { color: var(--amber); } #view-products .prd-stock.low .dot { background: var(--amber); }
+            #view-products .prd-stock.out { color: var(--rose); } #view-products .prd-stock.out .dot { background: var(--rose); }
+            #view-products .prd-actions { display: inline-flex; gap: 4px; justify-content: flex-end; }
+            #view-products .prd-icon-btn { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--text-subtle); cursor: pointer; transition: background .15s, color .15s; }
+            #view-products .prd-icon-btn:hover { background: var(--cyan-bg); color: var(--primary-accent); }
+            #view-products .prd-icon-btn.danger:hover { background: var(--rose-bg); color: var(--rose); }
+            #view-products .prd-icon-btn:focus-visible { outline: 2px solid var(--primary-accent); outline-offset: 1px; }
+            #view-products .prd-empty { padding: 56px 24px; text-align: center; }
+            #view-products .prd-empty svg { color: var(--input-border); margin-bottom: 12px; }
+            #view-products .prd-empty h4 { font-size: 1rem; font-weight: 700; color: var(--text-main); margin: 0 0 4px; }
+            #view-products .prd-empty p { font-size: 0.88rem; color: var(--text-muted); margin: 0 0 16px; }
+            @media (max-width: 720px) {
+              #view-products .prd-add { margin-left: 0; }
+              #view-products .prd-table-wrap { border: 0; }
+              #view-products table.prd-table, #view-products .prd-table thead, #view-products .prd-table tbody, #view-products .prd-table tr, #view-products .prd-table td { display: block; min-width: 0; }
+              #view-products .prd-table thead { display: none; }
+              #view-products .prd-table tbody tr { border: 1px solid var(--border-light); border-radius: 12px; margin-bottom: 10px; padding: 6px 4px; }
+              #view-products .prd-table tbody td { border: 0; padding: 6px 14px; }
+              #view-products .prd-table tbody td[data-label]::before { content: attr(data-label); display: block; font-size: 0.68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-subtle); margin-bottom: 2px; }
+              #view-products .prd-actions { justify-content: flex-start; }
+            }
+          </style>
+          <div class="prd-surface">
+            <div class="prd-toolbar">
+              <span class="prd-count"><b id="prd-count-num">0</b> products</span>
+              <label class="prd-search">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="search" id="prd-page-search" placeholder="Search name, SKU, colour…" autocomplete="off" aria-label="Search products" />
+              </label>
+              <div class="prd-seg" role="tablist" aria-label="Filter products by category">
+                <button class="filter-btn active" role="tab" aria-selected="true" data-prd-filter="all">All</button>
+                <button class="filter-btn" role="tab" aria-selected="false" data-prd-filter="Men's Apparel">Men</button>
+                <button class="filter-btn" role="tab" aria-selected="false" data-prd-filter="Women's Fashion">Women</button>
               </div>
-              <button id="quick-add-product-btn" onclick="openProductModal()" class="primary-action-btn sm">
+              <button id="quick-add-product-btn" onclick="openProductModal()" class="primary-action-btn sm prd-add">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -440,16 +544,16 @@
               </button>
             </div>
 
-            <div class="table-responsive">
-              <table class="data-table">
+            <div class="prd-table-wrap">
+              <table class="prd-table">
                 <thead>
                   <tr>
-                    <th class="nowrap-cell">SKU ID</th>
-                    <th>Product Name</th>
-                    <th>Category</th>
-                    <th class="nowrap-cell text-right">Unit Price (₹)</th>
-                    <th class="nowrap-cell text-center">Stock Level</th>
-                    <th class="nowrap-cell text-right">Action</th>
+                    <th scope="col">SKU</th>
+                    <th scope="col">Product</th>
+                    <th scope="col">Category</th>
+                    <th scope="col" class="text-right">Unit Price</th>
+                    <th scope="col">Stock</th>
+                    <th scope="col" class="text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="products-table-tbody">
@@ -462,35 +566,85 @@
 
         <!-- VIEW: INVENTORY MANAGEMENT -->
         <div id="view-inventory" class="view-panel">
+          <style id="inventory-page-styles">
+            #view-inventory .iv-summary { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; font-size: 0.88rem; color: var(--text-muted); }
+            #view-inventory .iv-summary b { color: var(--text-main); font-variant-numeric: tabular-nums; }
+            #view-inventory .iv-summary .sep { width: 1px; height: 14px; background: var(--border-light); }
+            #view-inventory .iv-summary .warn { color: var(--amber); font-weight: 700; }
+            #view-inventory .iv-summary .bad { color: var(--rose); font-weight: 700; }
+            #view-inventory .iv-toolbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+            #view-inventory .iv-search { position: relative; flex: 1 1 220px; max-width: 300px; }
+            #view-inventory .iv-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-subtle); pointer-events: none; }
+            #view-inventory .iv-search input { width: 100%; height: 40px; padding: 0 12px 0 36px; border: 1px solid var(--input-border); border-radius: 9px; background: #fff; font: inherit; font-size: 0.9rem; color: var(--text-main); outline: none; }
+            #view-inventory .iv-search input:focus-visible { border-color: var(--primary-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 15%, transparent); }
+            #view-inventory .iv-seg { display: inline-flex; border: 1px solid var(--input-border); border-radius: 9px; overflow: hidden; }
+            #view-inventory .iv-seg .inv-tab-pill { background: #fff; border: 0; border-right: 1px solid var(--input-border); border-radius: 0; box-shadow: none; padding: 9px 14px; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); cursor: pointer; font-family: inherit; }
+            #view-inventory .iv-seg .inv-tab-pill:last-child { border-right: 0; }
+            #view-inventory .iv-seg .inv-tab-pill:hover { background: var(--cyan-bg); color: var(--text-main); }
+            #view-inventory .iv-seg .inv-tab-pill.active { background: var(--primary-accent); color: #fff; }
+            #view-inventory .iv-seg .inv-tab-pill:focus-visible { outline: 2px solid var(--primary-accent); outline-offset: -2px; }
 
-          <!-- Glass Table Panel Card -->
-          <div class="inv-table-card">
-            <div class="inv-table-toolbar">
-              <div class="inv-pill-tabs">
-                <button class="inv-tab-pill active" data-inv-filter="all">
-                  <span>All Catalog Items</span>
-                </button>
-                <button class="inv-tab-pill" data-inv-filter="in_stock">
-                  <span>In Stock</span>
-                </button>
-                <button class="inv-tab-pill" data-inv-filter="low_stock">
-                  <span>Low Stock Alert</span>
-                </button>
-                <button class="inv-tab-pill" data-inv-filter="out_stock">
-                  <span>Out of Stock</span>
-                </button>
+            #view-inventory .iv-table-wrap { border: 1px solid var(--border-light); border-radius: 12px; overflow: auto; }
+            #view-inventory .iv-table-wrap::-webkit-scrollbar { height: 8px; width: 8px; display: block !important; }
+            #view-inventory .iv-table-wrap::-webkit-scrollbar-thumb { background: var(--input-border); border-radius: 8px; }
+            #view-inventory table.iv-table { width: 100%; min-width: 680px; border-collapse: collapse; }
+            #view-inventory .iv-table thead th { position: sticky; top: 0; z-index: 1; background: #faf7fe; text-align: left; padding: 12px 18px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-light); white-space: nowrap; }
+            #view-inventory .iv-table tbody td { padding: 14px 18px; font-size: 0.9rem; color: var(--text-main); border-bottom: 1px solid #f4eefc; vertical-align: middle; }
+            #view-inventory .iv-table tbody tr:last-child td { border-bottom: 0; }
+            #view-inventory .iv-table tbody tr { cursor: pointer; }
+            #view-inventory .iv-table tbody tr:hover { background: color-mix(in srgb, var(--primary-accent) 4%, transparent); }
+            #view-inventory .iv-sku { font-family: 'JetBrains Mono','SFMono-Regular',ui-monospace,monospace; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+            #view-inventory .iv-name { font-weight: 700; color: var(--text-main); }
+            #view-inventory .iv-cat-link { color: var(--primary-accent); font-weight: 600; font-size: 0.82rem; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--primary-accent) 35%, transparent); text-underline-offset: 3px; cursor: pointer; }
+            #view-inventory .iv-cat-link:hover { text-decoration-color: var(--primary-accent); }
+            #view-inventory .iv-qty { font-weight: 800; font-size: 1rem; font-variant-numeric: tabular-nums; }
+            #view-inventory .iv-status { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; }
+            #view-inventory .iv-status .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+            #view-inventory .iv-status.ok { color: var(--emerald); } #view-inventory .iv-status.ok .dot { background: var(--emerald); }
+            #view-inventory .iv-status.low { color: var(--amber); } #view-inventory .iv-status.low .dot { background: var(--amber); }
+            #view-inventory .iv-status.out { color: var(--rose); } #view-inventory .iv-status.out .dot { background: var(--rose); }
+            #view-inventory .iv-icon-btn { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--text-subtle); cursor: pointer; transition: background .15s, color .15s; }
+            #view-inventory .iv-size-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; justify-content: center; }
+            #view-inventory .iv-size-chip { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); border: 1px solid var(--border-light); border-radius: 5px; padding: 1px 5px; }
+            #view-inventory .iv-size-chip b { color: var(--text-main); margin-left: 3px; font-variant-numeric: tabular-nums; }
+            #view-inventory .iv-icon-btn.danger:hover { background: var(--rose-bg); color: var(--rose); }
+            #view-inventory .iv-icon-btn:focus-visible { outline: 2px solid var(--primary-accent); outline-offset: 1px; }
+            #view-inventory .iv-empty { padding: 56px 24px; text-align: center; }
+            #view-inventory .iv-empty svg { color: var(--input-border); margin-bottom: 12px; }
+            #view-inventory .iv-empty h4 { font-size: 1rem; font-weight: 700; color: var(--text-main); margin: 0 0 4px; }
+            #view-inventory .iv-empty p { font-size: 0.88rem; color: var(--text-muted); margin: 0; }
+            @media (max-width: 720px) {
+              #view-inventory .iv-table-wrap { border: 0; }
+              #view-inventory table.iv-table, #view-inventory .iv-table thead, #view-inventory .iv-table tbody, #view-inventory .iv-table tr, #view-inventory .iv-table td { display: block; min-width: 0; }
+              #view-inventory .iv-table thead { display: none; }
+              #view-inventory .iv-table tbody tr { border: 1px solid var(--border-light); border-radius: 12px; margin-bottom: 10px; padding: 6px 4px; }
+              #view-inventory .iv-table tbody td { border: 0; padding: 6px 14px; }
+              #view-inventory .iv-table tbody td[data-label]::before { content: attr(data-label); display: block; font-size: 0.68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-subtle); margin-bottom: 2px; }
+            }
+          </style>
+          <div>
+            <div class="iv-toolbar">
+              <label class="iv-search">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="search" id="inventory-search-input" placeholder="Search name, SKU, category…" autocomplete="off" aria-label="Search inventory" oninput="handleInventorySearch()" />
+              </label>
+              <div class="iv-seg" role="tablist" aria-label="Filter inventory by stock level">
+                <button class="inv-tab-pill active" role="tab" aria-selected="true" data-inv-filter="all">All</button>
+                <button class="inv-tab-pill" role="tab" aria-selected="false" data-inv-filter="in_stock">In stock</button>
+                <button class="inv-tab-pill" role="tab" aria-selected="false" data-inv-filter="low_stock">Low</button>
+                <button class="inv-tab-pill" role="tab" aria-selected="false" data-inv-filter="out_stock">Out</button>
               </div>
             </div>
 
-            <div class="table-responsive">
-              <table class="inv-data-table">
+            <div class="iv-table-wrap">
+              <table class="iv-table">
                 <thead>
                   <tr>
-                    <th class="nowrap-cell">SKU ID</th>
-                    <th>Product &amp; Category</th>
-                    <th class="nowrap-cell text-center">Stock</th>
-                    <th class="nowrap-cell text-center">Status</th>
-                    <th class="nowrap-cell text-right">Action</th>
+                    <th scope="col">SKU</th>
+                    <th scope="col">Product</th>
+                    <th scope="col" class="text-center">On hand</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="inventory-table-tbody">
@@ -503,9 +657,59 @@
 
         <!-- VIEW 5: CATEGORIES DIRECTORY -->
         <div id="view-categories" class="view-panel">
-          <div class="panel-card">
-            <div class="table-toolbar">
-              <button id="quick-add-category-btn" onclick="openCategoryModal()" class="primary-action-btn sm">
+          <style id="categories-page-styles">
+            #view-categories .cg-toolbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+            #view-categories .cg-count { font-size: 0.9rem; font-weight: 600; color: var(--text-muted); }
+            #view-categories .cg-count b { color: var(--text-main); font-variant-numeric: tabular-nums; }
+            #view-categories .cg-search { position: relative; flex: 1 1 220px; max-width: 320px; }
+            #view-categories .cg-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-subtle); pointer-events: none; }
+            #view-categories .cg-search input { width: 100%; height: 40px; padding: 0 12px 0 36px; border: 1px solid var(--input-border); border-radius: 9px; background: #fff; font: inherit; font-size: 0.9rem; color: var(--text-main); outline: none; }
+            #view-categories .cg-search input:focus-visible { border-color: var(--primary-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 15%, transparent); }
+            #view-categories .cg-add { margin-left: auto; }
+
+            #view-categories .cg-table-wrap { border: 1px solid var(--border-light); border-radius: 12px; overflow: auto; }
+            #view-categories .cg-table-wrap::-webkit-scrollbar { height: 8px; width: 8px; display: block !important; }
+            #view-categories .cg-table-wrap::-webkit-scrollbar-thumb { background: var(--input-border); border-radius: 8px; }
+            #view-categories table.cg-table { width: 100%; min-width: 640px; border-collapse: collapse; }
+            #view-categories .cg-table thead th { position: sticky; top: 0; z-index: 1; background: #faf7fe; text-align: left; padding: 12px 18px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-light); white-space: nowrap; }
+            #view-categories .cg-table tbody td { padding: 15px 18px; font-size: 0.9rem; color: var(--text-main); border-bottom: 1px solid #f4eefc; vertical-align: top; }
+            #view-categories .cg-table tbody tr:last-child td { border-bottom: 0; }
+            #view-categories .cg-table tbody tr:hover { background: color-mix(in srgb, var(--primary-accent) 4%, transparent); }
+            #view-categories .cg-id { font-family: 'JetBrains Mono','SFMono-Regular',ui-monospace,monospace; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+            #view-categories .cg-name { font-weight: 700; color: var(--primary-accent); cursor: pointer; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--primary-accent) 30%, transparent); text-underline-offset: 3px; }
+            #view-categories .cg-name:hover { text-decoration-color: var(--primary-accent); }
+            #view-categories .cg-subs { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+            #view-categories .cg-sub { font-size: 0.74rem; padding: 3px 8px; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 6px; font-weight: 600; }
+            #view-categories .cg-prodcount { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text-main); }
+            #view-categories .cg-prodcount span { font-weight: 500; color: var(--text-subtle); font-size: 0.82rem; }
+            #view-categories .cg-actions { display: inline-flex; gap: 4px; justify-content: flex-end; }
+            #view-categories .cg-icon-btn { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--text-subtle); cursor: pointer; transition: background .15s, color .15s; }
+            #view-categories .cg-icon-btn:hover { background: var(--cyan-bg); color: var(--primary-accent); }
+            #view-categories .cg-icon-btn.danger:hover { background: var(--rose-bg); color: var(--rose); }
+            #view-categories .cg-icon-btn:focus-visible { outline: 2px solid var(--primary-accent); outline-offset: 1px; }
+            #view-categories .cg-empty { padding: 56px 24px; text-align: center; }
+            #view-categories .cg-empty svg { color: var(--input-border); margin-bottom: 12px; }
+            #view-categories .cg-empty h4 { font-size: 1rem; font-weight: 700; color: var(--text-main); margin: 0 0 4px; }
+            #view-categories .cg-empty p { font-size: 0.88rem; color: var(--text-muted); margin: 0 0 16px; }
+            @media (max-width: 720px) {
+              #view-categories .cg-add { margin-left: 0; }
+              #view-categories .cg-table-wrap { border: 0; }
+              #view-categories table.cg-table, #view-categories .cg-table thead, #view-categories .cg-table tbody, #view-categories .cg-table tr, #view-categories .cg-table td { display: block; min-width: 0; }
+              #view-categories .cg-table thead { display: none; }
+              #view-categories .cg-table tbody tr { border: 1px solid var(--border-light); border-radius: 12px; margin-bottom: 10px; padding: 6px 4px; }
+              #view-categories .cg-table tbody td { border: 0; padding: 6px 14px; }
+              #view-categories .cg-table tbody td[data-label]::before { content: attr(data-label); display: block; font-size: 0.68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-subtle); margin-bottom: 2px; }
+              #view-categories .cg-actions { justify-content: flex-start; }
+            }
+          </style>
+          <div>
+            <div class="cg-toolbar">
+              <span class="cg-count"><b id="cg-count-num">0</b> categories</span>
+              <label class="cg-search">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="search" id="cg-page-search" placeholder="Search category or sub-category…" autocomplete="off" aria-label="Search categories" />
+              </label>
+              <button id="quick-add-category-btn" onclick="openCategoryModal()" class="primary-action-btn sm cg-add">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -514,13 +718,14 @@
               </button>
             </div>
 
-            <div class="table-responsive">
-              <table class="data-table">
+            <div class="cg-table-wrap">
+              <table class="cg-table">
                 <thead>
                   <tr>
-                    <th class="nowrap-cell">Category ID</th>
-                    <th>Category & Sub-Categories</th>
-                    <th class="nowrap-cell text-right">Actions</th>
+                    <th scope="col">ID</th>
+                    <th scope="col">Category &amp; sub-categories</th>
+                    <th scope="col" class="text-right">Products</th>
+                    <th scope="col" class="text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="categories-table-tbody">
@@ -578,7 +783,7 @@
             <!-- Table Container -->
             <div id="cat-detail-invoices-panel" style="margin-bottom: 28px;">
               <div class="table-responsive" style="border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden;">
-                <table class="data-table">
+                <table class="data-table stackable">
                   <thead>
                     <tr style="background: #f8fafc;">
                       <th class="nowrap-cell">INVOICE ID</th>
@@ -594,7 +799,7 @@
 
             <div id="cat-detail-products-panel" style="margin-bottom: 28px; display: none;">
               <div class="table-responsive" style="border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden;">
-                <table class="data-table">
+                <table class="data-table stackable">
                   <thead>
                     <tr style="background: #f8fafc;">
                       <th class="nowrap-cell">SKU ID</th>
@@ -622,78 +827,91 @@
 
         <!-- VIEW 6: CUSTOMERS DIRECTORY -->
         <div id="view-clients" class="view-panel">
-          <!-- 1. Date Filter Toolbar Card -->
-          <div class="panel-card" style="margin-bottom: 20px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
-              <!-- Filter Options Group (Date & Payment Mode) -->
-              <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-                <!-- Date Filter -->
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-accent);">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="16" y1="2" x2="16" y2="6"></line>
-                      <line x1="8" y1="2" x2="8" y2="6"></line>
-                      <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                    Filter Date:
-                  </label>
-                  <input type="date" id="customer-date-picker" style="padding: 8px 12px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.88rem; outline: none; color: var(--text-main);" />
-                </div>
+          <style id="customers-page-styles">
+            #view-clients .cs-toolbar { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+            #view-clients .cs-count { font-size: 0.9rem; font-weight: 600; color: var(--text-muted); align-self: center; margin-right: auto; }
+            #view-clients .cs-count b { color: var(--text-main); font-variant-numeric: tabular-nums; }
+            #view-clients .cs-field { display: flex; flex-direction: column; gap: 5px; }
+            #view-clients .cs-field label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-subtle); }
+            #view-clients .cs-field input, #view-clients .cs-field select { height: 40px; padding: 0 12px; border: 1px solid var(--input-border); border-radius: 9px; background: #fff; font: inherit; font-size: 0.88rem; color: var(--text-main); outline: none; }
+            #view-clients .cs-field select { cursor: pointer; }
+            #view-clients .cs-field input:focus-visible, #view-clients .cs-field select:focus-visible { border-color: var(--primary-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 15%, transparent); }
+            #view-clients #customer-download-pdf-btn { background: var(--primary-accent) !important; box-shadow: none !important; height: 40px; }
 
-                <!-- Payment Mode Filter -->
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-accent);">
-                      <rect x="2" y="5" width="20" height="14" rx="2"></rect>
-                      <line x1="2" y1="10" x2="22" y2="10"></line>
-                    </svg>
-                    Payment Mode:
-                  </label>
-                  <select id="customer-payment-mode-filter" style="padding: 8px 14px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.88rem; font-weight: 600; outline: none; color: var(--text-main); cursor: pointer;">
-                    <option value="all" selected>All Payment Modes</option>
-                    <option value="Cash">💵 Cash</option>
-                    <option value="Online / UPI">📱 Online / UPI</option>
-                    <option value="Card / Net Banking">💳 Card / Net Banking</option>
-                  </select>
-                </div>
+            #view-clients .cs-table-wrap { border: 1px solid var(--border-light); border-radius: 12px; overflow: auto; }
+            #view-clients .cs-table-wrap::-webkit-scrollbar { height: 8px; width: 8px; display: block !important; }
+            #view-clients .cs-table-wrap::-webkit-scrollbar-thumb { background: var(--input-border); border-radius: 8px; }
+            #view-clients table.cs-table { width: 100%; min-width: 560px; border-collapse: collapse; }
+            #view-clients .cs-table thead th { position: sticky; top: 0; z-index: 1; background: #faf7fe; text-align: left; padding: 12px 18px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-light); white-space: nowrap; }
+            #view-clients .cs-table tbody td { padding: 14px 18px; font-size: 0.9rem; color: var(--text-main); border-bottom: 1px solid #f4eefc; vertical-align: middle; }
+            #view-clients .cs-table tbody tr:hover { background: color-mix(in srgb, var(--primary-accent) 4%, transparent); }
+            #view-clients .cs-id { font-family: 'JetBrains Mono','SFMono-Regular',ui-monospace,monospace; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+            #view-clients .cs-date { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+            #view-clients .cs-mode { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); }
+            #view-clients .cs-mode .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary-accent); flex: none; }
+            #view-clients .cs-amt { font-weight: 700; color: var(--emerald); font-variant-numeric: tabular-nums; }
+            #view-clients .cs-table tfoot td { padding: 14px 18px; border-top: 1px solid var(--border-light); background: color-mix(in srgb, var(--primary-accent) 4%, transparent); }
+            #view-clients .cs-total-label { font-weight: 700; color: var(--text-main); font-size: 0.82rem; text-transform: uppercase; letter-spacing: .4px; margin-right: 10px; }
+            #view-clients #customer-total-amount-val { color: var(--primary-accent); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+            #view-clients .cs-empty { padding: 56px 24px; text-align: center; }
+            #view-clients .cs-empty svg { color: var(--input-border); margin-bottom: 12px; }
+            #view-clients .cs-empty h4 { font-size: 1rem; font-weight: 700; color: var(--text-main); margin: 0 0 4px; }
+            #view-clients .cs-empty p { font-size: 0.88rem; color: var(--text-muted); margin: 0; }
+            @media (max-width: 720px) {
+              #view-clients .cs-count { margin-right: 0; }
+              #view-clients .cs-table-wrap { border: 0; }
+              #view-clients table.cs-table, #view-clients .cs-table thead, #view-clients .cs-table tbody, #view-clients .cs-table tr, #view-clients .cs-table td { display: block; min-width: 0; }
+              #view-clients .cs-table thead { display: none; }
+              #view-clients .cs-table tbody tr { border: 1px solid var(--border-light); border-radius: 12px; margin-bottom: 10px; padding: 6px 4px; }
+              #view-clients .cs-table tbody td { border: 0; padding: 6px 14px; }
+              #view-clients .cs-table tbody td[data-label]::before { content: attr(data-label); display: block; font-size: 0.68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-subtle); margin-bottom: 2px; }
+            }
+          </style>
+          <div>
+            <div class="cs-toolbar">
+              <span class="cs-count"><b id="cs-count-num">0</b> transactions</span>
+              <div class="cs-field">
+                <label for="customer-date-picker">Filter date</label>
+                <input type="date" id="customer-date-picker" />
               </div>
-
-              <!-- Download PDF Action -->
-              <div>
-                <button type="button" id="customer-download-pdf-btn" class="primary-action-btn sm" style="padding: 8px 18px; background: linear-gradient(135deg, #9333ea 0%, #a855f7 100%);">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                  </svg>
-                  <span>Download PDF</span>
-                </button>
+              <div class="cs-field">
+                <label for="customer-payment-mode-filter">Payment mode</label>
+                <select id="customer-payment-mode-filter">
+                  <option value="all" selected>All modes</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Online / UPI">Online / UPI</option>
+                  <option value="Card / Net Banking">Card / Net Banking</option>
+                </select>
               </div>
+              <button type="button" id="customer-download-pdf-btn" class="primary-action-btn sm">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>Download PDF</span>
+              </button>
             </div>
-          </div>
 
-          <!-- 2. Customer Directory Table Card -->
-          <div class="panel-card">
-            <div class="table-responsive">
-              <table class="data-table">
+            <div class="cs-table-wrap">
+              <table class="cs-table">
                 <thead>
                   <tr>
-                    <th class="nowrap-cell">Customer ID</th>
-                    <th class="nowrap-cell">Date</th>
-                    <th class="nowrap-cell">Payment Mode</th>
-                    <th class="nowrap-cell text-right">Customer Amount</th>
+                    <th scope="col">Customer ID</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Payment mode</th>
+                    <th scope="col" class="text-right">Amount</th>
                   </tr>
                 </thead>
                 <tbody id="clients-table-tbody">
                   <!-- Dynamic Clients Table Content -->
                 </tbody>
                 <tfoot id="clients-table-tfoot">
-                  <tr style="background: rgba(124, 58, 237, 0.04); font-weight: 700;">
+                  <tr>
                     <td colspan="3"></td>
-                    <td class="nowrap-cell text-right" style="padding: 14px 16px;">
-                      <span style="font-weight: 700; color: var(--text-main); font-size: 0.9rem; margin-right: 8px;">TOTAL AMOUNT:</span>
-                      <strong id="customer-total-amount-val" style="color: var(--primary-accent); font-size: 1.05rem;">₹0.00</strong>
+                    <td class="text-right">
+                      <span class="cs-total-label">Total</span>
+                      <strong id="customer-total-amount-val">₹0.00</strong>
                     </td>
                   </tr>
                 </tfoot>
@@ -704,8 +922,53 @@
 
         <!-- VIEW 5: ACCOUNT SETTINGS -->
         <div id="view-settings" class="view-panel">
-          <div class="settings-layout" style="width: 100%; display: flex; flex-direction: column; gap: 24px;">
-            
+          <style id="settings-page-styles">
+            /* Flatten the settings page — plain stacked sections, not floating cards */
+            #view-settings .settings-layout { gap: 0 !important; max-width: 860px; margin: 0 auto; }
+            #view-settings .panel-card {
+              background: transparent !important;
+              border: 0 !important;
+              border-radius: 0 !important;
+              box-shadow: none !important;
+              padding: 28px 0 !important;
+            }
+            #view-settings .settings-layout > .panel-card + .panel-card { border-top: 1px solid var(--border-light) !important; }
+            #view-settings .panel-card > div:first-child { border-bottom: 0 !important; padding-bottom: 0 !important; margin-bottom: 18px !important; }
+            #view-settings .panel-card h3 { font-size: 1.05rem !important; font-weight: 700 !important; }
+            #view-settings .settings-form { max-width: 560px; gap: 16px !important; }
+            #view-settings .settings-form label { font-size: 0.78rem !important; font-weight: 600 !important; color: var(--text-muted) !important; text-transform: uppercase; letter-spacing: .3px; }
+            #view-settings .settings-form input,
+            #view-settings .settings-form textarea,
+            #view-settings .settings-form select {
+              background: #fff !important;
+              border: 1px solid var(--input-border) !important;
+              border-radius: 8px !important;
+              padding: 10px 12px !important;
+              font-size: 0.9rem !important;
+            }
+            #view-settings .settings-form input:focus,
+            #view-settings .settings-form textarea:focus,
+            #view-settings .settings-form select:focus { border-color: var(--primary-accent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 14%, transparent) !important; }
+            #view-settings #save-settings-btn { box-shadow: none !important; border-radius: 8px !important; padding: 10px 24px !important; }
+            #view-settings #settings-printer-refresh-btn { border-radius: 8px !important; }
+            #view-settings .settings-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border-light); margin-bottom: 20px; }
+            #view-settings .settings-tab { appearance: none; background: none; border: 0; cursor: pointer; padding: 12px 16px; font-family: inherit; font-size: 0.88rem; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+            #view-settings .settings-tab:hover { color: var(--text-main); }
+            #view-settings .settings-tab.active { color: var(--primary-accent); border-bottom-color: var(--primary-accent); }
+            #view-settings .settings-tab-pane { display: none; }
+            #view-settings .settings-tab-pane.active { display: block; }
+            #view-settings .settings-layout > .panel-card + .panel-card { border-top: 0 !important; }
+          </style>
+          <div class="settings-layout" style="width: 100%; display: flex; flex-direction: column; max-width: 860px; margin: 0 auto;">
+
+            <div class="settings-tabs" role="tablist">
+              <button type="button" class="settings-tab active" data-settings-tab="profile">Profile &amp; Store</button>
+              <button type="button" class="settings-tab" data-settings-tab="backup">Backup &amp; Sync</button>
+              <button type="button" class="settings-tab" data-settings-tab="paper">PDF &amp; Paper Size</button>
+            </div>
+
+            <!-- Tab pane: Profile & Store -->
+            <div class="settings-tab-pane active" id="settings-pane-profile">
             <!-- Panel 1: Account Profile Form -->
             <div class="panel-card" style="background: #ffffff; border-radius: 20px; padding: 32px 36px; border: 1px solid var(--border-light); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);">
               <div style="margin-bottom: 24px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px;">
@@ -729,14 +992,35 @@
                   <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);">Default GST / Tax Rate (%)</label>
                   <input type="number" id="settings-gst-input" min="0" max="100" step="0.1" placeholder="e.g. 18" style="width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 0.95rem; color: var(--text-main); font-weight: 500; outline: none; transition: all 0.2s ease;" />
                 </div>
+
+                <div class="input-group" style="display: flex; flex-direction: column; gap: 8px;">
+                  <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);">Receipt Printer</label>
+                  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <select id="settings-printer-select" style="flex: 1; min-width: 220px; padding: 12px 14px; border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 0.92rem; color: var(--text-main); font-weight: 500; outline: none; cursor: pointer;">
+                      <option value="">System default (show print dialog)</option>
+                    </select>
+                    <button type="button" id="settings-printer-refresh-btn" style="padding: 11px 18px; font-size: 0.86rem; font-weight: 700; border-radius: 12px; cursor: pointer; background: #ffffff; color: var(--primary-accent); border: 1.5px solid var(--border-light);">
+                      Connect / Refresh
+                    </button>
+                  </div>
+                  <span id="settings-printer-status" style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500;"></span>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 600; color: var(--text-main); margin-top: 2px; cursor: pointer;">
+                    <input type="checkbox" id="settings-printer-silent" style="width: 16px; height: 16px; cursor: pointer;" />
+                    Print instantly without the print dialog
+                  </label>
+                </div>
+
                 <div style="margin-top: 8px; display: flex; justify-content: flex-start;">
-                  <button type="button" id="save-settings-btn" style="padding: 12px 30px; font-size: 0.92rem; font-weight: 700; border-radius: 12px; cursor: pointer; background: var(--gradient-primary); color: #ffffff; border: none; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25); transition: all 0.2s ease;">
+                  <button type="button" id="save-settings-btn" style="padding: 12px 30px; font-size: 0.92rem; font-weight: 700; border-radius: 12px; cursor: pointer; background: var(--gradient-primary); color: #ffffff; border: none; box-shadow: 0 4px 14px color-mix(in srgb, var(--primary-accent) 25%, transparent); transition: all 0.2s ease;">
                     Save Changes
                   </button>
                 </div>
               </form>
             </div>
+            </div><!-- /settings-pane-profile -->
 
+            <!-- Tab pane: Backup & Sync -->
+            <div class="settings-tab-pane" id="settings-pane-backup">
             <!-- Panel 2: Data Management, Backup & Multi-Device Sync Card -->
             <div class="panel-card" style="background: #ffffff; border-radius: 20px; padding: 32px 36px; border: 1px solid var(--border-light); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);">
               <div style="margin-bottom: 24px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
@@ -798,6 +1082,10 @@
                         DEV_LOADING
                       </span>
                     </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                      <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-subtle);">LICENSE DEVICE ID</span>
+                      <span class="license-device-id-badge" style="font-family: monospace; font-size: 0.78rem; background: #f1f5f9; padding: 3px 8px; border-radius: 6px; color: var(--text-muted); font-weight: 700;">…</span>
+                    </div>
                     <div style="font-size: 0.82rem; color: var(--text-subtle);">
                       User Account: <strong id="device-user-email-text" class="device-user-email-text">user@example.com</strong>
                     </div>
@@ -811,6 +1099,10 @@
               </div>
             </div>
 
+            </div><!-- /settings-pane-backup -->
+
+            <!-- Tab pane: PDF & Paper Size -->
+            <div class="settings-tab-pane" id="settings-pane-paper">
             <!-- Panel 3: PDF Paper Size Settings Card -->
             <div class="panel-card" style="background: #ffffff; border-radius: 20px; padding: 32px 36px; border: 1px solid var(--border-light); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);">
               <div style="margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px;">
@@ -860,24 +1152,110 @@
                 </div>
               </div>
             </div>
+            </div><!-- /settings-pane-paper -->
           </div>
         </div>
 
         <!-- VIEW 8: CREATE NEW INVOICE DEDICATED PAGE -->
         <div id="view-create_invoice" class="view-panel">
-          <div class="panel-card" style="padding: 28px; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); width: 100%;">
-            <form id="create-invoice-page-form">
-              <!-- 1. Products List (Dynamic Line Items with Categories & Sub-Categories) -->
-              <div style="background: #ffffff; border: 1px solid var(--border-light); border-radius: 16px; padding: 20px; margin-bottom: 20px;">
-                <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 16px;">
-                  <button type="button" id="page-add-invoice-item-btn" class="secondary-btn" style="padding: 9px 18px; font-size: 0.85rem; background: var(--cyan-bg); color: var(--primary-accent); border: none; font-weight: 600; border-radius: 10px; cursor: pointer;">
+          <style id="invoice-page-styles">
+            #view-create_invoice { margin:0 -16px; }
+            #view-create_invoice .inv-layout { display:flex; flex-direction:column; gap:16px; padding:0 4px; }
+            #view-create_invoice .inv-main { min-width:0; display:flex; flex-direction:column; gap:16px; }
+            #view-create_invoice .inv-side { width:100%; }
+            #view-create_invoice .inv-side .inv-card { width:640px; max-width:100%; margin-left:auto; padding:32px 36px; }
+            #view-create_invoice .inv-side .inv-card > .inv-card-head { margin-bottom:20px; }
+            #view-create_invoice .inv-cancel-link { background:none; border:0; color:var(--text-subtle); font-weight:600; font-size:0.82rem; cursor:pointer; padding:4px; }
+            #view-create_invoice .inv-cancel-link:hover { color:var(--rose); text-decoration:underline; }
+            #view-create_invoice .inv-sum-row { display:flex; align-items:center; justify-content:space-between; font-size:1rem; color:var(--text-muted); font-weight:600; padding:13px 0; border-bottom:1px solid #f4eefc; }
+            #view-create_invoice .inv-sum-row:last-of-type { border-bottom:0; }
+            #view-create_invoice .inv-sum-row strong { color:var(--text-main); font-variant-numeric:tabular-nums; font-size:1.05rem; }
+            #view-create_invoice .inv-total-bar { display:flex; align-items:center; justify-content:space-between; margin:16px 0 4px; padding:20px 24px; border-radius:14px; background:color-mix(in srgb, var(--primary-accent) 7%, #fff); border:1px solid color-mix(in srgb, var(--primary-accent) 20%, transparent); }
+            #view-create_invoice .inv-total-bar span { font-size:0.8rem; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-muted); }
+            #view-create_invoice .inv-total-bar strong { font-size:2.4rem; font-weight:800; color:var(--primary-accent); font-variant-numeric:tabular-nums; line-height:1; }
+            #view-create_invoice .inv-cta { width:100%; height:54px; margin-top:20px; border-radius:12px; font-size:1.02rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:10px; }
+            #view-create_invoice .inv-sec-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:12px; }
+            #view-create_invoice .inv-sec-actions button { height:46px; border-radius:11px; font-size:0.9rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px; border:1px solid var(--border-light); background:#fff; color:var(--text-main); }
+            #view-create_invoice .inv-sec-actions button:hover { background:var(--cyan-bg); }
+            #view-create_invoice .inv-sec-actions .btn-wa { border-color:#86efac; background:#f0fdf4; color:#15803d; }
+            #view-create_invoice .inv-sec-actions .btn-wa:hover { background:#dcfce7; }
+            #view-create_invoice .inv-cancel-btn { width:100%; height:44px; margin-top:18px; border-radius:11px; border:1px solid var(--border-light); background:transparent; color:var(--text-muted); font-size:0.9rem; font-weight:600; cursor:pointer; }
+            #view-create_invoice .inv-cancel-btn:hover { background:var(--rose-bg); border-color:color-mix(in srgb, var(--rose) 30%, transparent); color:var(--rose); }
+            @media (max-width:560px){ #view-create_invoice .inv-sec-actions { grid-template-columns:1fr; } }
+            #view-create_invoice .inv-card { background:#fff; border:1px solid var(--border-light); border-radius:14px; padding:22px 26px; }
+            #view-create_invoice .inv-card-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+            #view-create_invoice .inv-card-title { font-size:0.78rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:8px; }
+            #view-create_invoice .inv-card-title .dot { width:7px; height:7px; border-radius:50%; background:var(--primary-accent); }
+            #view-create_invoice .inv-field-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+            #view-create_invoice .inv-field { display:flex; flex-direction:column; gap:6px; }
+            #view-create_invoice .inv-field label { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-muted); }
+            #view-create_invoice .inv-input { height:42px; padding:0 12px; background:var(--input-bg); border:1px solid var(--input-border); border-radius:10px; font-family:inherit; font-size:0.9rem; color:var(--text-main); outline:none; box-sizing:border-box; transition:border-color .15s, box-shadow .15s; }
+            #view-create_invoice .inv-input:focus { border-color:var(--primary-accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--primary-accent) 15%, transparent); }
+            #view-create_invoice .inv-add-btn { padding:9px 16px; font-size:0.83rem; font-weight:700; background:var(--cyan-bg); color:var(--primary-accent); border:1px dashed color-mix(in srgb, var(--primary-accent) 40%, transparent); border-radius:10px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+            #view-create_invoice .inv-add-btn:hover { background:color-mix(in srgb, var(--primary-accent) 12%, #fff); }
+            #view-create_invoice .inv-summary-row { display:flex; align-items:center; justify-content:space-between; font-size:1.05rem; color:var(--text-muted); font-weight:600; margin-bottom:18px; }
+            #view-create_invoice .inv-summary-row strong { color:var(--text-main); font-variant-numeric:tabular-nums; font-size:1.1rem; }
+            #view-create_invoice .inv-summary-total { border-top:1px dashed var(--border-light); padding-top:22px; margin-top:10px; display:flex; align-items:flex-end; justify-content:space-between; }
+            #view-create_invoice .inv-summary-total span { font-size:0.88rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); }
+            #view-create_invoice .inv-summary-total strong { font-size:2.7rem; font-weight:800; color:var(--primary-accent); font-variant-numeric:tabular-nums; line-height:1; }
+            #view-create_invoice .inv-gst-input { width:66px; height:38px; text-align:center; padding:0 4px; border:1px solid var(--input-border); border-radius:8px; font-family:inherit; font-size:0.95rem; font-weight:700; background:#fff; color:var(--text-main); outline:none; }
+            #view-create_invoice .inv-side-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:28px; }
+            #view-create_invoice .inv-side-actions button { flex:1 1 220px; height:54px; border-radius:12px; font-size:1rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+            #view-create_invoice .inv-side-actions .btn-ghost { flex:0 0 auto; }
+            #view-create_invoice .inv-side-actions .btn-secondary { border:1px solid var(--border-light); background:#fff; color:var(--text-main); }
+            #view-create_invoice .inv-side-actions .btn-secondary:hover { background:var(--cyan-bg); }
+            #view-create_invoice .inv-side-actions .btn-wa { border:1px solid #86efac; background:#f0fdf4; color:#15803d; }
+            #view-create_invoice .inv-side-actions .btn-ghost { background:transparent; border:0; color:var(--text-muted); height:36px; font-weight:600; }
+            #view-create_invoice .inv-item-scroll { overflow-x:auto; }
+            @media (max-width:1080px){
+              #view-create_invoice .inv-layout { grid-template-columns:1fr; }
+              #view-create_invoice .inv-side { position:static; }
+              #view-create_invoice .inv-side-actions { flex-direction:row; flex-wrap:wrap; }
+              #view-create_invoice .inv-side-actions button { width:auto; flex:1 1 160px; }
+            }
+            @media (max-width:640px){ #view-create_invoice .inv-field-grid{ grid-template-columns:1fr; } }
+          </style>
+          <form id="create-invoice-page-form">
+            <div class="inv-layout">
+              <div class="inv-main">
+
+              <!-- 1. Customer & Payment -->
+              <div class="inv-card">
+                <div class="inv-card-head">
+                  <div class="inv-card-title"><span class="dot"></span> Customer &amp; Payment</div>
+                </div>
+                <div class="inv-field-grid">
+                  <div class="inv-field">
+                    <label for="page-inv-client-phone">WhatsApp Number</label>
+                    <div style="position:relative; display:flex; align-items:center;">
+                      <span style="position:absolute; left:12px; font-size:0.85rem; font-weight:700; color:var(--text-muted);">+91</span>
+                      <input type="tel" id="page-inv-client-phone" class="inv-input" placeholder="9876543210" maxlength="10" style="padding-left:44px; width:100%;" />
+                    </div>
+                  </div>
+                  <div class="inv-field">
+                    <label for="page-inv-payment-mode">Payment Mode</label>
+                    <select id="page-inv-payment-mode" class="inv-input" style="cursor:pointer;">
+                      <option value="Cash" selected>Cash</option>
+                      <option value="Online / UPI">Online / UPI</option>
+                      <option value="Card / Net Banking">Card / Net Banking</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. Invoice Items (Dynamic Line Items with Categories & Sub-Categories) -->
+              <div class="inv-card">
+                <div class="inv-card-head">
+                  <div class="inv-card-title"><span class="dot"></span> Invoice Items</div>
+                  <button type="button" id="page-add-invoice-item-btn" class="inv-add-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     Add Product Item
                   </button>
                 </div>
 
                 <!-- Table Outer Wrapper -->
-                <div style="margin-bottom: 6px; width: 100%; overflow: visible !important;" class="table-responsive">
-                  <div style="min-width: 960px; overflow: visible !important;">
+                <div style="margin-bottom: 6px; width: 100%;" class="inv-item-scroll">
+                  <div style="min-width: 780px;">
                     <!-- Products Table Header -->
                     <div class="invoice-grid-row" style="margin-bottom: 10px; background: #f1f5f9; border-radius: 10px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
                       <div style="padding-left: 2px;">Category</div>
@@ -954,54 +1332,57 @@
                 </div>
               </div>
 
-              <!-- 3. Grand Total Card -->
-              <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: 16px; padding: 18px 24px; margin-bottom: 20px; display: flex; align-items: center; justify-content: flex-end;">
-                <div style="text-align: right;">
-                  <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL AMOUNT (₹)</span>
-                  <div id="page-inv-total-display" style="font-size: 2.2rem; font-weight: 800; color: var(--primary-accent); font-family: monospace; line-height: 1;">₹0.00</div>
-                </div>
-              </div>
+              </div><!-- /inv-main -->
 
-              <!-- 4. Action Buttons Bar with Compact Payment Mode right beside Cancel -->
-              <div style="display: flex; gap: 12px; align-items: center; justify-content: flex-end; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <label for="page-inv-client-phone" style="font-size: 0.82rem; font-weight: 700; color: #15803d; white-space: nowrap;">WhatsApp No:</label>
-                  <div style="position: relative; display: flex; align-items: center;">
-                    <span style="position: absolute; left: 10px; font-size: 0.82rem; font-weight: 700; color: #166534;">+91</span>
-                    <input type="tel" id="page-inv-client-phone" placeholder="9876543210" style="padding-left: 36px; padding-right: 10px; width: 145px; height: 38px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; outline: none; color: #166534; box-sizing: border-box;" />
+              <!-- Summary + Actions -->
+              <aside class="inv-side">
+                <div class="inv-card">
+                  <div class="inv-card-head">
+                    <div class="inv-card-title"><span class="dot"></span> Summary</div>
                   </div>
-                </div>
 
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <label for="page-inv-payment-mode" style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); white-space: nowrap;">Payment Mode:</label>
-                  <select id="page-inv-payment-mode" style="padding: 6px 12px; height: 38px; border-radius: 10px; border: 1px solid var(--input-border); background: #ffffff; font-size: 0.82rem; font-weight: 600; color: var(--text-main); outline: none; cursor: pointer; min-width: 120px;">
-                    <option value="Cash" selected>💵 Cash</option>
-                    <option value="Online / UPI">📱 Online / UPI</option>
-                    <option value="Card / Net Banking">💳 Card / Net Banking</option>
-                  </select>
-                </div>
+                  <div class="inv-sum-row">
+                    <span>Subtotal</span>
+                    <strong id="page-inv-subtotal-display">₹0.00</strong>
+                  </div>
+                  <div class="inv-sum-row">
+                    <span style="display:flex; align-items:center; gap:8px;">GST
+                      <input type="number" id="page-inv-gst-rate" class="inv-gst-input" value="18" min="0" max="100" step="0.5" /> %
+                    </span>
+                    <strong id="page-inv-gst-display">₹0.00</strong>
+                  </div>
 
-                <button type="button" class="secondary-btn back-to-invoices-btn" onclick="switchView('invoices')" style="padding: 9px 20px; height: 38px; font-size: 0.88rem; font-weight: 600; border-radius: 10px; cursor: pointer;">
-                  Cancel
-                </button>
-                <button type="button" id="page-print-invoice-btn" onclick="printInvoiceDirect()" class="secondary-btn" style="padding: 9px 18px; height: 38px; font-size: 0.88rem; font-weight: 700; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--border-light); background: #ffffff;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                    <rect x="6" y="14" width="12" height="8"></rect>
-                  </svg>
-                  <span>Print Invoice</span>
-                </button>
-                <button type="button" id="page-submit-create-invoice-btn" onclick="openInvoicePreviewModal()" class="primary-action-btn" style="padding: 9px 24px; height: 38px; font-size: 0.88rem; font-weight: 700; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                  <span>Preview Invoice</span>
-                </button>
-              </div>
-            </form>
-          </div>
+                  <div class="inv-total-bar">
+                    <span>Total payable</span>
+                    <strong id="page-inv-total-display">₹0.00</strong>
+                  </div>
+
+                  <button type="button" id="page-print-invoice-btn" onclick="printInvoiceDirect()" class="primary-action-btn inv-cta">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    Print Invoice
+                  </button>
+
+                  <div class="inv-sec-actions">
+                    <button type="button" id="page-submit-create-invoice-btn" onclick="openInvoicePreviewModal()">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      Preview
+                    </button>
+                    <button type="button" id="page-download-invoice-btn" onclick="downloadInvoicePdfDirect()">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                      PDF
+                    </button>
+                    <button type="button" id="page-whatsapp-invoice-btn" onclick="shareInvoiceWhatsApp()" class="btn-wa">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 2.1.55 4.05 1.6 5.78L2 22l4.44-1.16a9.9 9.9 0 0 0 5.6 1.72h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2zm5.8 14.03c-.24.68-1.41 1.3-1.94 1.34-.5.05-1.14.24-3.7-.77-3.11-1.23-5.09-4.4-5.25-4.6-.15-.2-1.25-1.66-1.25-3.17 0-1.5.79-2.24 1.07-2.55.28-.31.61-.38.81-.38.2 0 .41 0 .58.01.19.01.44-.07.69.53.24.6.83 2.09.9 2.24.07.15.12.32.02.52-.1.2-.15.32-.3.49-.15.17-.31.38-.44.51-.15.15-.3.31-.13.61.17.3.76 1.25 1.63 2.02 1.12 1 2.06 1.31 2.36 1.46.3.15.47.13.65-.08.18-.2.75-.87.95-1.17.2-.3.4-.25.68-.15.28.1 1.76.83 2.06.98.3.15.5.22.57.35.07.13.07.73-.17 1.41z"/></svg>
+                      WhatsApp
+                    </button>
+                  </div>
+
+                  <button type="button" class="inv-cancel-btn back-to-invoices-btn" onclick="cancelInvoiceForm()">Cancel &amp; clear</button>
+                </div>
+              </aside>
+
+            </div><!-- /inv-layout -->
+          </form>
         </div>
 
         <!-- VIEW: DEDICATED INVOICE PREVIEW PAGE -->
@@ -1332,6 +1713,10 @@
                       DEV_LOADING
                     </span>
                   </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-subtle);">LICENSE DEVICE ID</span>
+                    <span class="license-device-id-badge" style="font-family: monospace; font-size: 0.78rem; background: #f1f5f9; padding: 3px 8px; border-radius: 6px; color: var(--text-muted); font-weight: 700;">…</span>
+                  </div>
                   <div style="font-size: 0.82rem; color: var(--text-subtle);">
                     User Account: <strong id="device-user-email-text-2" class="device-user-email-text">user@example.com</strong>
                   </div>
@@ -1606,12 +1991,12 @@
       <button id="close-size-stock-modal-btn" type="button" style="position: absolute; top: 20px; right: 20px; background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; font-weight: 700; color: #64748b; display: inline-flex; align-items: center; justify-content: center;">&times;</button>
       
       <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-        <span id="size-stock-sku-badge" style="background: rgba(124, 58, 237, 0.1); color: var(--primary-accent); padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; font-family: monospace;">SKU-PRD-01</span>
+        <span id="size-stock-sku-badge" style="background: color-mix(in srgb, var(--primary-accent) 10%, transparent); color: var(--primary-accent); padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; font-family: monospace;">SKU-PRD-01</span>
         <span id="size-stock-category-badge" style="background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 8px; font-weight: 600; font-size: 0.8rem;">Men's Apparel</span>
       </div>
 
       <h2 id="size-stock-product-name" style="font-size: 1.35rem; font-weight: 800; color: #0f172a; margin: 4px 0 2px 0;">Classic Cotton Slim-Fit Shirt</h2>
-      <p style="font-size: 0.86rem; color: #64748b; margin-bottom: 20px;">Size-wise stock breakdown and live inventory management.</p>
+      <p style="font-size: 0.86rem; color: #64748b; margin-bottom: 20px;">Adjust live stock — every change syncs to the cloud and across devices.</p>
 
       <!-- Total Stock Summary Pill -->
       <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 14px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -1619,14 +2004,14 @@
           <div style="font-size: 0.78rem; font-weight: 700; color: #7e22ce; text-transform: uppercase; letter-spacing: 0.5px;">Total Stock Available</div>
           <div id="size-stock-total-units" style="font-size: 1.5rem; font-weight: 800; color: #6b21a8; font-family: monospace;">63 units</div>
         </div>
-        <button id="size-stock-quick-reload-btn" type="button" style="background: var(--primary-accent); color: #ffffff; border: none; padding: 10px 18px; border-radius: 12px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);">
+        <button id="size-stock-quick-reload-btn" type="button" style="background: var(--primary-accent); color: #ffffff; border: none; padding: 10px 18px; border-radius: 12px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px color-mix(in srgb, var(--primary-accent) 25%, transparent);">
           + Restock All Sizes
         </button>
       </div>
 
-      <!-- Size Breakdown Grid -->
-      <div id="size-stock-grid-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px;">
-        <!-- Dynamic Size Stock Cards rendered here -->
+      <!-- Live stock adjuster -->
+      <div id="size-stock-grid-container" style="margin-bottom: 24px;">
+        <!-- Rendered by openSizeStockModal -->
       </div>
 
       <div style="display: flex; justify-content: flex-end;">
@@ -1848,7 +2233,7 @@
   <div id="restore-backup-modal" class="modal-overlay hidden">
     <div class="modal-card" style="max-width: 520px; border-radius: 20px; padding: 28px;">
       <button id="close-restore-modal-btn" class="modal-close-btn">&times;</button>
-      <div style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: rgba(124, 58, 237, 0.1); color: var(--primary-accent); border-radius: 14px; margin-bottom: 16px;">
+      <div style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: color-mix(in srgb, var(--primary-accent) 10%, transparent); color: var(--primary-accent); border-radius: 14px; margin-bottom: 16px;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
           <polyline points="17 8 12 3 7 8"></polyline>

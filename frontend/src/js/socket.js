@@ -80,7 +80,13 @@ export function initSocketConnection(companyId = null, onStatusChange = null) {
     'supplier:updated',
     'supplier:deleted',
     'inventory:adjusted',
-    'dashboard:updated'
+    'dashboard:updated',
+    'device:registered',
+    'device:revoked',
+    'license:revoked',
+    'license:suspended',
+    'license:expired',
+    'license:updated'
   ];
 
   syncEvents.forEach(evt => {
