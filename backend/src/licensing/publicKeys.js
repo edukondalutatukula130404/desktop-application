@@ -19,7 +19,7 @@
 const PUBLIC_KEYS = {
   // Production signing key — used to sign customer licenses.
   'nxs-2026-01': `-----BEGIN PUBLIC KEY-----
-MCowBQYDK2VwAyEAFlENP+6AC1FJ7q5DqFC4gIz7w4PnRkFDEm0KwF5vHZc=
+MCowBQYDK2VwAyEAcn4wRGe9ziGBihvRolU1NmLeqHaLk2E4iewRgZnTBNg=
 -----END PUBLIC KEY-----`,
 
   // Development / internal testing key — kept for the test suite only.

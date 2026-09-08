@@ -4628,7 +4628,8 @@ function calculatePageInvoiceTotal() {
   let subtotal = 0;
   pageInvoiceItemsList.querySelectorAll('.page-invoice-item-row').forEach(row => {
     const qty = parseFloat(row.querySelector('.item-qty-input')?.value || 1);
-    const price = parseFloat(row.querySelector('.item-price-input')?.value || 0);
+    const priceInput = row.querySelector('.item-price-input');
+    const price = priceInput ? parseFloat(priceInput.value || 0) : parseFloat(row.dataset.unitPrice || 0);
     const itemSubtotal = qty * price;
     const subtotalEl = row.querySelector('.item-subtotal-display');
     if (subtotalEl) {
@@ -4883,6 +4884,7 @@ function setupSearchAutocomplete(row) {
 
     if (!val || !val.trim()) {
       if (priceInput) priceInput.value = '';
+      row.dataset.unitPrice = '0';
       if (qtyInput) qtyInput.value = '1';
       calculatePageInvoiceTotal();
       return;
@@ -4894,6 +4896,7 @@ function setupSearchAutocomplete(row) {
 
     if (found) {
       if (found.price !== undefined && found.price !== null) {
+        row.dataset.unitPrice = found.price;
         if (priceInput) priceInput.value = parseFloat(found.price).toFixed(2);
       }
       if (catInput && (!catInput.value || !catInput.value.trim())) {
@@ -5157,34 +5160,7 @@ function createPageInvoiceRow() {
       <div class="autocomplete-suggestions-panel" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 1000; background: #ffffff; border: 1px solid var(--border-light); border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.12); max-height: 200px; overflow-y: auto; box-sizing: border-box; padding: 4px;"></div>
     </div>
 
-    <select class="item-color-select" style="padding: 0 6px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;">
-      <option value="Black">Black</option>
-      <option value="White">White</option>
-      <option value="Navy Blue">Navy Blue</option>
-      <option value="Royal Blue">Royal Blue</option>
-      <option value="Red">Red</option>
-      <option value="Wine Maroon">Wine Maroon</option>
-      <option value="Olive Green">Olive Green</option>
-      <option value="Grey / Charcoal">Grey / Charcoal</option>
-      <option value="Beige / Cream">Beige / Cream</option>
-      <option value="Pink">Pink</option>
-      <option value="Sky Blue">Sky Blue</option>
-      <option value="Yellow / Mustard">Yellow / Mustard</option>
-      <option value="Multicolor">Multicolor</option>
-    </select>
-
-    <select class="item-size-select" style="padding: 0 6px; height: 38px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.82rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;">
-      <option value="S">Small (S)</option>
-      <option value="M">Medium (M)</option>
-      <option value="L">Large (L)</option>
-      <option value="XL">Extra Large (XL)</option>
-      <option value="XXL">Double XL (XXL)</option>
-      <option value="3XL">Triple XL (3XL)</option>
-    </select>
-
     <input type="number" class="item-qty-input" placeholder="1" min="1" value="1" style="padding: 0 6px; height: 38px; text-align: center; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.85rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" required />
-    
-    <input type="number" step="0.01" class="item-price-input" placeholder="0.00" style="padding: 0 8px; height: 38px; text-align: right; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font-family: inherit; font-size: 0.85rem; outline: none; color: var(--text-main); width: 100%; box-sizing: border-box;" required />
 
     <div class="item-subtotal-display" style="height: 38px; display: flex; align-items: center; justify-content: flex-end; padding: 0 6px; text-align: right; font-weight: 700; font-size: 0.88rem; color: var(--text-main); font-family: 'JetBrains Mono', 'Fira Code', monospace; box-sizing: border-box;">₹0.00</div>
     
@@ -5586,7 +5562,8 @@ function openInvoicePreviewModal() {
       const color = colorSelect ? colorSelect.value : 'Black';
       const size = sizeSelect ? sizeSelect.value : 'M';
       const qty = parseFloat(row.querySelector('.item-qty-input')?.value || 1);
-      const price = parseFloat(row.querySelector('.item-price-input')?.value || 0);
+      const priceInput = row.querySelector('.item-price-input');
+      const price = priceInput ? parseFloat(priceInput.value || 0) : parseFloat(row.dataset.unitPrice || 0);
       items.push({ name, category, subCategory, color, size, qty, price });
     });
   }
@@ -5598,7 +5575,8 @@ function openInvoicePreviewModal() {
   if (listEl) {
     listEl.querySelectorAll('.page-invoice-item-row').forEach(row => {
       const qty = parseFloat(row.querySelector('.item-qty-input')?.value || 1);
-      const price = parseFloat(row.querySelector('.item-price-input')?.value || 0);
+      const priceInput = row.querySelector('.item-price-input');
+      const price = priceInput ? parseFloat(priceInput.value || 0) : parseFloat(row.dataset.unitPrice || 0);
       subtotal += (qty * price);
     });
   }
@@ -5623,8 +5601,8 @@ function openInvoicePreviewModal() {
     rowSpecs.push({ el: phoneEl, label: 'Customer phone', pattern: /^\d{10}$/, patternMsg: 'Customer phone must be 10 digits.' });
   }
 
-  if (rowSpecs.length === 0 || totalAmount <= 0) {
-    showToast('Please select a product or enter a unit price to preview the invoice.', 'info');
+  if (rowSpecs.length === 0) {
+    showToast('Please add at least one product to preview the invoice.', 'info');
     return false;
   }
   if (!validateForm(rowSpecs).ok) {
@@ -6934,7 +6912,8 @@ createInvoiceForm.addEventListener('submit', async (e) => {
       const color = row.querySelector('.item-color-select')?.value || 'Black';
       const size = row.querySelector('.item-size-select')?.value || 'M';
       const qty = parseFloat(row.querySelector('.item-qty-input')?.value || 1);
-      const price = parseFloat(row.querySelector('.item-price-input')?.value || 0);
+      const priceInput = row.querySelector('.item-price-input');
+      const price = priceInput ? parseFloat(priceInput.value || 0) : parseFloat(row.dataset.unitPrice || 0);
       items.push({ name, category, subCategory, color, size, qty, price });
     });
 
